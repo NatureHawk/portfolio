@@ -19,16 +19,16 @@ const renderer = new THREE.WebGLRenderer({
   alpha: false
 });
 
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x04060d, 1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
-renderer.shadowMap.enabled = false; // Disabled costly shadow passes for rock-solid 60+ FPS
+renderer.toneMappingExposure = 1.35;
+renderer.shadowMap.enabled = false;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x060812, 0.032);
+scene.fog = new THREE.FogExp2(0x06081a, 0.026);
 
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 80);
 const clock = new THREE.Clock();
@@ -400,8 +400,8 @@ function makeMonitor(spec, isCentre = false) {
   led.position.set(0.8, -0.7, 0.37);
   group.add(led);
 
-  // Monitor Glow PointLight
-  const light = new THREE.PointLight(spec.color, 0.45, 4.5, 2);
+  // Monitor Glow PointLight — strong enough to visibly color the desk
+  const light = new THREE.PointLight(spec.color, 1.2, 5.5, 1.8);
   light.position.set(0, 0.1, 1.15);
   group.add(light);
 
@@ -422,15 +422,17 @@ function makeMonitor(spec, isCentre = false) {
 let steamParticles = null;
 
 function addRoomAndProps() {
+  // Warmer wood — visible grain catching the lamp light like the reference
   const wood = new THREE.MeshStandardMaterial({
-    color: 0x221814,
-    roughness: 0.88,
-    metalness: 0.05
+    color: 0x4a2e1e,
+    roughness: 0.82,
+    metalness: 0.04
   });
-  const wall = new THREE.MeshStandardMaterial({ color: 0x080c18, roughness: 1 });
-  const floor = new THREE.MeshStandardMaterial({ color: 0x0e0b12, roughness: 1 });
-  const metal = new THREE.MeshStandardMaterial({ color: 0x282c35, roughness: 0.35, metalness: 0.85 });
-  const plasticDark = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.6 });
+  // Dark indigo wall — visible but moody, not pure black
+  const wall = new THREE.MeshStandardMaterial({ color: 0x0e1225, roughness: 0.95 });
+  const floor = new THREE.MeshStandardMaterial({ color: 0x120e18, roughness: 0.95 });
+  const metal = new THREE.MeshStandardMaterial({ color: 0x3a3f4a, roughness: 0.35, metalness: 0.85 });
+  const plasticDark = new THREE.MeshStandardMaterial({ color: 0x1e2024, roughness: 0.6 });
   const retroBeige = new THREE.MeshStandardMaterial({ color: 0xd6ccba, roughness: 0.68 });
 
   // Main Room Architecture
@@ -445,9 +447,10 @@ function addRoomAndProps() {
   }
 
   // --- WINDOW & CELESTIAL BACKDROP ---
-  const windowFrame = new THREE.MeshStandardMaterial({ color: 0x06080d, roughness: 0.4, metalness: 0.3 });
-  const glass = new THREE.MeshBasicMaterial({ color: 0x070b1a, transparent: true, opacity: 0.82 });
-  const cosmicGlow = new THREE.MeshBasicMaterial({ color: 0x241252, transparent: true, opacity: 0.45 });
+  const windowFrame = new THREE.MeshStandardMaterial({ color: 0x12151e, roughness: 0.4, metalness: 0.3 });
+  // Rich deep space backdrop — deep indigo-purple instead of near-black
+  const glass = new THREE.MeshBasicMaterial({ color: 0x0c1232, transparent: true, opacity: 0.72 });
+  const cosmicGlow = new THREE.MeshBasicMaterial({ color: 0x2a1868, transparent: true, opacity: 0.55 });
 
   box(9.0, 6.0, 0.12, glass, new THREE.Vector3(0, 4.3, -1.9));
   box(8.8, 5.8, 0.04, cosmicGlow, new THREE.Vector3(0, 4.3, -1.82));
@@ -463,18 +466,26 @@ function addRoomAndProps() {
   // Luminous Moon Mesh
   const moonMesh = new THREE.Mesh(
     new THREE.SphereGeometry(0.74, 28, 28),
-    new THREE.MeshBasicMaterial({ color: 0xfff5e3 })
+    new THREE.MeshBasicMaterial({ color: 0xfff8e8 })
   );
   moonMesh.position.set(-2.2, 6.2, -1.78);
   scene.add(moonMesh);
 
-  // Atmospheric Lunar Corona Glow
+  // Atmospheric Lunar Corona Glow — larger and more visible
   const coronaMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(0.98, 24, 24),
-    new THREE.MeshBasicMaterial({ color: 0x8eaaff, transparent: true, opacity: 0.35 })
+    new THREE.SphereGeometry(1.35, 24, 24),
+    new THREE.MeshBasicMaterial({ color: 0x8eaaff, transparent: true, opacity: 0.25 })
   );
   coronaMesh.position.copy(moonMesh.position);
   scene.add(coronaMesh);
+
+  // Outer soft moonlight haze
+  const moonHaze = new THREE.Mesh(
+    new THREE.SphereGeometry(2.2, 20, 20),
+    new THREE.MeshBasicMaterial({ color: 0x6680cc, transparent: true, opacity: 0.08 })
+  );
+  moonHaze.position.copy(moonMesh.position);
+  scene.add(moonHaze);
 
   // Multi-color Nebula Starfield
   const starsGeo = new THREE.BufferGeometry();
@@ -491,16 +502,31 @@ function addRoomAndProps() {
   starsGeo.setAttribute('color', new THREE.Float32BufferAttribute(starColors, 3));
   const starsPoints = new THREE.Points(
     starsGeo,
-    new THREE.PointsMaterial({ size: 0.032, vertexColors: true, transparent: true, opacity: 0.92 })
+    new THREE.PointsMaterial({ size: 0.04, vertexColors: true, transparent: true, opacity: 0.95 })
   );
   scene.add(starsPoints);
 
+  // Nebula cloud patches — subtle colored fog areas in the starfield
+  const nebulaMat1 = new THREE.MeshBasicMaterial({ color: 0x4422aa, transparent: true, opacity: 0.12 });
+  const nebulaMat2 = new THREE.MeshBasicMaterial({ color: 0x882255, transparent: true, opacity: 0.1 });
+  const nebula1 = new THREE.Mesh(new THREE.SphereGeometry(1.8, 12, 12), nebulaMat1);
+  nebula1.position.set(2.5, 5.5, -1.82);
+  nebula1.scale.set(2, 1, 0.3);
+  scene.add(nebula1);
+  const nebula2 = new THREE.Mesh(new THREE.SphereGeometry(1.4, 12, 12), nebulaMat2);
+  nebula2.position.set(-1.0, 4.8, -1.82);
+  nebula2.scale.set(1.8, 0.8, 0.3);
+  scene.add(nebula2);
+
   // Cascading Vine Leaves from Window Top
-  const vineMat = new THREE.MeshStandardMaterial({ color: 0x0c1710, roughness: 0.95 });
-  for (let v = 0; v < 16; v++) {
-    const vx = -4.1 + v * 0.55 + (Math.random() - 0.5) * 0.2;
-    const vy = 7.0 - Math.random() * 0.9;
-    box(0.18 + Math.random() * 0.12, 0.4 + Math.random() * 0.55, 0.06, vineMat, new THREE.Vector3(vx, vy, -1.65));
+  // Subtle dark vine leaves — barely-there organic shapes
+  const vineMat = new THREE.MeshStandardMaterial({ color: 0x132a18, roughness: 0.92 });
+  for (let v = 0; v < 22; v++) {
+    const vx = -4.2 + v * 0.42 + (Math.random() - 0.5) * 0.25;
+    const vy = 7.1 - Math.random() * 1.2;
+    const leafW = 0.08 + Math.random() * 0.1;
+    const leafH = 0.2 + Math.random() * 0.45;
+    box(leafW, leafH, 0.04, vineMat, new THREE.Vector3(vx, vy, -1.65));
   }
 
   // --- STUDIO AUDIO SPEAKERS (Left & Right) ---
@@ -546,10 +572,11 @@ function addRoomAndProps() {
   // --- CERAMIC COFFEE MUG ---
   const mugGroup = new THREE.Group();
   mugGroup.position.set(-1.88, 0.95, 1.45);
-  const mugMat = new THREE.MeshStandardMaterial({ color: 0x141a24, roughness: 0.5 });
+  // Visible dark ceramic mug — slightly lighter so lamp catches it
+  const mugMat = new THREE.MeshStandardMaterial({ color: 0x242e3a, roughness: 0.45 });
   cyl(0.38, 0.38, 0.03, 20, wood, new THREE.Vector3(0, 0, 0), mugGroup);
   cyl(0.24, 0.22, 0.44, 20, mugMat, new THREE.Vector3(0, 0.24, 0), mugGroup);
-  cyl(0.21, 0.21, 0.02, 16, new THREE.MeshStandardMaterial({ color: 0x1f120c, roughness: 0.3 }), new THREE.Vector3(0, 0.41, 0), mugGroup);
+  cyl(0.21, 0.21, 0.02, 16, new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.3 }), new THREE.Vector3(0, 0.41, 0), mugGroup);
   scene.add(mugGroup);
 
   // Rising Steam Particle System
@@ -646,16 +673,31 @@ function addRoomAndProps() {
   shade.rotation.z = Math.PI / 3;
   shade.rotation.x = 0.2;
   lampGroup.add(shade);
+
+  // Visible glowing lamp bulb
+  const bulb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 12, 12),
+    new THREE.MeshBasicMaterial({ color: 0xffcc77 })
+  );
+  bulb.position.set(-0.72, 1.85, 0.1);
+  lampGroup.add(bulb);
   scene.add(lampGroup);
 
-  // Warm Amber Desk Lamp Light
-  const deskLampLight = new THREE.PointLight(0xffaa5e, 1.15, 6.8, 1.8);
+  // === WARM AMBER DESK LAMP LIGHT — the hero light of the scene ===
+  // Primary warm directional pool (the main warm glow bathing the desk)
+  const deskLampLight = new THREE.PointLight(0xffaa5e, 2.8, 9.5, 1.6);
   deskLampLight.position.set(3.45, 2.7, 1.0);
-  deskLampLight.castShadow = true;
-  deskLampLight.shadow.mapSize.width = 1024;
-  deskLampLight.shadow.mapSize.height = 1024;
-  deskLampLight.shadow.bias = -0.001;
   scene.add(deskLampLight);
+
+  // Secondary warm fill (wider, softer warmth across the whole desk surface)
+  const warmFill = new THREE.PointLight(0xff9944, 1.2, 7.0, 2.0);
+  warmFill.position.set(2.0, 1.8, 1.4);
+  scene.add(warmFill);
+
+  // Subtle warm bounce off the desk surface (simulates indirect light)
+  const deskBounce = new THREE.PointLight(0xffbb66, 0.5, 5.0, 2.0);
+  deskBounce.position.set(0, 1.2, 1.6);
+  scene.add(deskBounce);
 }
 
 // --- 3D SILHOUETTE CHARACTER ---
@@ -756,10 +798,18 @@ makeMonitor(monitorSpecs[2]);
 addPerson();
 
 // Ambient & Celestial Lighting
-scene.add(new THREE.HemisphereLight(0x283e88, 0x11090c, 1.15));
-const moonFill = new THREE.PointLight(0x728cff, 0.65, 12, 2);
+// Hemisphere: cool blue sky + warm amber ground for that cozy late-night feel
+scene.add(new THREE.HemisphereLight(0x2a3d78, 0x33200e, 1.6));
+
+// Moonlight — cool blue fill illuminating the window area and upper walls
+const moonFill = new THREE.PointLight(0x728cff, 1.4, 14, 1.8);
 moonFill.position.set(-2.2, 6.4, -0.8);
 scene.add(moonFill);
+
+// Subtle ambient fill from window — low-level cool light on desk back
+const windowAmbient = new THREE.PointLight(0x3344aa, 0.4, 8, 2.0);
+windowAmbient.position.set(0, 3.5, -1.0);
+scene.add(windowAmbient);
 
 // --- WEB AUDIO ATMOSPHERE & SFX ENGINE ---
 class AudioManager {
@@ -931,7 +981,7 @@ function setHover(target) {
   );
 
   monitorTargets.forEach((hit) => {
-    hit.userData.light.intensity = hit === target ? 1.25 : 0.2;
+    hit.userData.light.intensity = hit === target ? 2.5 : 1.2;
     hit.userData.group.scale.setScalar(
       hit === target
         ? hit.userData.spec.id === 'design' ? 1.26 : 1.08
