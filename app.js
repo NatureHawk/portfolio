@@ -966,7 +966,7 @@ function openWorld(id) {
     if (!page) return;
     page.hidden = false;
     requestAnimationFrame(() => page.classList.add('visible'));
-  }, prefersReducedMotion ? 0 : 700);
+  }, prefersReducedMotion ? 0 : 320);
 }
 
 function returnRoom() {
@@ -981,7 +981,7 @@ function returnRoom() {
     entering = false;
     body.classList.remove('is-entering');
     setHover(null);
-  }, prefersReducedMotion ? 0 : 250);
+  }, prefersReducedMotion ? 0 : 200);
 }
 
 // Event Listeners
@@ -1034,12 +1034,14 @@ function resize() {
 window.addEventListener('resize', resize);
 
 // --- 60+ FPS BUTTERY SMOOTH ANIMATION LOOP ---
-let lastScreenUpdate = 0;
+let lastTime = performance.now();
 
 function animate() {
-  const delta = Math.min(clock.getDelta(), 0.05);
-  const time = clock.elapsedTime;
-  const dampFactor = prefersReducedMotion ? 20 : 5.2;
+  const now = performance.now();
+  const delta = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
+  const time = now * 0.001;
+  const dampFactor = prefersReducedMotion ? 25 : 7.2;
 
   // Frame-rate independent smooth damping for buttery camera gliding
   camera.position.x = THREE.MathUtils.damp(camera.position.x, cameraGoal.x, dampFactor, delta);
@@ -1061,7 +1063,7 @@ function animate() {
     
     silhouetteGroup.traverse((child) => {
       if (child.isMesh && child.material && child.material.transparent) {
-        child.material.opacity = THREE.MathUtils.damp(child.material.opacity, targetOpacity, 6.0, delta);
+        child.material.opacity = THREE.MathUtils.damp(child.material.opacity, targetOpacity, 8.0, delta);
       }
     });
   }
@@ -1078,12 +1080,6 @@ function animate() {
       }
     }
     steamParticles.geometry.attributes.position.needsUpdate = true;
-  }
-
-  // Throttled dynamic CRT scanline & cursor updates (efficient 20 FPS canvas update without GPU lag)
-  if (time - lastScreenUpdate > 0.05) {
-    dynamicScreenRenderers.forEach((item) => item.render(time));
-    lastScreenUpdate = time;
   }
 
   renderer.render(scene, camera);
