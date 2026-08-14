@@ -564,6 +564,23 @@ function makeMonitor(spec, isCentre = false) {
   scene.add(group);
 }
 
+// --- SOFT RADIAL STEAM TEXTURE GENERATOR ---
+function createSteamTexture() {
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 64;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(235, 240, 255, 0.7)');
+  grad.addColorStop(0.25, 'rgba(210, 225, 250, 0.35)');
+  grad.addColorStop(0.6, 'rgba(180, 200, 240, 0.1)');
+  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 64, 64);
+  const tex = new THREE.CanvasTexture(c);
+  return tex;
+}
+
 // --- DESK PROPS, WALL ART & ENVIRONMENT GEOMETRY ---
 let steamParticles = null;
 
@@ -764,26 +781,44 @@ function addRoomAndProps() {
   mugGroup.add(handle);
   scene.add(mugGroup);
 
-  // Rising Steam Particle System (Continuous Strands)
+  // --- REALISTIC GENTLE COFFEE STEAM SYSTEM ---
+  const steamCount = 60;
   const steamGeo = new THREE.BufferGeometry();
-  const steamPos = [];
-  const steamColors = [];
-  for (let i = 0; i < 180; i++) {
+  const steamPos = new Float32Array(steamCount * 3);
+  const steamData = [];
+  
+  const mugX = -1.52;
+  const mugY = 1.39; // Liquid surface & top rim of coffee mug
+  const mugZ = 1.55;
+
+  for (let i = 0; i < steamCount; i++) {
+    const age = Math.random();
     const strand = i % 3;
-    steamPos.push(-1.88, 1.02 + Math.random() * 0.8, 1.38);
-    const op = strand === 0 ? 0.35 : strand === 1 ? 0.20 : 0.10;
-    steamColors.push(op, op, op);
+    steamData.push({
+      age: age,
+      speed: 0.18 + Math.random() * 0.10,
+      strand: strand,
+      seed: Math.random() * 10
+    });
+    const y = mugY + age * 0.65;
+    const curlX = Math.sin(age * 5.0 + strand * 2.0) * 0.03 * age;
+    const curlZ = Math.cos(age * 4.0 + strand * 1.5) * 0.02 * age;
+    steamPos[i * 3] = mugX + curlX + (Math.random() - 0.5) * 0.03;
+    steamPos[i * 3 + 1] = y;
+    steamPos[i * 3 + 2] = mugZ + curlZ + (Math.random() - 0.5) * 0.03;
   }
-  steamGeo.setAttribute('position', new THREE.Float32BufferAttribute(steamPos, 3));
-  steamGeo.setAttribute('color', new THREE.Float32BufferAttribute(steamColors, 3));
+  steamGeo.setAttribute('position', new THREE.BufferAttribute(steamPos, 3));
+  
   const steamMat = new THREE.PointsMaterial({
-    size: 0.15,
-    vertexColors: true,
+    size: 0.16,
+    map: createSteamTexture(),
     transparent: true,
+    opacity: 0.20,
     depthWrite: false,
-    blending: THREE.AdditiveBlending
+    blending: THREE.NormalBlending
   });
   steamParticles = new THREE.Points(steamGeo, steamMat);
+  steamParticles.userData = { steamData, mugX, mugY, mugZ };
   scene.add(steamParticles);
 
   // --- CASSETTE TAPE STACKS (Left Desk) ---
@@ -921,6 +956,26 @@ function addPerson() {
     color: 0x8c6e5a, roughness: 0.75, metalness: 0.02,
     transparent: true, opacity: 1
   });
+  const pantsMat = new THREE.MeshStandardMaterial({
+    color: 0x0c1018, roughness: 0.92, metalness: 0.04,
+    transparent: true, opacity: 1
+  });
+  const pantsFoldMat = new THREE.MeshStandardMaterial({
+    color: 0x080b12, roughness: 0.96,
+    transparent: true, opacity: 1
+  });
+  const shoeMat = new THREE.MeshStandardMaterial({
+    color: 0x181a22, roughness: 0.55, metalness: 0.15,
+    transparent: true, opacity: 1
+  });
+  const soleMat = new THREE.MeshStandardMaterial({
+    color: 0xded9cf, roughness: 0.4,
+    transparent: true, opacity: 1
+  });
+  const sockMat = new THREE.MeshStandardMaterial({
+    color: 0x242834, roughness: 0.8,
+    transparent: true, opacity: 1
+  });
 
   // ==========================================
   // A. DETAILED JAPANESE OAK BENTWOOD CHAIR (Properly sized seat, visible backrest)
@@ -1039,10 +1094,20 @@ function addPerson() {
   silhouetteGroup.add(chairGroup);
 
   // ==========================================
-  // B. HUMANOID IN HOODIE — Natural Shoulder Drape & Arm-to-Lat Connection
+  // B. HUMANOID IN OVERSIZED HOODIE WITH FULL LOWER BODY & STUDIO HEADPHONES
   // ==========================================
   const personGroup = new THREE.Group();
   personGroup.rotation.x = 0.06;
+
+  // -- HOODIE BOTTOM HEM (Drapes naturally over hips/waist) --
+  const hoodieHem = new THREE.Mesh(
+    new THREE.TorusGeometry(0.31, 0.05, 8, 20),
+    hoodFoldMat
+  );
+  hoodieHem.position.set(0, 0.82, 0.74);
+  hoodieHem.rotation.x = Math.PI / 2;
+  hoodieHem.scale.set(1.12, 0.86, 1.0);
+  personGroup.add(hoodieHem);
 
   // -- LOWER TORSO (Hips, belly) --
   const lowerTorso = new THREE.Mesh(
@@ -1071,8 +1136,7 @@ function addPerson() {
   upperChest.scale.set(1.18, 0.85, 0.78);
   personGroup.add(upperChest);
 
-  // -- SHOULDERS (Lower position — not at traps, at natural shoulder height) --
-  // The shoulder line sits BELOW the neck, not up at the ears.
+  // -- SHOULDERS (Natural shoulder line below neck) --
   const shoulders = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.10, 0.68, 6, 12),
     hoodieMat
@@ -1082,9 +1146,8 @@ function addPerson() {
   shoulders.scale.set(1.0, 1.0, 0.82);
   personGroup.add(shoulders);
 
-  // -- SIDE TORSO FILL (Connects lats to arms — hoodie fabric fills the gap) --
+  // -- SIDE TORSO FILL (Connects lats to arms) --
   for (const side of [-1, 1]) {
-    // Lat-to-arm fill volume (the key to making it look like a hoodie, not a skeleton)
     const latFill = new THREE.Mesh(
       new THREE.CapsuleGeometry(0.16, 0.32, 6, 10),
       hoodieMat
@@ -1093,14 +1156,13 @@ function addPerson() {
     latFill.scale.set(0.85, 1.0, 0.78);
     personGroup.add(latFill);
 
-    // Deltoid cap (rounded shoulder top)
     const delt = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 12), hoodieMat);
     delt.position.set(side * 0.44, 1.56, 0.67);
     delt.scale.set(1.0, 0.85, 0.8);
     personGroup.add(delt);
   }
 
-  // -- HOODIE HOOD (Collapsed behind neck) --
+  // -- HOODIE HOOD (Collapsed naturally behind neck) --
   const hoodDrape = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.18, 0.12, 6, 10),
     hoodFoldMat
@@ -1119,46 +1181,230 @@ function addPerson() {
   hoodRoll.scale.set(1.2, 0.65, 1.0);
   personGroup.add(hoodRoll);
 
+  // ==========================================
+  // LOWER BODY: PELVIS / GLUTES (ASS), THIGHS, KNEES, SHINS & RETRO SNEAKERS
+  // ==========================================
+  // Pelvis / Glutes Base (Sitting securely on the Japanese bentwood chair seat)
+  const pelvis = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.24, 0.28, 8, 14),
+    pantsMat
+  );
+  pelvis.position.set(0, 0.64, 0.76);
+  pelvis.scale.set(1.18, 0.85, 0.92);
+  personGroup.add(pelvis);
+
+  // Distinct rounded glute cheeks (visible form resting on chair pan)
+  for (const side of [-1, 1]) {
+    const gluteCheek = new THREE.Mesh(
+      new THREE.SphereGeometry(0.19, 14, 14),
+      pantsMat
+    );
+    gluteCheek.position.set(side * 0.16, 0.58, 0.80);
+    gluteCheek.scale.set(1.0, 0.78, 1.08);
+    personGroup.add(gluteCheek);
+  }
+
+  // Butt crease & fabric tension line
+  const buttCrease = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.035, 0.20, 6, 8),
+    pantsFoldMat
+  );
+  buttCrease.position.set(0, 0.60, 0.87);
+  buttCrease.rotation.x = 0.35;
+  personGroup.add(buttCrease);
+
+  // Thighs (Upper legs extending horizontally along the seat towards the desk)
+  for (const side of [-1, 1]) {
+    const thigh = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.14, 0.42, 8, 12),
+      pantsMat
+    );
+    thigh.position.set(side * 0.21, 0.54, 0.52);
+    thigh.rotation.x = Math.PI / 2 - 0.05;
+    thigh.rotation.y = side * -0.04;
+    thigh.scale.set(0.95, 1.0, 0.85);
+    personGroup.add(thigh);
+
+    // Thigh fabric fold
+    const thighFold = new THREE.Mesh(
+      new THREE.TorusGeometry(0.135, 0.018, 6, 14),
+      pantsFoldMat
+    );
+    thighFold.position.set(side * 0.21, 0.54, 0.52);
+    thighFold.rotation.y = Math.PI / 2;
+    personGroup.add(thighFold);
+
+    // Knees (Bent at front edge of seat pan)
+    const knee = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.12, 0.08, 8, 10),
+      pantsMat
+    );
+    knee.position.set(side * 0.22, 0.50, 0.25);
+    knee.rotation.x = 0.32;
+    personGroup.add(knee);
+
+    // Lower Legs / Calves (Extending down towards the floor under desk)
+    const calf = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.105, 0.40, 8, 12),
+      pantsMat
+    );
+    calf.position.set(side * 0.22, 0.26, 0.27);
+    calf.rotation.x = -0.14;
+    personGroup.add(calf);
+
+    // Ankle cuff / rolled pants hem
+    const cuff = new THREE.Mesh(
+      new THREE.TorusGeometry(0.085, 0.022, 6, 14),
+      pantsFoldMat
+    );
+    cuff.position.set(side * 0.22, 0.09, 0.31);
+    cuff.rotation.x = Math.PI / 2 - 0.14;
+    personGroup.add(cuff);
+
+    // Socks
+    cyl(0.065, 0.065, 0.07, 12, sockMat, new THREE.Vector3(side * 0.22, 0.065, 0.32), personGroup);
+
+    // Chunky Retro Sneakers
+    const shoeGroup = new THREE.Group();
+    shoeGroup.position.set(side * 0.22, 0.035, 0.38);
+    shoeGroup.rotation.y = side * -0.06;
+
+    // Main sneaker body
+    box(0.14, 0.09, 0.30, shoeMat, new THREE.Vector3(0, 0.03, 0), shoeGroup);
+    // Rounded toe cap
+    const toeCap = new THREE.Mesh(new THREE.SphereGeometry(0.068, 10, 10), shoeMat);
+    toeCap.position.set(0, 0.02, -0.13);
+    toeCap.scale.set(1.0, 0.65, 1.1);
+    shoeGroup.add(toeCap);
+    // Chunky off-white midsole
+    box(0.155, 0.032, 0.33, soleMat, new THREE.Vector3(0, -0.015, -0.01), shoeGroup);
+    // Heel tab detail
+    box(0.07, 0.04, 0.02, silverMetalMat, new THREE.Vector3(0, 0.06, 0.14), shoeGroup);
+
+    personGroup.add(shoeGroup);
+  }
+
   // -- NECK --
   cyl(0.08, 0.09, 0.14, 14, hairMat, new THREE.Vector3(0, 1.72, 0.66), personGroup);
 
-  // -- HEAD --
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.20, 22, 18), hairMat);
-  head.position.set(0, 1.90, 0.65);
-  head.scale.set(0.88, 1.10, 0.92);
+  // -- HEAD & HAIR (Natural cranial human proportions) --
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.195, 24, 20), hairMat);
+  head.position.set(0, 1.88, 0.65);
+  head.scale.set(0.92, 1.05, 0.94);
   personGroup.add(head);
 
-  // -- HAIR --
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.21, 18, 16), hairMat);
-  hair.position.set(0, 1.94, 0.64);
-  hair.scale.set(0.90, 1.02, 0.96);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.205, 20, 18), hairMat);
+  hair.position.set(0, 1.91, 0.64);
+  hair.scale.set(0.93, 1.02, 0.95);
   personGroup.add(hair);
 
-  // -- HEADPHONES --
+  // ==========================================
+  // ERGONOMIC STUDIO MONITOR HEADPHONES (Snug-fitting, zero floating gap)
+  // ==========================================
+  // Headband Outer Frame (Sits snugly right over the hair)
   const headband = new THREE.Mesh(
-    new THREE.TorusGeometry(0.22, 0.025, 10, 22, Math.PI),
+    new THREE.TorusGeometry(0.182, 0.020, 12, 32, Math.PI),
     headphoneMat
   );
-  headband.position.set(0, 1.88, 0.64);
+  headband.position.set(0, 1.85, 0.64);
+  headband.scale.set(1.04, 1.34, 1.0);
   personGroup.add(headband);
 
+  // Padded Leather Cushion (Underside of headband resting against crown)
+  const headbandCushion = new THREE.Mesh(
+    new THREE.TorusGeometry(0.176, 0.014, 8, 24, Math.PI * 0.72),
+    new THREE.MeshStandardMaterial({ color: 0x0e1017, roughness: 0.7, transparent: true, opacity: 1 })
+  );
+  headbandCushion.position.set(0, 1.85, 0.64);
+  headbandCushion.scale.set(1.04, 1.33, 1.0);
+  headbandCushion.rotation.z = Math.PI * 0.14;
+  personGroup.add(headbandCushion);
+
   for (const side of [-1, 1]) {
+    // Metal adjustment extension slider brackets
+    const slider = new THREE.Mesh(
+      new THREE.BoxGeometry(0.016, 0.07, 0.024),
+      silverMetalMat
+    );
+    slider.position.set(side * 0.194, 1.87, 0.64);
+    personGroup.add(slider);
+
+    // Gimbal Swivel block
+    const hinge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.022, 0.032, 0.030),
+      headphoneMat
+    );
+    hinge.position.set(side * 0.196, 1.83, 0.64);
+    personGroup.add(hinge);
+
+    // Earcup Assembly (Angled ergonomically flush to the head)
     const earcupGroup = new THREE.Group();
-    earcupGroup.position.set(side * 0.22, 1.88, 0.64);
-    earcupGroup.rotation.y = side * 0.06;
-    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 16), headphoneMat);
-    cup.rotation.z = Math.PI / 2;
-    earcupGroup.add(cup);
-    const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.01, 14), silverMetalMat);
-    badge.position.set(side * 0.028, 0, 0);
-    badge.rotation.z = Math.PI / 2;
-    earcupGroup.add(badge);
+    earcupGroup.position.set(side * 0.190, 1.82, 0.64);
+    earcupGroup.rotation.y = side * 0.08;
+    earcupGroup.rotation.x = -0.05;
+    earcupGroup.rotation.z = side * -0.06;
+
+    // Thick Plush Leather Oval Cushion (Inner side flush against ear)
+    const cushion = new THREE.Mesh(
+      new THREE.TorusGeometry(0.070, 0.025, 12, 22),
+      new THREE.MeshStandardMaterial({ color: 0x12151e, roughness: 0.8, transparent: true, opacity: 1 })
+    );
+    cushion.position.set(side * -0.012, 0, 0);
+    cushion.rotation.y = Math.PI / 2;
+    cushion.scale.set(0.85, 1.25, 0.85);
+    earcupGroup.add(cushion);
+
+    // Inner Driver Grille
+    const grille = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.055, 0.055, 0.012, 16),
+      new THREE.MeshStandardMaterial({ color: 0x08090d, roughness: 0.9, transparent: true, opacity: 1 })
+    );
+    grille.position.set(side * -0.01, 0, 0);
+    grille.rotation.z = Math.PI / 2;
+    earcupGroup.add(grille);
+
+    // Outer Studio Dome Shell
+    const shell = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.080, 0.074, 0.042, 20),
+      headphoneMat
+    );
+    shell.position.set(side * 0.020, 0, 0);
+    shell.rotation.z = Math.PI / 2;
+    shell.scale.set(1.0, 1.0, 1.22);
+    earcupGroup.add(shell);
+
+    // Brushed Aluminum Backplate & Metallic Ring
+    const backplate = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.058, 0.058, 0.008, 18),
+      silverMetalMat
+    );
+    backplate.position.set(side * 0.044, 0, 0);
+    backplate.rotation.z = Math.PI / 2;
+    earcupGroup.add(backplate);
+
+    const metalRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.062, 0.004, 8, 20),
+      silverMetalMat
+    );
+    metalRing.position.set(side * 0.043, 0, 0);
+    metalRing.rotation.y = Math.PI / 2;
+    earcupGroup.add(metalRing);
+
+    // Left side audio cable jack
+    if (side === -1) {
+      const jack = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.010, 0.010, 0.035, 8),
+        silverMetalMat
+      );
+      jack.position.set(-0.015, -0.075, 0.02);
+      earcupGroup.add(jack);
+    }
+
     personGroup.add(earcupGroup);
   }
 
-  // -- ARMS (Connected at shoulder height, not at traps) --
+  // -- ARMS (Connected at shoulder height) --
   for (const side of [-1, 1]) {
-    // Upper arm — starts at the deltoid, hangs naturally
     const upperArm = new THREE.Mesh(
       new THREE.CapsuleGeometry(0.09, 0.36, 6, 12),
       hoodieMat
@@ -1168,7 +1414,6 @@ function addPerson() {
     upperArm.rotation.z = side * -0.08;
     personGroup.add(upperArm);
 
-    // Forearm
     const forearm = new THREE.Mesh(
       new THREE.CapsuleGeometry(0.065, 0.44, 6, 10),
       hoodieMat
@@ -1178,7 +1423,6 @@ function addPerson() {
     forearm.rotation.y = side * 0.10;
     personGroup.add(forearm);
 
-    // Hand
     const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), skinMat);
     hand.position.set(side * 0.40, 0.92, 1.40);
     hand.scale.set(1.0, 0.7, 1.2);
@@ -1597,23 +1841,28 @@ function animate() {
     });
   }
 
-  // Steam Particle Simulation (Waving Strands)
-  if (steamParticles) {
+  // Realistic Coffee Steam Simulation (Organic Curling Dissipation)
+  if (steamParticles && steamParticles.userData.steamData) {
     const pos = steamParticles.geometry.attributes.position.array;
-    for (let i = 1; i < pos.length; i += 3) {
-      const pIdx = Math.floor(i / 3);
-      const strand = pIdx % 3;
+    const { steamData, mugX, mugY, mugZ } = steamParticles.userData;
+    for (let i = 0; i < steamData.length; i++) {
+      const d = steamData[i];
+      d.age += delta * d.speed;
+      if (d.age > 1.0) {
+        d.age = 0;
+        d.seed = Math.random() * 10;
+      }
       
-      pos[i] += delta * (0.15 + strand * 0.05);
-      const heightPhase = (pos[i] - 1.02) * 3.0;
+      const a = d.age;
+      const y = mugY + a * 0.65;
       
-      const waveX = Math.sin(time * (2 + strand) + heightPhase) * 0.04 * (pos[i]-1.02);
-      const waveZ = Math.cos(time * (1.5 + strand) + heightPhase) * 0.04 * (pos[i]-1.02);
+      // Delicate natural wisps drifting upwards
+      const curlX = Math.sin(time * 1.5 + a * 5.5 + d.strand * 2.1 + d.seed) * (0.015 + 0.045 * a);
+      const curlZ = Math.cos(time * 1.2 + a * 4.2 + d.strand * 1.7 + d.seed) * (0.012 + 0.035 * a);
       
-      pos[i - 1] = -1.88 + waveX;
-      pos[i + 1] = 1.38 + waveZ;
-      
-      if (pos[i] > 1.8) pos[i] = 1.02;
+      pos[i * 3] = mugX + curlX;
+      pos[i * 3 + 1] = y;
+      pos[i * 3 + 2] = mugZ + curlZ;
     }
     steamParticles.geometry.attributes.position.needsUpdate = true;
   }
