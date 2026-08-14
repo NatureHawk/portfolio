@@ -543,8 +543,8 @@ function makeMonitor(spec, isCentre = false) {
   led.position.set(0.8, -0.7, 0.37);
   group.add(led);
 
-  // Directional CRT Phosphor Glow forward onto the desk (radius: 9.0, decay: 1.35)
-  const light = new THREE.PointLight(spec.color, 1.5, 9.0, 1.35);
+  // Directional CRT Phosphor Glow forward onto the desk (boosted for visibility)
+  const light = new THREE.PointLight(spec.color, 2.2, 11.0, 1.3);
   light.position.set(0, 0.1, 1.05);
   group.add(light);
 
@@ -873,8 +873,8 @@ function addRoomAndProps() {
   lampGroup.add(bulb);
   scene.add(lampGroup);
 
-  // Primary warm directional lamp illumination (radius 14.0, decay 1.25)
-  const deskLampLight = new THREE.PointLight(0xffa045, 2.5, 14.0, 1.25);
+  // Primary warm directional lamp illumination (boosted for scene warmth)
+  const deskLampLight = new THREE.PointLight(0xffa045, 3.8, 16.0, 1.2);
   deskLampLight.position.set(3.45, 2.7, 1.0);
   scene.add(deskLampLight);
 }
@@ -919,127 +919,125 @@ function addPerson() {
   });
 
   // ==========================================
-  // A. DETAILED JAPANESE OAK BENTWOOD CHAIR (Higher polygon, matching reference)
+  // A. DETAILED JAPANESE OAK BENTWOOD CHAIR (Properly sized seat, visible backrest)
   // ==========================================
   const chairGroup = new THREE.Group();
-  chairGroup.scale.set(1.5, 1.45, 1.5);
+  chairGroup.scale.set(1.35, 1.4, 1.35);
 
-  // -- Curved Bentwood Backrest (LatheGeometry for authentic curvature) --
-  const backrestProfile = [];
-  for (let i = 0; i <= 16; i++) {
-    const t = i / 16;
-    const x = 0.54 * Math.sin(t * Math.PI);
-    const y = 0.6 * t - 0.3;
-    backrestProfile.push(new THREE.Vector2(x, y));
-  }
-  const backrestGeo = new THREE.LatheGeometry(backrestProfile, 24, -0.6, 1.2);
-  const backrestMesh = new THREE.Mesh(backrestGeo, oakWoodMat);
-  backrestMesh.position.set(0, 0.98, 0.42);
-  backrestMesh.rotation.x = -0.08;
-  backrestMesh.scale.set(1.0, 0.9, 0.12);
-  chairGroup.add(backrestMesh);
-
-  // Thin oak cap strip along the top edge of the backrest
-  const topStrip = new THREE.Mesh(
-    new THREE.BoxGeometry(1.12, 0.06, 0.055),
+  // -- PROMINENT OAK BACKREST (Tall enough to be clearly visible behind the person) --
+  // Main backrest panel — taller and positioned to show above the person's lower back
+  const backrestPanel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.88, 0.72, 0.06),
     oakWoodMat
   );
-  topStrip.position.set(0, 1.22, 0.42);
-  topStrip.rotation.x = -0.06;
-  chairGroup.add(topStrip);
+  backrestPanel.position.set(0, 1.02, 0.38);
+  backrestPanel.rotation.x = -0.10;
+  chairGroup.add(backrestPanel);
 
-  // -- Contoured Seat Pan (slightly dished, rounded edges) --
+  // Top rail of the backrest (curved cap strip)
+  const topRail = new THREE.Mesh(
+    new THREE.BoxGeometry(0.94, 0.065, 0.07),
+    oakWoodMat
+  );
+  topRail.position.set(0, 1.38, 0.36);
+  topRail.rotation.x = -0.08;
+  chairGroup.add(topRail);
+
+  // Vertical grain detail strips on backrest face
+  for (const sx of [-0.28, 0, 0.28]) {
+    const grain = new THREE.Mesh(
+      new THREE.BoxGeometry(0.02, 0.62, 0.008),
+      new THREE.MeshStandardMaterial({ color: 0xb8935f, roughness: 0.6, metalness: 0.04 })
+    );
+    grain.position.set(sx, 1.02, 0.42);
+    grain.rotation.x = -0.10;
+    chairGroup.add(grain);
+  }
+
+  // -- PROPERLY SIZED SEAT PAN (Not too wide — matching reference proportions) --
   const seatMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(1.08, 0.06, 0.96),
+    new THREE.BoxGeometry(0.82, 0.055, 0.78),
     oakWoodMat
   );
-  seatMesh.position.set(0, 0.52, 0.82);
+  seatMesh.position.set(0, 0.52, 0.75);
   chairGroup.add(seatMesh);
-  // Seat edge rounding strips (front and sides)
-  const seatEdgeMat = oakWoodMat;
-  cyl(0.03, 0.03, 1.08, 12, seatEdgeMat, new THREE.Vector3(0, 0.52, 1.30), chairGroup, new THREE.Euler(0, 0, Math.PI / 2));
-  for (const side of [-1, 1]) {
-    cyl(0.03, 0.03, 0.96, 12, seatEdgeMat, new THREE.Vector3(side * 0.54, 0.52, 0.82), chairGroup, new THREE.Euler(Math.PI / 2, 0, 0));
-  }
 
-  // -- Black Steel Frame (Angled supports from seat to backrest, matching reference) --
-  // Central spine rod connecting seat underside to backrest
-  cyl(0.025, 0.025, 0.62, 14, blackSteelMat, new THREE.Vector3(0, 0.72, 0.62), chairGroup, new THREE.Euler(0.35, 0, 0));
-  // Diagonal cross-supports from seat sides angling up to backrest
-  for (const s of [-0.36, 0.36]) {
-    cyl(0.02, 0.02, 0.58, 12, blackSteelMat, new THREE.Vector3(s, 0.74, 0.58), chairGroup, new THREE.Euler(0.28, 0, s > 0 ? 0.08 : -0.08));
-  }
-  // Horizontal cross-bar under the seat
-  cyl(0.025, 0.025, 0.88, 14, blackSteelMat, new THREE.Vector3(0, 0.48, 0.82), chairGroup, new THREE.Euler(0, 0, Math.PI / 2));
+  // Seat front edge rounding
+  cyl(0.028, 0.028, 0.82, 12, oakWoodMat, new THREE.Vector3(0, 0.52, 1.14), chairGroup, new THREE.Euler(0, 0, Math.PI / 2));
 
-  // -- Armrests (Angled black steel arms with flat oak armpads) --
+  // -- Black Steel Frame (Seat to backrest supports) --
+  // Central spine rod
+  cyl(0.022, 0.022, 0.65, 14, blackSteelMat, new THREE.Vector3(0, 0.74, 0.56), chairGroup, new THREE.Euler(0.32, 0, 0));
+  // Diagonal side supports
+  for (const s of [-0.30, 0.30]) {
+    cyl(0.018, 0.018, 0.55, 12, blackSteelMat, new THREE.Vector3(s, 0.74, 0.56), chairGroup, new THREE.Euler(0.26, 0, s > 0 ? 0.06 : -0.06));
+  }
+  // Horizontal crossbar under seat
+  cyl(0.022, 0.022, 0.72, 14, blackSteelMat, new THREE.Vector3(0, 0.48, 0.75), chairGroup, new THREE.Euler(0, 0, Math.PI / 2));
+
+  // -- Armrests --
   for (const side of [-1, 1]) {
-    // Diagonal arm support rod from seat level rising to armpad height
-    cyl(0.02, 0.02, 0.52, 12, blackSteelMat, new THREE.Vector3(side * 0.52, 0.72, 0.72), chairGroup, new THREE.Euler(0.12, 0, side * -0.18));
-    // Horizontal arm support brace
-    cyl(0.018, 0.018, 0.34, 10, blackSteelMat, new THREE.Vector3(side * 0.54, 0.90, 0.78), chairGroup, new THREE.Euler(Math.PI / 2, 0, 0));
-    // Oak armpad (wider, shaped like reference)
-    const armpad = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.032, 0.38), oakWoodMat);
-    armpad.position.set(side * 0.56, 0.94, 0.78);
+    cyl(0.018, 0.018, 0.48, 12, blackSteelMat, new THREE.Vector3(side * 0.42, 0.72, 0.68), chairGroup, new THREE.Euler(0.10, 0, side * -0.16));
+    cyl(0.016, 0.016, 0.30, 10, blackSteelMat, new THREE.Vector3(side * 0.44, 0.88, 0.72), chairGroup, new THREE.Euler(Math.PI / 2, 0, 0));
+    const armpad = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.03, 0.34), oakWoodMat);
+    armpad.position.set(side * 0.46, 0.92, 0.72);
     chairGroup.add(armpad);
   }
 
-  // -- Gas Lift Column --
-  cyl(0.05, 0.04, 0.38, 18, blackSteelMat, new THREE.Vector3(0, 0.30, 0.82), chairGroup);
+  // -- Gas Lift --
+  cyl(0.045, 0.035, 0.36, 16, blackSteelMat, new THREE.Vector3(0, 0.30, 0.75), chairGroup);
 
-  // -- 5-Star Base with Oak Spokes and Rubber Casters --
+  // -- 5-Star Base (Properly proportioned to seat width) --
+  const baseRadius = 0.42;
   for (let w = 0; w < 5; w++) {
     const wAngle = (w / 5) * Math.PI * 2;
-    const wx = Math.cos(wAngle) * 0.52;
-    const wz = Math.sin(wAngle) * 0.52;
+    const wx = Math.cos(wAngle) * baseRadius;
+    const wz = Math.sin(wAngle) * baseRadius;
 
-    // Tapered oak spoke (wider at hub, narrower at tip)
     const spoke = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.022, 0.04, 0.52, 8),
+      new THREE.CylinderGeometry(0.02, 0.035, 0.44, 8),
       oakWoodMat
     );
-    spoke.position.set(wx * 0.5, 0.10, 0.82 + wz * 0.5);
+    spoke.position.set(wx * 0.5, 0.10, 0.75 + wz * 0.5);
     spoke.rotation.z = Math.PI / 2;
     spoke.rotation.y = -wAngle + Math.PI / 2;
     chairGroup.add(spoke);
 
-    // Twin-wheel caster housing at each spoke tip
+    // Caster
     const casterHousing = new THREE.Mesh(
-      new THREE.BoxGeometry(0.06, 0.06, 0.04),
+      new THREE.BoxGeometry(0.05, 0.05, 0.035),
       blackSteelMat
     );
-    casterHousing.position.set(wx, 0.04, 0.82 + wz);
+    casterHousing.position.set(wx, 0.035, 0.75 + wz);
     casterHousing.rotation.y = -wAngle;
     chairGroup.add(casterHousing);
 
-    // Dual rubber wheels
-    for (const offset of [-0.018, 0.018]) {
+    for (const offset of [-0.015, 0.015]) {
       const wheel = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.028, 0.028, 0.022, 12),
+        new THREE.CylinderGeometry(0.024, 0.024, 0.018, 10),
         blackSteelMat
       );
-      wheel.position.set(wx + Math.cos(wAngle + Math.PI / 2) * offset, 0.028, 0.82 + wz + Math.sin(wAngle + Math.PI / 2) * offset);
+      wheel.position.set(
+        wx + Math.cos(wAngle + Math.PI / 2) * offset,
+        0.024,
+        0.75 + wz + Math.sin(wAngle + Math.PI / 2) * offset
+      );
       wheel.rotation.z = Math.PI / 2;
       wheel.rotation.y = -wAngle;
       chairGroup.add(wheel);
     }
   }
-
-  // Hub cap at center of 5-star base
-  cyl(0.065, 0.065, 0.04, 18, blackSteelMat, new THREE.Vector3(0, 0.10, 0.82), chairGroup);
+  cyl(0.055, 0.055, 0.035, 16, blackSteelMat, new THREE.Vector3(0, 0.10, 0.75), chairGroup);
 
   silhouetteGroup.add(chairGroup);
 
   // ==========================================
-  // B. HUMANOID IN HOODIE — Soft Fabric Volume (Not Skeleton Blocks)
+  // B. HUMANOID IN HOODIE — Natural Shoulder Drape & Arm-to-Lat Connection
   // ==========================================
   const personGroup = new THREE.Group();
   personGroup.rotation.x = 0.06;
 
-  // The torso uses overlapping capsules and boxes to create continuous soft
-  // hoodie fabric volume. No gaps between segments — they intersect intentionally.
-
-  // -- LOWER TORSO: Hips and belly area (capsule for roundness under fabric) --
+  // -- LOWER TORSO (Hips, belly) --
   const lowerTorso = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.28, 0.22, 8, 14),
     hoodieMat
@@ -1048,7 +1046,7 @@ function addPerson() {
   lowerTorso.scale.set(1.1, 1.0, 0.85);
   personGroup.add(lowerTorso);
 
-  // -- MID TORSO: Ribcage (wider capsule overlapping lower torso) --
+  // -- MID TORSO (Ribcage — wider) --
   const midTorso = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.32, 0.24, 8, 14),
     hoodieMat
@@ -1057,65 +1055,75 @@ function addPerson() {
   midTorso.scale.set(1.15, 1.0, 0.82);
   personGroup.add(midTorso);
 
-  // -- UPPER CHEST: Broad chest fills between shoulders (box with rounded look) --
+  // -- UPPER CHEST --
   const upperChest = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.34, 0.14, 8, 14),
     hoodieMat
   );
-  upperChest.position.set(0, 1.52, 0.68);
-  upperChest.scale.set(1.22, 0.85, 0.78);
+  upperChest.position.set(0, 1.50, 0.68);
+  upperChest.scale.set(1.18, 0.85, 0.78);
   personGroup.add(upperChest);
 
-  // -- SHOULDER MASS (Wide capsule rotated horizontal — the trapezoidal shoulder line) --
+  // -- SHOULDERS (Lower position — not at traps, at natural shoulder height) --
+  // The shoulder line sits BELOW the neck, not up at the ears.
   const shoulders = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.10, 0.72, 6, 12),
+    new THREE.CapsuleGeometry(0.10, 0.68, 6, 12),
     hoodieMat
   );
-  shoulders.position.set(0, 1.64, 0.67);
+  shoulders.position.set(0, 1.56, 0.67);
   shoulders.rotation.z = Math.PI / 2;
   shoulders.scale.set(1.0, 1.0, 0.82);
   personGroup.add(shoulders);
 
-  // -- DELTOID ROUNDNESS (Smooth shoulder caps) --
+  // -- SIDE TORSO FILL (Connects lats to arms — hoodie fabric fills the gap) --
   for (const side of [-1, 1]) {
-    const delt = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), hoodieMat);
-    delt.position.set(side * 0.46, 1.64, 0.67);
-    delt.scale.set(1.0, 0.9, 0.82);
+    // Lat-to-arm fill volume (the key to making it look like a hoodie, not a skeleton)
+    const latFill = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.16, 0.32, 6, 10),
+      hoodieMat
+    );
+    latFill.position.set(side * 0.38, 1.38, 0.70);
+    latFill.scale.set(0.85, 1.0, 0.78);
+    personGroup.add(latFill);
+
+    // Deltoid cap (rounded shoulder top)
+    const delt = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 12), hoodieMat);
+    delt.position.set(side * 0.44, 1.56, 0.67);
+    delt.scale.set(1.0, 0.85, 0.8);
     personGroup.add(delt);
   }
 
-  // -- HOODIE HOOD (Collapsed fabric drape behind the neck) --
+  // -- HOODIE HOOD (Collapsed behind neck) --
   const hoodDrape = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.18, 0.12, 6, 10),
     hoodFoldMat
   );
-  hoodDrape.position.set(0, 1.60, 0.52);
+  hoodDrape.position.set(0, 1.54, 0.52);
   hoodDrape.rotation.z = Math.PI / 2;
   hoodDrape.scale.set(0.7, 1.0, 0.6);
   personGroup.add(hoodDrape);
 
-  // Hood fold crease
   const hoodRoll = new THREE.Mesh(
     new THREE.TorusGeometry(0.14, 0.035, 8, 14),
     hoodFoldMat
   );
-  hoodRoll.position.set(0, 1.70, 0.53);
+  hoodRoll.position.set(0, 1.64, 0.53);
   hoodRoll.rotation.x = Math.PI / 2.5;
   hoodRoll.scale.set(1.2, 0.65, 1.0);
   personGroup.add(hoodRoll);
 
   // -- NECK --
-  cyl(0.08, 0.09, 0.14, 14, hairMat, new THREE.Vector3(0, 1.78, 0.66), personGroup);
+  cyl(0.08, 0.09, 0.14, 14, hairMat, new THREE.Vector3(0, 1.72, 0.66), personGroup);
 
-  // -- HEAD (Vertically elongated human cranium) --
+  // -- HEAD --
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.20, 22, 18), hairMat);
-  head.position.set(0, 1.96, 0.65);
+  head.position.set(0, 1.90, 0.65);
   head.scale.set(0.88, 1.10, 0.92);
   personGroup.add(head);
 
   // -- HAIR --
   const hair = new THREE.Mesh(new THREE.SphereGeometry(0.21, 18, 16), hairMat);
-  hair.position.set(0, 2.00, 0.64);
+  hair.position.set(0, 1.94, 0.64);
   hair.scale.set(0.90, 1.02, 0.96);
   personGroup.add(hair);
 
@@ -1124,13 +1132,13 @@ function addPerson() {
     new THREE.TorusGeometry(0.22, 0.025, 10, 22, Math.PI),
     headphoneMat
   );
-  headband.position.set(0, 1.98, 0.64);
+  headband.position.set(0, 1.92, 0.64);
   headband.rotation.x = Math.PI;
   personGroup.add(headband);
 
   for (const side of [-1, 1]) {
     const earcupGroup = new THREE.Group();
-    earcupGroup.position.set(side * 0.22, 1.94, 0.64);
+    earcupGroup.position.set(side * 0.22, 1.88, 0.64);
     earcupGroup.rotation.y = side * 0.06;
     const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 16), headphoneMat);
     cup.rotation.z = Math.PI / 2;
@@ -1142,36 +1150,35 @@ function addPerson() {
     personGroup.add(earcupGroup);
   }
 
-  // -- UPPER ARMS (Hoodie sleeves — capsules for soft fabric look, not boxes) --
+  // -- ARMS (Connected at shoulder height, not at traps) --
   for (const side of [-1, 1]) {
-    // Upper arm sleeve
+    // Upper arm — starts at the deltoid, hangs naturally
     const upperArm = new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.09, 0.38, 6, 12),
+      new THREE.CapsuleGeometry(0.09, 0.36, 6, 12),
       hoodieMat
     );
-    upperArm.position.set(side * 0.52, 1.34, 0.72);
+    upperArm.position.set(side * 0.48, 1.28, 0.72);
     upperArm.rotation.x = 0.18;
-    upperArm.rotation.z = side * -0.10;
+    upperArm.rotation.z = side * -0.08;
     personGroup.add(upperArm);
 
-    // Forearm extending to desk (slightly thinner)
+    // Forearm
     const forearm = new THREE.Mesh(
       new THREE.CapsuleGeometry(0.065, 0.44, 6, 10),
       hoodieMat
     );
-    forearm.position.set(side * 0.46, 1.06, 1.10);
+    forearm.position.set(side * 0.44, 1.04, 1.10);
     forearm.rotation.x = 1.0;
     forearm.rotation.y = side * 0.10;
     personGroup.add(forearm);
 
-    // Exposed hand / wrist at the end of the sleeve
+    // Hand
     const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), skinMat);
-    hand.position.set(side * 0.42, 0.94, 1.42);
+    hand.position.set(side * 0.40, 0.92, 1.40);
     hand.scale.set(1.0, 0.7, 1.2);
     personGroup.add(hand);
   }
 
-  // Scale the assembled person
   personGroup.scale.set(1.2, 1.45, 1.25);
 
   silhouetteGroup.add(personGroup);
@@ -1185,21 +1192,97 @@ makeMonitor(monitorSpecs[1], true);
 makeMonitor(monitorSpecs[2]);
 addPerson();
 
-// Cinematic Directional Night Atmosphere Lighting (Matching reference photo & illustration)
-// 1. Balanced Night Hemisphere
-scene.add(new THREE.HemisphereLight(0x18243c, 0x22160d, 0.95));
+// Cinematic Directional Night Atmosphere Lighting
+// 1. Hemisphere ambient (slightly brighter for overall visibility)
+scene.add(new THREE.HemisphereLight(0x18243c, 0x22160d, 1.15));
 
-// 2. Window Moonlight Directional Light (cool key light from window)
-const moonDir = new THREE.DirectionalLight(0x789ef5, 1.4);
+// 2. Window Moonlight
+const moonDir = new THREE.DirectionalLight(0x789ef5, 1.6);
 moonDir.position.set(-4.5, 7.5, -2.5);
 moonDir.target.position.set(0, 1.4, 1.0);
 scene.add(moonDir);
 scene.add(moonDir.target);
 
-// 3. Screen Backlight Spill behind character (creates the authentic rim outline from reference photo)
-const screenBacklight = new THREE.PointLight(0x6095ff, 1.8, 4.5, 1.5);
+// 3. Screen Backlight Spill (rim outline on character)
+const screenBacklight = new THREE.PointLight(0x6095ff, 2.2, 5.5, 1.4);
 screenBacklight.position.set(0, 1.95, 0.6);
 scene.add(screenBacklight);
+
+// 4. Trailing Ivy Vine Plant (Top-left window frame, matching reference)
+const ivyLeafMat = new THREE.MeshStandardMaterial({ color: 0x2a5e2e, roughness: 0.82 });
+const ivyDarkMat = new THREE.MeshStandardMaterial({ color: 0x1a3e1c, roughness: 0.85 });
+const ivyStemMat = new THREE.MeshStandardMaterial({ color: 0x3a5a28, roughness: 0.7 });
+
+const ivyGroup = new THREE.Group();
+ivyGroup.position.set(-4.2, 7.2, -1.55);
+
+// Main trailing stem
+const ivyStem = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.02, 0.015, 3.2, 6),
+  ivyStemMat
+);
+ivyStem.position.set(0.3, -1.4, 0.1);
+ivyStem.rotation.z = 0.15;
+ivyGroup.add(ivyStem);
+
+// Ivy leaves cascading down the stem
+const ivyLeafPositions = [
+  { x: 0.1, y: -0.2, z: 0.12, rot: 0.3, s: 0.8 },
+  { x: 0.35, y: -0.6, z: 0.14, rot: -0.4, s: 1.0 },
+  { x: 0.15, y: -0.95, z: 0.1, rot: 0.5, s: 0.9 },
+  { x: 0.45, y: -1.3, z: 0.15, rot: -0.2, s: 1.1 },
+  { x: 0.25, y: -1.65, z: 0.12, rot: 0.6, s: 0.85 },
+  { x: 0.5, y: -2.0, z: 0.14, rot: -0.5, s: 1.0 },
+  { x: 0.3, y: -2.35, z: 0.11, rot: 0.35, s: 0.75 },
+  { x: 0.55, y: -2.65, z: 0.13, rot: -0.3, s: 0.9 },
+  { x: 0.2, y: -0.4, z: 0.16, rot: 0.8, s: 0.7 },
+  { x: 0.4, y: -1.0, z: 0.18, rot: -0.7, s: 0.65 },
+  { x: 0.6, y: -1.5, z: 0.12, rot: 0.4, s: 0.8 },
+  { x: 0.35, y: -2.5, z: 0.16, rot: -0.6, s: 0.6 },
+];
+for (const lp of ivyLeafPositions) {
+  const leafMat = Math.random() > 0.5 ? ivyLeafMat : ivyDarkMat;
+  const leaf = new THREE.Mesh(
+    new THREE.SphereGeometry(0.08 * lp.s, 6, 5),
+    leafMat
+  );
+  leaf.position.set(lp.x, lp.y, lp.z);
+  leaf.scale.set(1.2, 0.35, 1.0);
+  leaf.rotation.z = lp.rot;
+  leaf.rotation.x = 0.2 + Math.random() * 0.3;
+  ivyGroup.add(leaf);
+}
+scene.add(ivyGroup);
+
+// 5. Potted Plant on Right Side of Desk (matching reference)
+const rightPlantGroup = new THREE.Group();
+rightPlantGroup.position.set(4.0, 0.94, 1.20);
+
+// Terracotta pot
+const terraMat = new THREE.MeshStandardMaterial({ color: 0x8b5e3c, roughness: 0.7 });
+cyl(0.22, 0.16, 0.30, 14, terraMat, new THREE.Vector3(0, 0.15, 0), rightPlantGroup);
+// Soil
+cyl(0.20, 0.20, 0.04, 14, new THREE.MeshStandardMaterial({ color: 0x2a1f14, roughness: 0.95 }), new THREE.Vector3(0, 0.30, 0), rightPlantGroup);
+
+// Leafy foliage (multiple small leaves fanning outward)
+const foliageMat = new THREE.MeshStandardMaterial({ color: 0x264d2a, roughness: 0.8 });
+const foliageLightMat = new THREE.MeshStandardMaterial({ color: 0x3a6e3e, roughness: 0.78 });
+for (let l = 0; l < 10; l++) {
+  const angle = (l / 10) * Math.PI * 2 + Math.random() * 0.3;
+  const r = 0.12 + Math.random() * 0.08;
+  const h = 0.35 + Math.random() * 0.25;
+  const lmat = l % 3 === 0 ? foliageLightMat : foliageMat;
+  const leafMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 6, 5),
+    lmat
+  );
+  leafMesh.position.set(Math.cos(angle) * r, h, Math.sin(angle) * r);
+  leafMesh.scale.set(1.4, 0.4, 1.0);
+  leafMesh.rotation.z = Math.cos(angle) * 0.4;
+  leafMesh.rotation.x = Math.sin(angle) * 0.3;
+  rightPlantGroup.add(leafMesh);
+}
+scene.add(rightPlantGroup);
 
 // --- PROCEDURAL WEB AUDIO ATMOSPHERE & SFX ENGINE ---
 class AudioManager {
