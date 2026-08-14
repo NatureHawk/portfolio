@@ -930,7 +930,7 @@ function addPerson() {
     new THREE.BoxGeometry(0.88, 0.72, 0.06),
     oakWoodMat
   );
-  backrestPanel.position.set(0, 1.02, 0.38);
+  backrestPanel.position.set(0, 1.02, 1.12);
   backrestPanel.rotation.x = -0.10;
   chairGroup.add(backrestPanel);
 
@@ -939,7 +939,7 @@ function addPerson() {
     new THREE.BoxGeometry(0.94, 0.065, 0.07),
     oakWoodMat
   );
-  topRail.position.set(0, 1.38, 0.36);
+  topRail.position.set(0, 1.38, 1.14);
   topRail.rotation.x = -0.08;
   chairGroup.add(topRail);
 
@@ -949,7 +949,8 @@ function addPerson() {
       new THREE.BoxGeometry(0.02, 0.62, 0.008),
       new THREE.MeshStandardMaterial({ color: 0xb8935f, roughness: 0.6, metalness: 0.04 })
     );
-    grain.position.set(sx, 1.02, 0.42);
+    // Placed slightly in front of the backrest panel (Z = 1.12 - 0.04 = 1.08)
+    grain.position.set(sx, 1.02, 1.08);
     grain.rotation.x = -0.10;
     chairGroup.add(grain);
   }
@@ -963,24 +964,26 @@ function addPerson() {
   chairGroup.add(seatMesh);
 
   // Seat front edge rounding
-  cyl(0.028, 0.028, 0.82, 12, oakWoodMat, new THREE.Vector3(0, 0.52, 1.14), chairGroup, new THREE.Euler(0, 0, Math.PI / 2));
+  // The front of the seat is towards the monitors (lower Z).
+  // Seat center = 0.75. Depth = 0.78. Front edge = 0.75 - 0.39 = 0.36
+  cyl(0.028, 0.028, 0.82, 12, oakWoodMat, new THREE.Vector3(0, 0.52, 0.36), chairGroup, new THREE.Euler(0, 0, Math.PI / 2));
 
   // -- Black Steel Frame (Seat to backrest supports) --
   // Central spine rod
-  cyl(0.022, 0.022, 0.65, 14, blackSteelMat, new THREE.Vector3(0, 0.74, 0.56), chairGroup, new THREE.Euler(0.32, 0, 0));
+  cyl(0.022, 0.022, 0.65, 14, blackSteelMat, new THREE.Vector3(0, 0.74, 0.94), chairGroup, new THREE.Euler(-0.32, 0, 0));
   // Diagonal side supports
   for (const s of [-0.30, 0.30]) {
-    cyl(0.018, 0.018, 0.55, 12, blackSteelMat, new THREE.Vector3(s, 0.74, 0.56), chairGroup, new THREE.Euler(0.26, 0, s > 0 ? 0.06 : -0.06));
+    cyl(0.018, 0.018, 0.55, 12, blackSteelMat, new THREE.Vector3(s, 0.74, 0.94), chairGroup, new THREE.Euler(-0.26, 0, s > 0 ? 0.06 : -0.06));
   }
   // Horizontal crossbar under seat
   cyl(0.022, 0.022, 0.72, 14, blackSteelMat, new THREE.Vector3(0, 0.48, 0.75), chairGroup, new THREE.Euler(0, 0, Math.PI / 2));
 
   // -- Armrests --
   for (const side of [-1, 1]) {
-    cyl(0.018, 0.018, 0.48, 12, blackSteelMat, new THREE.Vector3(side * 0.42, 0.72, 0.68), chairGroup, new THREE.Euler(0.10, 0, side * -0.16));
-    cyl(0.016, 0.016, 0.30, 10, blackSteelMat, new THREE.Vector3(side * 0.44, 0.88, 0.72), chairGroup, new THREE.Euler(Math.PI / 2, 0, 0));
+    cyl(0.018, 0.018, 0.48, 12, blackSteelMat, new THREE.Vector3(side * 0.42, 0.72, 0.82), chairGroup, new THREE.Euler(-0.10, 0, side * -0.16));
+    cyl(0.016, 0.016, 0.30, 10, blackSteelMat, new THREE.Vector3(side * 0.44, 0.88, 0.78), chairGroup, new THREE.Euler(Math.PI / 2, 0, 0));
     const armpad = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.03, 0.34), oakWoodMat);
-    armpad.position.set(side * 0.46, 0.92, 0.72);
+    armpad.position.set(side * 0.46, 0.92, 0.78);
     chairGroup.add(armpad);
   }
 
