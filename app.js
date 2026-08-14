@@ -23,7 +23,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x03050a, 1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.28;
+renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = false;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
@@ -543,8 +543,8 @@ function makeMonitor(spec, isCentre = false) {
   led.position.set(0.8, -0.7, 0.37);
   group.add(led);
 
-  // Wide, Soft Directional CRT Phosphor Glow forward onto the desk & keyboard (radius: 12.0, decay: 1.1)
-  const light = new THREE.PointLight(spec.color, 2.2, 14.0, 1.1);
+  // Directional CRT Phosphor Glow forward onto the desk (radius: 9.0, decay: 1.35)
+  const light = new THREE.PointLight(spec.color, 1.5, 9.0, 1.35);
   light.position.set(0, 0.1, 1.05);
   group.add(light);
 
@@ -848,7 +848,7 @@ function addRoomAndProps() {
   noteMesh.rotation.x = -Math.PI / 2;
   scene.add(noteMesh);
 
-  // --- ARTICULATED DESK LAMP (Right Side with Wide Warm Light Spill) ---
+  // --- ARTICULATED DESK LAMP (Right Side Directional Light) ---
   const lampGroup = new THREE.Group();
   lampGroup.position.set(4.25, 0.94, 0.9);
   cyl(0.38, 0.42, 0.1, 20, plasticDark, new THREE.Vector3(0, 0.05, 0), lampGroup);
@@ -873,145 +873,187 @@ function addRoomAndProps() {
   lampGroup.add(bulb);
   scene.add(lampGroup);
 
-  // Primary warm directional lamp illumination (wide radius 22.0, soft natural decay 1.05)
-  const deskLampLight = new THREE.PointLight(0xffaa5e, 3.2, 22.0, 1.05);
+  // Primary warm directional lamp illumination (radius 14.0, decay 1.25)
+  const deskLampLight = new THREE.PointLight(0xffa045, 2.5, 14.0, 1.25);
   deskLampLight.position.set(3.45, 2.7, 1.0);
   scene.add(deskLampLight);
-
-  // Wide warm ambient lamp spill illuminating right wall, desk surface, and speaker
-  const warmSpill = new THREE.PointLight(0xff9440, 1.8, 26.0, 1.0);
-  warmSpill.position.set(2.5, 2.2, 1.5);
-  scene.add(warmSpill);
-
-  // Soft wooden desk bounce fill
-  const deskBounce = new THREE.PointLight(0xffaa66, 1.2, 14.0, 1.0);
-  deskBounce.position.set(2.8, 0.9, 1.6);
-  scene.add(deskBounce);
 }
 
-// --- RE-ENGINEERED ANATOMICAL CHARACTER & ERGONOMIC CHAIR ---
+// --- SCULPTED HUMAN SILHOUETTE & MID-BACK CHAIR (MATCHING REFERENCE PHOTO) ---
 function addPerson() {
   silhouetteGroup = new THREE.Group();
-  silhouetteGroup.position.set(0, 0.02, 2.05);
+  silhouetteGroup.position.set(0, 0.02, 1.95);
 
-  const hoodieMat = new THREE.MeshStandardMaterial({
-    color: 0x080a10,
-    roughness: 0.95,
+  // Clothing material with subtle edge response
+  const shirtMat = new THREE.MeshStandardMaterial({
+    color: 0x0a0c12,
+    roughness: 0.88,
+    metalness: 0.1,
     transparent: true,
     opacity: 1
   });
+
+  const skinHairMat = new THREE.MeshStandardMaterial({
+    color: 0x07080d,
+    roughness: 0.92,
+    transparent: true,
+    opacity: 1
+  });
+
   const chairMat = new THREE.MeshStandardMaterial({
-    color: 0x12141a,
-    roughness: 0.85,
-    transparent: true,
-    opacity: 1
-  });
-  const headphoneMat = new THREE.MeshStandardMaterial({
-    color: 0x1e2430,
-    roughness: 0.45,
-    metalness: 0.35,
+    color: 0x14161c,
+    roughness: 0.75,
+    metalness: 0.25,
     transparent: true,
     opacity: 1
   });
 
-  // 1. ERGONOMIC MESH CHAIR
-  // Curved Backrest Frame
-  box(1.75, 2.1, 0.18, chairMat, new THREE.Vector3(0, 1.55, 0.08), silhouetteGroup, true, true);
-  // Lumbar Support Spine Bar
-  box(0.18, 1.8, 0.22, chairMat, new THREE.Vector3(0, 1.4, -0.04), silhouetteGroup, true, true);
-  // Contoured Seat Cushion
-  box(1.9, 0.24, 1.6, chairMat, new THREE.Vector3(0, 0.52, 0.72), silhouetteGroup, true, true);
-  // Armrests (Left & Right)
+  // 1. MID-BACK ERGONOMIC DESK CHAIR (Stays below shoulder line so human silhouette is dominant)
+  // Low-profile curved mesh backrest
+  const backrest = new THREE.Mesh(new THREE.BoxGeometry(1.42, 1.05, 0.12), chairMat);
+  backrest.position.set(0, 1.15, 0.35);
+  backrest.rotation.x = -0.05;
+  silhouetteGroup.add(backrest);
+
+  // Spine support frame bar
+  box(0.12, 1.1, 0.14, chairMat, new THREE.Vector3(0, 1.05, 0.22), silhouetteGroup);
+
+  // Molded seat cushion
+  box(1.55, 0.16, 1.45, chairMat, new THREE.Vector3(0, 0.52, 0.85), silhouetteGroup);
+
+  // Slim modern armrests
   for (const side of [-1, 1]) {
-    box(0.14, 0.55, 0.14, chairMat, new THREE.Vector3(side * 0.98, 0.82, 0.65), silhouetteGroup, true, true);
-    box(0.22, 0.08, 0.95, chairMat, new THREE.Vector3(side * 0.98, 1.1, 0.72), silhouetteGroup, true, true);
+    box(0.08, 0.42, 0.08, chairMat, new THREE.Vector3(side * 0.82, 0.78, 0.75), silhouetteGroup);
+    box(0.14, 0.05, 0.72, chairMat, new THREE.Vector3(side * 0.82, 0.98, 0.82), silhouetteGroup);
   }
-  // Hydraulic Cylinder & 5-Star Base
-  cyl(0.08, 0.08, 0.55, 16, chairMat, new THREE.Vector3(0, 0.26, 0.72), silhouetteGroup);
+
+  // Hydraulic lift cylinder & 5-star base
+  cyl(0.06, 0.06, 0.48, 14, chairMat, new THREE.Vector3(0, 0.25, 0.85), silhouetteGroup);
   for (let w = 0; w < 5; w++) {
     const wAngle = (w / 5) * Math.PI * 2;
-    const wx = Math.cos(wAngle) * 0.55;
-    const wz = Math.sin(wAngle) * 0.55;
-    box(0.08, 0.08, 0.55, chairMat, new THREE.Vector3(wx * 0.5, 0.04, 0.72 + wz * 0.5), silhouetteGroup);
+    const wx = Math.cos(wAngle) * 0.52;
+    const wz = Math.sin(wAngle) * 0.52;
+    box(0.06, 0.06, 0.52, chairMat, new THREE.Vector3(wx * 0.5, 0.04, 0.85 + wz * 0.5), silhouetteGroup);
   }
 
-  // 2. SEATED HUMAN IN HOODIE
-  // Torso with natural shoulder slope
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.72, 1.25, 8, 16), hoodieMat);
-  torso.position.set(0, 1.48, 0.62);
-  torso.scale.set(1.1, 1, 0.8);
+  // 2. SCULPTED HUMAN TORSO & SHOULDERS (Matching photograph posture)
+  // Main upper torso
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.52, 0.72, 10, 16), shirtMat);
+  torso.position.set(0, 1.38, 0.72);
+  torso.scale.set(1.22, 1.0, 0.78);
   silhouetteGroup.add(torso);
 
-  // Upper Shoulders
-  const shoulders = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 1.1, 8, 14), hoodieMat);
-  shoulders.position.set(0, 1.95, 0.58);
-  shoulders.rotation.z = Math.PI / 2;
-  silhouetteGroup.add(shoulders);
+  // Natural sloped shoulders (Trapezius to Deltoid transition)
+  const shoulderBeam = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 0.96, 8, 16), shirtMat);
+  shoulderBeam.position.set(0, 1.72, 0.68);
+  shoulderBeam.rotation.z = Math.PI / 2;
+  shoulderBeam.scale.set(1.0, 1.15, 0.85);
+  silhouetteGroup.add(shoulderBeam);
 
-  // Hooded Head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.48, 24, 20), hoodieMat);
-  head.position.set(0, 2.52, 0.48);
-  head.scale.set(0.95, 1.05, 1.1);
-  silhouetteGroup.add(head);
-
-  // Volumetric Hood Collar Drape around neck
-  const hoodCollar = new THREE.Mesh(new THREE.TorusGeometry(0.52, 0.14, 12, 24), hoodieMat);
-  hoodCollar.position.set(0, 2.22, 0.46);
-  hoodCollar.rotation.x = Math.PI / 2.3;
-  silhouetteGroup.add(hoodCollar);
-
-  // 3. STUDIO OVER-EAR HEADPHONES
-  // Headband
-  const band = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.05, 10, 24, Math.PI), headphoneMat);
-  band.position.set(0, 2.62, 0.46);
-  band.rotation.x = Math.PI;
-  silhouetteGroup.add(band);
-
-  // Earcups (Left & Right)
+  // Left & Right Deltoids
   for (const side of [-1, 1]) {
-    const earcup = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.12, 16), headphoneMat);
-    earcup.rotation.z = Math.PI / 2;
-    earcup.position.set(side * 0.49, 2.52, 0.46);
-    silhouetteGroup.add(earcup);
+    const delt = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), shirtMat);
+    delt.position.set(side * 0.58, 1.68, 0.68);
+    delt.scale.set(1.0, 1.2, 0.9);
+    silhouetteGroup.add(delt);
   }
 
-  // Arms extending naturally towards the keyboard
+  // Shirt Crewneck Collar
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.04, 8, 18), shirtMat);
+  collar.position.set(0, 1.84, 0.65);
+  collar.rotation.x = Math.PI / 2.2;
+  silhouetteGroup.add(collar);
+
+  // 3. ANATOMICAL NECK & HEAD WITH TEXTURED HAIR (Matching reference photo)
+  // Defined neck column
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.26, 16), skinHairMat);
+  neck.position.set(0, 1.95, 0.64);
+  neck.rotation.x = -0.08;
+  silhouetteGroup.add(neck);
+
+  // Cranium base
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 18), skinHairMat);
+  head.position.set(0, 2.26, 0.62);
+  head.scale.set(0.96, 1.14, 1.02);
+  silhouetteGroup.add(head);
+
+  // Ears (visible in silhouette from behind)
   for (const side of [-1, 1]) {
-    const upperArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.85, 6, 12), hoodieMat);
-    upperArm.position.set(side * 0.72, 1.45, 0.75);
-    upperArm.rotation.z = side * -0.25;
+    const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.04, 0.08, 4, 8), skinHairMat);
+    ear.position.set(side * 0.32, 2.24, 0.61);
+    ear.rotation.z = side * -0.15;
+    silhouetteGroup.add(ear);
+  }
+
+  // Textured Human Hair Outline (Matching messy spiked hair silhouette in photo)
+  const hairGroup = new THREE.Group();
+  hairGroup.position.set(0, 2.28, 0.62);
+
+  // Hair main volume cap
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), skinHairMat);
+  hairCap.position.set(0, 0.06, -0.02);
+  hairCap.scale.set(1.02, 1.12, 1.06);
+  hairGroup.add(hairCap);
+
+  // Silhouette hair clumps on crown, top, and sides
+  const hairClumps = [
+    { x: 0, y: 0.36, z: -0.02, r: 0.12, sy: 1.4 },
+    { x: -0.14, y: 0.34, z: -0.04, r: 0.11, sy: 1.3 },
+    { x: 0.14, y: 0.34, z: -0.04, r: 0.11, sy: 1.3 },
+    { x: -0.24, y: 0.28, z: -0.06, r: 0.10, sy: 1.2 },
+    { x: 0.24, y: 0.28, z: -0.06, r: 0.10, sy: 1.2 },
+    { x: -0.28, y: 0.15, z: -0.08, r: 0.09, sy: 1.1 },
+    { x: 0.28, y: 0.15, z: -0.08, r: 0.09, sy: 1.1 },
+    { x: 0, y: 0.12, z: 0.18, r: 0.14, sy: 1.0 }
+  ];
+  hairClumps.forEach(hc => {
+    const clump = new THREE.Mesh(new THREE.SphereGeometry(hc.r, 8, 8), skinHairMat);
+    clump.position.set(hc.x, hc.y, hc.z);
+    clump.scale.set(1, hc.sy, 1);
+    hairGroup.add(clump);
+  });
+  silhouetteGroup.add(hairGroup);
+
+  // 4. ARMS EXTENDING NATURALLY TO DESK
+  for (const side of [-1, 1]) {
+    const upperArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.62, 6, 12), shirtMat);
+    upperArm.position.set(side * 0.62, 1.35, 0.78);
+    upperArm.rotation.z = side * -0.28;
     upperArm.rotation.x = 0.45;
     silhouetteGroup.add(upperArm);
+
+    const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.58, 6, 12), shirtMat);
+    forearm.position.set(side * 0.48, 1.02, 1.15);
+    forearm.rotation.x = 1.1;
+    forearm.rotation.y = side * 0.2;
+    silhouetteGroup.add(forearm);
   }
 
   scene.add(silhouetteGroup);
 }
 
-// --- INITIALIZE SCENE & MULTI-LAYERED PHYSICAL LIGHTING ---
+// --- INITIALIZE SCENE & CINEMATIC DIRECTIONAL LIGHTING ---
 addRoomAndProps();
 makeMonitor(monitorSpecs[0]);
 makeMonitor(monitorSpecs[1], true);
 makeMonitor(monitorSpecs[2]);
 addPerson();
 
-// Physically-Motivated Night Atmosphere Lighting
-// 1. Ambient Hemisphere: Deep Indigo Sky + Rich Warm Earth Ground
-scene.add(new THREE.HemisphereLight(0x2c4078, 0x442c18, 1.85));
+// Cinematic Directional Night Atmosphere Lighting (Matching reference photo)
+// 1. Balanced Night Hemisphere (Atmospheric, not washed out)
+scene.add(new THREE.HemisphereLight(0x18243c, 0x22160d, 0.95));
 
-// 2. Global Soft Ambient Fill: Ensures room textures, walls, and floor have natural high-ISO visibility
-scene.add(new THREE.AmbientLight(0x182038, 1.2));
-
-// 3. Window Moonlight Directional Light (angled from top-left through window)
-const moonDir = new THREE.DirectionalLight(0x82a6ff, 1.6);
-moonDir.position.set(-4.0, 8.0, -2.0);
-moonDir.target.position.set(0, 1.5, 1.0);
+// 2. Window Moonlight Directional Light (cool key light from window)
+const moonDir = new THREE.DirectionalLight(0x789ef5, 1.4);
+moonDir.position.set(-4.5, 7.5, -2.5);
+moonDir.target.position.set(0, 1.4, 1.0);
 scene.add(moonDir);
 scene.add(moonDir.target);
 
-// 4. Secondary Window Area Moonlight Fill
-const moonFill = new THREE.PointLight(0x7ca0ff, 1.8, 18, 1.1);
-moonFill.position.set(-2.2, 6.4, -0.6);
-scene.add(moonFill);
+// 3. Screen Backlight Spill behind character (creates the authentic rim outline from reference photo)
+const screenBacklight = new THREE.PointLight(0x6095ff, 1.8, 4.5, 1.5);
+screenBacklight.position.set(0, 2.15, 0.6);
+scene.add(screenBacklight);
 
 // --- PROCEDURAL WEB AUDIO ATMOSPHERE & SFX ENGINE ---
 class AudioManager {
