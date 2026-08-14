@@ -35,8 +35,8 @@ const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2(3, 3);
 
 // --- CAMERA STAGING & INTERACTION COORDINATES ---
-const homeCamera = new THREE.Vector3(0, 3.25, 12.4);
-const homeLook = new THREE.Vector3(0, 2.12, -0.15);
+const homeCamera = new THREE.Vector3(0, 2.8, 9.5);
+const homeLook = new THREE.Vector3(0, 1.85, -0.15);
 const cameraGoal = homeCamera.clone();
 const lookGoal = homeLook.clone();
 const lookNow = homeLook.clone();
@@ -49,6 +49,7 @@ const monitorSpecs = [
   {
     id: 'code',
     x: -2.85,
+    ry: 0.18,
     color: 0x8eff56,
     hoverCamera: new THREE.Vector3(-2.4, 3.42, 9.35),
     hoverLook: new THREE.Vector3(-2.85, 2.2, -0.2),
@@ -65,6 +66,7 @@ const monitorSpecs = [
   {
     id: 'explore',
     x: 2.85,
+    ry: -0.18,
     color: 0xff9158,
     hoverCamera: new THREE.Vector3(2.4, 3.42, 9.35),
     hoverLook: new THREE.Vector3(2.85, 2.2, -0.2),
@@ -484,6 +486,7 @@ function createScreenTexture(id, color) {
 function makeMonitor(spec, isCentre = false) {
   const group = new THREE.Group();
   group.position.set(spec.x, 2.05, -0.15);
+  if (spec.ry) group.rotation.y = spec.ry;
   const scale = isCentre ? 1.18 : 1;
   group.scale.setScalar(scale);
 
@@ -761,22 +764,23 @@ function addRoomAndProps() {
   mugGroup.add(handle);
   scene.add(mugGroup);
 
-  // Rising Steam Particle System
+  // Rising Steam Particle System (Continuous Strands)
   const steamGeo = new THREE.BufferGeometry();
   const steamPos = [];
-  for (let i = 0; i < 36; i++) {
-    steamPos.push(
-      -1.52 + (Math.random() - 0.5) * 0.15,
-      1.4 + Math.random() * 0.7,
-      1.55 + (Math.random() - 0.5) * 0.15
-    );
+  const steamColors = [];
+  for (let i = 0; i < 180; i++) {
+    const strand = i % 3;
+    steamPos.push(-1.88, 1.02 + Math.random() * 0.8, 1.38);
+    const op = strand === 0 ? 0.35 : strand === 1 ? 0.20 : 0.10;
+    steamColors.push(op, op, op);
   }
   steamGeo.setAttribute('position', new THREE.Float32BufferAttribute(steamPos, 3));
+  steamGeo.setAttribute('color', new THREE.Float32BufferAttribute(steamColors, 3));
   const steamMat = new THREE.PointsMaterial({
-    color: 0xded8ff,
-    size: 0.055,
+    size: 0.15,
+    vertexColors: true,
     transparent: true,
-    opacity: 0.35,
+    depthWrite: false,
     blending: THREE.AdditiveBlending
   });
   steamParticles = new THREE.Points(steamGeo, steamMat);
@@ -1135,8 +1139,7 @@ function addPerson() {
     new THREE.TorusGeometry(0.22, 0.025, 10, 22, Math.PI),
     headphoneMat
   );
-  headband.position.set(0, 1.92, 0.64);
-  headband.rotation.x = Math.PI;
+  headband.position.set(0, 1.88, 0.64);
   personGroup.add(headband);
 
   for (const side of [-1, 1]) {
@@ -1594,16 +1597,23 @@ function animate() {
     });
   }
 
-  // Steam Particle Simulation
+  // Steam Particle Simulation (Waving Strands)
   if (steamParticles) {
     const pos = steamParticles.geometry.attributes.position.array;
     for (let i = 1; i < pos.length; i += 3) {
-      pos[i] += delta * 0.18;
-      pos[i - 1] += Math.sin(time * 2 + i) * 0.001;
-      if (pos[i] > 2.05) {
-        pos[i] = 1.38;
-        pos[i - 1] = -1.88 + (Math.random() - 0.5) * 0.12;
-      }
+      const pIdx = Math.floor(i / 3);
+      const strand = pIdx % 3;
+      
+      pos[i] += delta * (0.15 + strand * 0.05);
+      const heightPhase = (pos[i] - 1.02) * 3.0;
+      
+      const waveX = Math.sin(time * (2 + strand) + heightPhase) * 0.04 * (pos[i]-1.02);
+      const waveZ = Math.cos(time * (1.5 + strand) + heightPhase) * 0.04 * (pos[i]-1.02);
+      
+      pos[i - 1] = -1.88 + waveX;
+      pos[i + 1] = 1.38 + waveZ;
+      
+      if (pos[i] > 1.8) pos[i] = 1.02;
     }
     steamParticles.geometry.attributes.position.needsUpdate = true;
   }
