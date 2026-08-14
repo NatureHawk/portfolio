@@ -882,13 +882,14 @@ function addRoomAndProps() {
 // --- AUTHENTIC JAPANESE OAK BENTWOOD CHAIR & HOODIE DEVELOPER WITH HEADPHONES ---
 function addPerson() {
   silhouetteGroup = new THREE.Group();
-  silhouetteGroup.position.set(0, 0.02, 1.85);
+  // Placed further back from the desk (z = 2.65) for natural desk distance
+  silhouetteGroup.position.set(0, 0.02, 2.65);
 
   // Materials
   // 1. Japanese Light Oak Wood (matching reference chair photo)
   const oakWoodMat = new THREE.MeshStandardMaterial({
-    color: 0xbfa07a,
-    roughness: 0.58,
+    color: 0xc6a27e,
+    roughness: 0.55,
     metalness: 0.05,
     transparent: true,
     opacity: 1
@@ -938,11 +939,12 @@ function addPerson() {
   });
 
   // ==========================================
-  // A. JAPANESE OAK BENTWOOD CHAIR (image-1.png)
+  // A. JAPANESE OAK BENTWOOD CHAIR (image-1.png) - 1.45x Scaled
   // ==========================================
   const chairGroup = new THREE.Group();
+  chairGroup.scale.set(1.45, 1.4, 1.45);
 
-  // 1. Oak Bentwood Low Mid-Backrest Panel (Height ~0.52, reaches only mid-back below shoulder line)
+  // 1. Oak Bentwood Low Mid-Backrest Panel
   const backrestMesh = new THREE.Mesh(
     new THREE.BoxGeometry(1.08, 0.54, 0.05),
     oakWoodMat
@@ -960,18 +962,14 @@ function addPerson() {
   chairGroup.add(seatMesh);
 
   // 3. Black Steel Tubular Frame Under Seat & Back Support
-  // Under-seat cross tube
   cyl(0.022, 0.022, 0.78, 12, blackSteelMat, new THREE.Vector3(0, 0.48, 0.82), chairGroup, new THREE.Euler(0, 0, Math.PI / 2));
-  // Back support spine bars connecting under-seat to oak backrest
   for (const s of [-0.32, 0.32]) {
     cyl(0.018, 0.018, 0.52, 10, blackSteelMat, new THREE.Vector3(s, 0.74, 0.52), chairGroup, new THREE.Euler(0.24, 0, 0));
   }
 
   // 4. Minimalist Loop Armrests with Oak Wood Armpads
   for (const side of [-1, 1]) {
-    // Vertical / angled steel tube
     cyl(0.018, 0.018, 0.42, 10, blackSteelMat, new THREE.Vector3(side * 0.54, 0.72, 0.75), chairGroup, new THREE.Euler(0, 0, side * 0.12));
-    // Oak armpad on top
     const armpad = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.028, 0.32), oakWoodMat);
     armpad.position.set(side * 0.56, 0.92, 0.75);
     chairGroup.add(armpad);
@@ -986,13 +984,11 @@ function addPerson() {
     const wx = Math.cos(wAngle) * 0.48;
     const wz = Math.sin(wAngle) * 0.48;
 
-    // Oak leg spoke
     const legMesh = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.055, 0.48), oakWoodMat);
     legMesh.position.set(wx * 0.5, 0.12, 0.82 + wz * 0.5);
     legMesh.rotation.y = -wAngle + Math.PI / 2;
     chairGroup.add(legMesh);
 
-    // Black twin-wheel caster
     const caster = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.04, 10), blackSteelMat);
     caster.position.set(wx, 0.04, 0.82 + wz);
     caster.rotation.z = Math.PI / 2;
@@ -1001,20 +997,21 @@ function addPerson() {
   silhouetteGroup.add(chairGroup);
 
   // ==========================================
-  // B. HUMANOID IN HOODIE WITH HEADPHONES (image-2.png)
+  // B. HUMANOID IN HOODIE WITH HEADPHONES (Taller Proportions)
   // ==========================================
   const personGroup = new THREE.Group();
+  personGroup.scale.set(1.42, 1.55, 1.35);
 
   // 1. Broad, Natural Torso in Hoodie (slight forward lean)
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.44, 0.65, 12, 16), hoodieMat);
-  torso.position.set(0, 1.15, 0.76);
-  torso.scale.set(1.35, 1.0, 0.75);
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.44, 0.68, 12, 16), hoodieMat);
+  torso.position.set(0, 1.12, 0.74);
+  torso.scale.set(1.32, 1.0, 0.75);
   torso.rotation.x = 0.08;
   personGroup.add(torso);
 
   // 2. Anatomical Rounded Shoulders (Trapezius)
   const shoulderBeam = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.88, 8, 14), hoodieMat);
-  shoulderBeam.position.set(0, 1.48, 0.71);
+  shoulderBeam.position.set(0, 1.48, 0.69);
   shoulderBeam.rotation.z = Math.PI / 2;
   shoulderBeam.scale.set(1.0, 1.12, 0.88);
   personGroup.add(shoulderBeam);
@@ -1022,94 +1019,81 @@ function addPerson() {
   // Left and Right Deltoid volumes
   for (const side of [-1, 1]) {
     const delt = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), hoodieMat);
-    delt.position.set(side * 0.54, 1.44, 0.71);
+    delt.position.set(side * 0.54, 1.44, 0.69);
     delt.scale.set(1.0, 1.15, 0.9);
     personGroup.add(delt);
   }
 
   // 3. Draped Fabric Hood on Upper Back / Neck (matching image-2.png)
-  // Main hood drape hanging between shoulder blades
   const hoodDrape = new THREE.Mesh(
     new THREE.TorusGeometry(0.28, 0.08, 12, 24),
     hoodFoldMat
   );
-  hoodDrape.position.set(0, 1.52, 0.66);
+  hoodDrape.position.set(0, 1.52, 0.64);
   hoodDrape.rotation.x = Math.PI / 2.6;
   hoodDrape.scale.set(1.15, 0.9, 1.1);
   personGroup.add(hoodDrape);
 
-  // Second hood fabric crease fold
   const hoodCrease = new THREE.Mesh(
     new THREE.TorusGeometry(0.22, 0.05, 8, 18),
     hoodieMat
   );
-  hoodCrease.position.set(0, 1.42, 0.68);
+  hoodCrease.position.set(0, 1.42, 0.66);
   hoodCrease.rotation.x = Math.PI / 2.8;
   personGroup.add(hoodCrease);
 
   // 4. Humanoid Head & Natural Hair Silhouette
-  // Neck column
-  cyl(0.12, 0.14, 0.22, 16, hairMat, new THREE.Vector3(0, 1.68, 0.66), personGroup, new THREE.Euler(0.08, 0, 0));
+  cyl(0.12, 0.14, 0.22, 16, hairMat, new THREE.Vector3(0, 1.68, 0.64), personGroup, new THREE.Euler(0.08, 0, 0));
 
-  // Cranium base
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 24, 20), hairMat);
-  head.position.set(0, 1.88, 0.64);
+  head.position.set(0, 1.88, 0.62);
   head.scale.set(0.96, 1.08, 1.02);
   personGroup.add(head);
 
-  // Natural stylized hair silhouette volume (clean lo-fi shape without bead bumps)
   const hairVolume = new THREE.Mesh(new THREE.SphereGeometry(0.275, 20, 18), hairMat);
-  hairVolume.position.set(0, 1.92, 0.63);
+  hairVolume.position.set(0, 1.92, 0.61);
   hairVolume.scale.set(1.02, 1.06, 1.08);
   personGroup.add(hairVolume);
 
   // 5. Studio Over-Ear Monitor Headphones (matching image-2.png)
-  // Padded Headband arching over head
   const headband = new THREE.Mesh(
     new THREE.TorusGeometry(0.29, 0.035, 10, 24, Math.PI),
     headphoneMat
   );
-  headband.position.set(0, 1.92, 0.63);
+  headband.position.set(0, 1.92, 0.61);
   headband.rotation.x = Math.PI;
   personGroup.add(headband);
 
-  // Earcups (Left & Right) with silver outer disc
   for (const side of [-1, 1]) {
     const earcupGroup = new THREE.Group();
-    earcupGroup.position.set(side * 0.29, 1.86, 0.63);
+    earcupGroup.position.set(side * 0.29, 1.86, 0.61);
     earcupGroup.rotation.y = side * 0.1;
 
-    // Thick cushioned earcup
     const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.07, 18), headphoneMat);
     cup.rotation.z = Math.PI / 2;
     earcupGroup.add(cup);
 
-    // Silver metallic outer accent badge
     const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.015, 16), silverMetalMat);
     badge.position.set(side * 0.038, 0, 0);
     badge.rotation.z = Math.PI / 2;
     earcupGroup.add(badge);
 
-    // Pivot gimbal arm
     box(0.015, 0.06, 0.03, silverMetalMat, new THREE.Vector3(0, 0.09, 0), earcupGroup);
-
     personGroup.add(earcupGroup);
   }
 
   // 6. Arms Extending Forward to Desk
   for (const side of [-1, 1]) {
-    // Upper arm
-    const upperArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.58, 6, 12), hoodieMat);
-    upperArm.position.set(side * 0.58, 1.25, 0.74);
+    const upperArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.62, 6, 12), hoodieMat);
+    upperArm.position.set(side * 0.58, 1.25, 0.72);
     upperArm.rotation.z = side * -0.25;
-    upperArm.rotation.x = 0.42;
+    upperArm.rotation.x = 0.45;
     personGroup.add(upperArm);
 
-    // Forearm resting on desk surface
-    const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.55, 6, 12), hoodieMat);
-    forearm.position.set(side * 0.46, 0.98, 1.12);
-    forearm.rotation.x = 1.12;
-    forearm.rotation.y = side * 0.18;
+    const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.68, 6, 12), hoodieMat);
+    forearm.position.set(side * 0.46, 0.95, 1.18);
+    forearm.rotation.x = 1.05;
+    forearm.rotation.y = side * 0.16;
     personGroup.add(forearm);
   }
 
