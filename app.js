@@ -48,11 +48,11 @@ let silhouetteGroup = null;
 const monitorSpecs = [
   {
     id: 'code',
-    x: -3.15,
+    x: -2.85,
     color: 0x8eff56,
-    hoverCamera: new THREE.Vector3(-2.6, 3.42, 9.35),
-    hoverLook: new THREE.Vector3(-3.02, 2.2, -0.2),
-    enterCamera: new THREE.Vector3(-3.15, 2.15, 2.75)
+    hoverCamera: new THREE.Vector3(-2.4, 3.42, 9.35),
+    hoverLook: new THREE.Vector3(-2.85, 2.2, -0.2),
+    enterCamera: new THREE.Vector3(-2.85, 2.15, 2.75)
   },
   {
     id: 'design',
@@ -64,11 +64,11 @@ const monitorSpecs = [
   },
   {
     id: 'explore',
-    x: 3.15,
+    x: 2.85,
     color: 0xff9158,
-    hoverCamera: new THREE.Vector3(2.6, 3.42, 9.35),
-    hoverLook: new THREE.Vector3(3.02, 2.2, -0.2),
-    enterCamera: new THREE.Vector3(3.15, 2.15, 2.75)
+    hoverCamera: new THREE.Vector3(2.4, 3.42, 9.35),
+    hoverLook: new THREE.Vector3(2.85, 2.2, -0.2),
+    enterCamera: new THREE.Vector3(2.85, 2.15, 2.75)
   }
 ];
 
@@ -698,7 +698,7 @@ function addRoomAndProps() {
   const plantMat = new THREE.MeshStandardMaterial({ color: 0x1c3e22, roughness: 0.85 });
   const potMat = new THREE.MeshStandardMaterial({ color: 0x2e2520, roughness: 0.6 });
 
-  for (const sx of [-4.9, 4.9]) {
+  for (const sx of [-4.4, 4.4]) {
     const speakerGroup = new THREE.Group();
     speakerGroup.position.set(sx, 1.7, 0.4);
     box(0.96, 1.54, 0.86, plasticDark, new THREE.Vector3(0, 0, 0), speakerGroup);
@@ -719,38 +719,38 @@ function addRoomAndProps() {
     scene.add(plantGroup);
   }
 
-  // --- MECHANICAL RETRO KEYBOARD (Center Desk) ---
+  // --- MECHANICAL RETRO KEYBOARD (Scaled to realistic desk proportions) ---
   const keyboardGroup = new THREE.Group();
-  keyboardGroup.position.set(0, 0.95, 1.45);
+  keyboardGroup.position.set(0, 0.95, 1.55);
   keyboardGroup.rotation.x = -0.06;
 
-  box(2.94, 0.14, 1.08, retroBeige, new THREE.Vector3(0, 0, 0), keyboardGroup);
-  box(2.76, 0.06, 0.92, plasticDark, new THREE.Vector3(0, 0.06, 0), keyboardGroup);
+  box(2.2, 0.10, 0.82, retroBeige, new THREE.Vector3(0, 0, 0), keyboardGroup);
+  box(2.06, 0.05, 0.70, plasticDark, new THREE.Vector3(0, 0.05, 0), keyboardGroup);
 
   const keyMat = new THREE.MeshStandardMaterial({ color: 0xede4d5, roughness: 0.6 });
   const keyDarkMat = new THREE.MeshStandardMaterial({ color: 0x48423a, roughness: 0.6 });
   for (let r = 0; r < 4; r++) {
     for (let k = 0; k < 14; k++) {
-      const kx = -1.22 + k * 0.188;
-      const kz = -0.32 + r * 0.18;
+      const kx = -0.91 + k * 0.14;
+      const kz = -0.24 + r * 0.135;
       const useDark = k === 0 || k === 13 || r === 0;
-      box(0.14, 0.07, 0.14, useDark ? keyDarkMat : keyMat, new THREE.Vector3(kx, 0.1, kz), keyboardGroup);
+      box(0.10, 0.055, 0.10, useDark ? keyDarkMat : keyMat, new THREE.Vector3(kx, 0.08, kz), keyboardGroup);
     }
   }
-  box(1.12, 0.07, 0.15, keyMat, new THREE.Vector3(0, 0.1, 0.32), keyboardGroup);
+  box(0.84, 0.055, 0.11, keyMat, new THREE.Vector3(0, 0.08, 0.24), keyboardGroup);
   scene.add(keyboardGroup);
 
-  // --- RETRO MOUSE & MOUSEPAD ---
+  // --- RETRO MOUSE & MOUSEPAD (Scaled to realistic proportions) ---
   const mousepad = new THREE.MeshStandardMaterial({ color: 0x10121a, roughness: 0.95 });
-  box(1.0, 0.015, 1.15, mousepad, new THREE.Vector3(1.88, 0.94, 1.45));
-  const mouseMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.22, 6, 12), retroBeige);
-  mouseMesh.position.set(1.88, 0.99, 1.45);
-  mouseMesh.scale.set(1, 0.6, 1.4);
+  box(0.72, 0.012, 0.85, mousepad, new THREE.Vector3(1.52, 0.94, 1.55));
+  const mouseMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.10, 0.16, 6, 12), retroBeige);
+  mouseMesh.position.set(1.52, 0.98, 1.55);
+  mouseMesh.scale.set(1, 0.55, 1.3);
   scene.add(mouseMesh);
 
   // --- CERAMIC COFFEE MUG WITH SATURN EMBLEM ---
   const mugGroup = new THREE.Group();
-  mugGroup.position.set(-1.88, 0.95, 1.45);
+  mugGroup.position.set(-1.52, 0.95, 1.55);
   const mugMat = new THREE.MeshStandardMaterial({ color: 0x1e2632, roughness: 0.45 });
   cyl(0.38, 0.38, 0.03, 20, wood, new THREE.Vector3(0, 0, 0), mugGroup);
   cyl(0.24, 0.22, 0.44, 20, mugMat, new THREE.Vector3(0, 0.24, 0), mugGroup);
@@ -766,9 +766,9 @@ function addRoomAndProps() {
   const steamPos = [];
   for (let i = 0; i < 36; i++) {
     steamPos.push(
-      -1.88 + (Math.random() - 0.5) * 0.15,
+      -1.52 + (Math.random() - 0.5) * 0.15,
       1.4 + Math.random() * 0.7,
-      1.45 + (Math.random() - 0.5) * 0.15
+      1.55 + (Math.random() - 0.5) * 0.15
     );
   }
   steamGeo.setAttribute('position', new THREE.Float32BufferAttribute(steamPos, 3));
@@ -786,16 +786,16 @@ function addRoomAndProps() {
   const tapeColors = [0x222a38, 0x482420, 0x1f2e24];
   for (let c = 0; c < 3; c++) {
     const cassMat = new THREE.MeshStandardMaterial({ color: tapeColors[c], roughness: 0.6 });
-    box(0.94, 0.08, 0.64, cassMat, new THREE.Vector3(-3.25, 0.96 + c * 0.09, 1.42), scene, true, true);
+    box(0.94, 0.08, 0.64, cassMat, new THREE.Vector3(-2.85, 0.96 + c * 0.09, 1.52), scene, true, true);
   }
 
   // --- VINTAGE WALKMAN & CASSETTES (Right Desk) ---
   const walkmanMat = new THREE.MeshStandardMaterial({ color: 0x3a404c, metalness: 0.6, roughness: 0.35 });
-  box(0.92, 0.14, 0.66, walkmanMat, new THREE.Vector3(3.25, 0.99, 1.45));
-  box(0.42, 0.04, 0.36, new THREE.MeshBasicMaterial({ color: 0x10141c }), new THREE.Vector3(3.25, 1.07, 1.45));
+  box(0.92, 0.14, 0.66, walkmanMat, new THREE.Vector3(2.85, 0.99, 1.55));
+  box(0.42, 0.04, 0.36, new THREE.MeshBasicMaterial({ color: 0x10141c }), new THREE.Vector3(2.85, 1.07, 1.55));
   for (let c = 0; c < 2; c++) {
     const cassMat = new THREE.MeshStandardMaterial({ color: c === 0 ? 0x2e2824 : 0x1c2430, roughness: 0.6 });
-    box(0.94, 0.08, 0.64, cassMat, new THREE.Vector3(4.25, 0.96 + c * 0.09, 1.45), scene, true, true);
+    box(0.94, 0.08, 0.64, cassMat, new THREE.Vector3(3.75, 0.96 + c * 0.09, 1.55), scene, true, true);
   }
 
   // --- OPEN SPIRAL NOTEBOOK (Right Foreground) ---
@@ -879,220 +879,299 @@ function addRoomAndProps() {
   scene.add(deskLampLight);
 }
 
-// --- AUTHENTIC JAPANESE OAK BENTWOOD CHAIR & HOODIE DEVELOPER WITH HEADPHONES ---
+// --- DETAILED JAPANESE OAK BENTWOOD CHAIR & HOODIE DEVELOPER ---
 function addPerson() {
   silhouetteGroup = new THREE.Group();
-  // Placed further back from the desk (z = 2.65) for natural desk distance
   silhouetteGroup.position.set(0, 0.02, 2.65);
 
-  // Materials
-  // 1. Japanese Light Oak Wood (matching reference chair photo)
+  // --- Materials ---
   const oakWoodMat = new THREE.MeshStandardMaterial({
-    color: 0xc6a27e,
-    roughness: 0.55,
-    metalness: 0.05,
-    transparent: true,
-    opacity: 1
+    color: 0xc6a27e, roughness: 0.55, metalness: 0.05,
+    transparent: true, opacity: 1
   });
-  // 2. Matte Black Steel Frame
   const blackSteelMat = new THREE.MeshStandardMaterial({
-    color: 0x16181e,
-    roughness: 0.4,
-    metalness: 0.8,
-    transparent: true,
-    opacity: 1
+    color: 0x16181e, roughness: 0.4, metalness: 0.8,
+    transparent: true, opacity: 1
   });
-  // 3. Dark Charcoal Navy Hoodie Fabric
   const hoodieMat = new THREE.MeshStandardMaterial({
-    color: 0x111622,
-    roughness: 0.85,
-    metalness: 0.08,
-    transparent: true,
-    opacity: 1
+    color: 0x111622, roughness: 0.85, metalness: 0.08,
+    transparent: true, opacity: 1
   });
   const hoodFoldMat = new THREE.MeshStandardMaterial({
-    color: 0x0c101a,
-    roughness: 0.92,
-    transparent: true,
-    opacity: 1
+    color: 0x0c101a, roughness: 0.92,
+    transparent: true, opacity: 1
   });
-  // 4. Studio Monitor Headphones
   const headphoneMat = new THREE.MeshStandardMaterial({
-    color: 0x1a1d26,
-    roughness: 0.35,
-    metalness: 0.65,
-    transparent: true,
-    opacity: 1
+    color: 0x1a1d26, roughness: 0.35, metalness: 0.65,
+    transparent: true, opacity: 1
   });
   const silverMetalMat = new THREE.MeshStandardMaterial({
-    color: 0x8fa0b8,
-    roughness: 0.25,
-    metalness: 0.9,
-    transparent: true,
-    opacity: 1
+    color: 0x8fa0b8, roughness: 0.25, metalness: 0.9,
+    transparent: true, opacity: 1
   });
   const hairMat = new THREE.MeshStandardMaterial({
-    color: 0x080a10,
-    roughness: 0.9,
-    transparent: true,
-    opacity: 1
+    color: 0x080a10, roughness: 0.9,
+    transparent: true, opacity: 1
+  });
+  const skinMat = new THREE.MeshStandardMaterial({
+    color: 0x8c6e5a, roughness: 0.75, metalness: 0.02,
+    transparent: true, opacity: 1
   });
 
   // ==========================================
-  // A. JAPANESE OAK BENTWOOD CHAIR (image-1.png) - 1.45x Scaled
+  // A. DETAILED JAPANESE OAK BENTWOOD CHAIR (Higher polygon, matching reference)
   // ==========================================
   const chairGroup = new THREE.Group();
-  chairGroup.scale.set(1.45, 1.4, 1.45);
+  chairGroup.scale.set(1.5, 1.45, 1.5);
 
-  // 1. Oak Bentwood Low Mid-Backrest Panel
-  const backrestMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(1.08, 0.54, 0.05),
-    oakWoodMat
-  );
-  backrestMesh.position.set(0, 0.96, 0.46);
-  backrestMesh.rotation.x = -0.06;
+  // -- Curved Bentwood Backrest (LatheGeometry for authentic curvature) --
+  const backrestProfile = [];
+  for (let i = 0; i <= 16; i++) {
+    const t = i / 16;
+    const x = 0.54 * Math.sin(t * Math.PI);
+    const y = 0.6 * t - 0.3;
+    backrestProfile.push(new THREE.Vector2(x, y));
+  }
+  const backrestGeo = new THREE.LatheGeometry(backrestProfile, 24, -0.6, 1.2);
+  const backrestMesh = new THREE.Mesh(backrestGeo, oakWoodMat);
+  backrestMesh.position.set(0, 0.98, 0.42);
+  backrestMesh.rotation.x = -0.08;
+  backrestMesh.scale.set(1.0, 0.9, 0.12);
   chairGroup.add(backrestMesh);
 
-  // 2. Oak Bentwood Seat Board
+  // Thin oak cap strip along the top edge of the backrest
+  const topStrip = new THREE.Mesh(
+    new THREE.BoxGeometry(1.12, 0.06, 0.055),
+    oakWoodMat
+  );
+  topStrip.position.set(0, 1.22, 0.42);
+  topStrip.rotation.x = -0.06;
+  chairGroup.add(topStrip);
+
+  // -- Contoured Seat Pan (slightly dished, rounded edges) --
   const seatMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(1.04, 0.055, 0.92),
+    new THREE.BoxGeometry(1.08, 0.06, 0.96),
     oakWoodMat
   );
   seatMesh.position.set(0, 0.52, 0.82);
   chairGroup.add(seatMesh);
-
-  // 3. Black Steel Tubular Frame Under Seat & Back Support
-  cyl(0.022, 0.022, 0.78, 12, blackSteelMat, new THREE.Vector3(0, 0.48, 0.82), chairGroup, new THREE.Euler(0, 0, Math.PI / 2));
-  for (const s of [-0.32, 0.32]) {
-    cyl(0.018, 0.018, 0.52, 10, blackSteelMat, new THREE.Vector3(s, 0.74, 0.52), chairGroup, new THREE.Euler(0.24, 0, 0));
+  // Seat edge rounding strips (front and sides)
+  const seatEdgeMat = oakWoodMat;
+  cyl(0.03, 0.03, 1.08, 12, seatEdgeMat, new THREE.Vector3(0, 0.52, 1.30), chairGroup, new THREE.Euler(0, 0, Math.PI / 2));
+  for (const side of [-1, 1]) {
+    cyl(0.03, 0.03, 0.96, 12, seatEdgeMat, new THREE.Vector3(side * 0.54, 0.52, 0.82), chairGroup, new THREE.Euler(Math.PI / 2, 0, 0));
   }
 
-  // 4. Minimalist Loop Armrests with Oak Wood Armpads
+  // -- Black Steel Frame (Angled supports from seat to backrest, matching reference) --
+  // Central spine rod connecting seat underside to backrest
+  cyl(0.025, 0.025, 0.62, 14, blackSteelMat, new THREE.Vector3(0, 0.72, 0.62), chairGroup, new THREE.Euler(0.35, 0, 0));
+  // Diagonal cross-supports from seat sides angling up to backrest
+  for (const s of [-0.36, 0.36]) {
+    cyl(0.02, 0.02, 0.58, 12, blackSteelMat, new THREE.Vector3(s, 0.74, 0.58), chairGroup, new THREE.Euler(0.28, 0, s > 0 ? 0.08 : -0.08));
+  }
+  // Horizontal cross-bar under the seat
+  cyl(0.025, 0.025, 0.88, 14, blackSteelMat, new THREE.Vector3(0, 0.48, 0.82), chairGroup, new THREE.Euler(0, 0, Math.PI / 2));
+
+  // -- Armrests (Angled black steel arms with flat oak armpads) --
   for (const side of [-1, 1]) {
-    cyl(0.018, 0.018, 0.42, 10, blackSteelMat, new THREE.Vector3(side * 0.54, 0.72, 0.75), chairGroup, new THREE.Euler(0, 0, side * 0.12));
-    const armpad = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.028, 0.32), oakWoodMat);
-    armpad.position.set(side * 0.56, 0.92, 0.75);
+    // Diagonal arm support rod from seat level rising to armpad height
+    cyl(0.02, 0.02, 0.52, 12, blackSteelMat, new THREE.Vector3(side * 0.52, 0.72, 0.72), chairGroup, new THREE.Euler(0.12, 0, side * -0.18));
+    // Horizontal arm support brace
+    cyl(0.018, 0.018, 0.34, 10, blackSteelMat, new THREE.Vector3(side * 0.54, 0.90, 0.78), chairGroup, new THREE.Euler(Math.PI / 2, 0, 0));
+    // Oak armpad (wider, shaped like reference)
+    const armpad = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.032, 0.38), oakWoodMat);
+    armpad.position.set(side * 0.56, 0.94, 0.78);
     chairGroup.add(armpad);
   }
 
-  // 5. Black Gas Lift Cylinder
-  cyl(0.045, 0.045, 0.36, 16, blackSteelMat, new THREE.Vector3(0, 0.32, 0.82), chairGroup);
+  // -- Gas Lift Column --
+  cyl(0.05, 0.04, 0.38, 18, blackSteelMat, new THREE.Vector3(0, 0.30, 0.82), chairGroup);
 
-  // 6. 5-Star Oak Wood Leg Base with Black Casters
+  // -- 5-Star Base with Oak Spokes and Rubber Casters --
   for (let w = 0; w < 5; w++) {
     const wAngle = (w / 5) * Math.PI * 2;
-    const wx = Math.cos(wAngle) * 0.48;
-    const wz = Math.sin(wAngle) * 0.48;
+    const wx = Math.cos(wAngle) * 0.52;
+    const wz = Math.sin(wAngle) * 0.52;
 
-    const legMesh = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.055, 0.48), oakWoodMat);
-    legMesh.position.set(wx * 0.5, 0.12, 0.82 + wz * 0.5);
-    legMesh.rotation.y = -wAngle + Math.PI / 2;
-    chairGroup.add(legMesh);
+    // Tapered oak spoke (wider at hub, narrower at tip)
+    const spoke = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.022, 0.04, 0.52, 8),
+      oakWoodMat
+    );
+    spoke.position.set(wx * 0.5, 0.10, 0.82 + wz * 0.5);
+    spoke.rotation.z = Math.PI / 2;
+    spoke.rotation.y = -wAngle + Math.PI / 2;
+    chairGroup.add(spoke);
 
-    const caster = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.04, 10), blackSteelMat);
-    caster.position.set(wx, 0.04, 0.82 + wz);
-    caster.rotation.z = Math.PI / 2;
-    chairGroup.add(caster);
+    // Twin-wheel caster housing at each spoke tip
+    const casterHousing = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.06, 0.04),
+      blackSteelMat
+    );
+    casterHousing.position.set(wx, 0.04, 0.82 + wz);
+    casterHousing.rotation.y = -wAngle;
+    chairGroup.add(casterHousing);
+
+    // Dual rubber wheels
+    for (const offset of [-0.018, 0.018]) {
+      const wheel = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.028, 0.028, 0.022, 12),
+        blackSteelMat
+      );
+      wheel.position.set(wx + Math.cos(wAngle + Math.PI / 2) * offset, 0.028, 0.82 + wz + Math.sin(wAngle + Math.PI / 2) * offset);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.rotation.y = -wAngle;
+      chairGroup.add(wheel);
+    }
   }
+
+  // Hub cap at center of 5-star base
+  cyl(0.065, 0.065, 0.04, 18, blackSteelMat, new THREE.Vector3(0, 0.10, 0.82), chairGroup);
+
   silhouetteGroup.add(chairGroup);
 
   // ==========================================
-  // B. HUMANOID IN HOODIE WITH HEADPHONES — Refined Angular Anatomy
+  // B. HUMANOID IN HOODIE — Soft Fabric Volume (Not Skeleton Blocks)
   // ==========================================
   const personGroup = new THREE.Group();
-
-  // Slight forward lean (natural seated posture, leaning into desk)
   personGroup.rotation.x = 0.06;
 
-  // --- CORE TORSO: Three overlapping slabs that taper from hips to shoulders ---
-  // Hip / lower abdomen (narrowest)
-  box(0.62, 0.32, 0.34, hoodieMat, new THREE.Vector3(0, 0.96, 0.72), personGroup);
-  // Mid torso / ribcage (medium width, overlaps lower block)
-  box(0.72, 0.36, 0.34, hoodieMat, new THREE.Vector3(0, 1.24, 0.7), personGroup);
-  // Upper chest (widest, overlaps mid block seamlessly)
-  box(0.82, 0.32, 0.32, hoodieMat, new THREE.Vector3(0, 1.50, 0.68), personGroup);
+  // The torso uses overlapping capsules and boxes to create continuous soft
+  // hoodie fabric volume. No gaps between segments — they intersect intentionally.
 
-  // --- SHOULDER BEAM (Trapezoidal silhouette — slightly wider than upper chest) ---
-  box(0.96, 0.12, 0.28, hoodieMat, new THREE.Vector3(0, 1.66, 0.67), personGroup);
+  // -- LOWER TORSO: Hips and belly area (capsule for roundness under fabric) --
+  const lowerTorso = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.28, 0.22, 8, 14),
+    hoodieMat
+  );
+  lowerTorso.position.set(0, 0.96, 0.72);
+  lowerTorso.scale.set(1.1, 1.0, 0.85);
+  personGroup.add(lowerTorso);
 
-  // --- DELTOID ROUNDNESS (Softens the hard shoulder corners) ---
+  // -- MID TORSO: Ribcage (wider capsule overlapping lower torso) --
+  const midTorso = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.32, 0.24, 8, 14),
+    hoodieMat
+  );
+  midTorso.position.set(0, 1.26, 0.70);
+  midTorso.scale.set(1.15, 1.0, 0.82);
+  personGroup.add(midTorso);
+
+  // -- UPPER CHEST: Broad chest fills between shoulders (box with rounded look) --
+  const upperChest = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.34, 0.14, 8, 14),
+    hoodieMat
+  );
+  upperChest.position.set(0, 1.52, 0.68);
+  upperChest.scale.set(1.22, 0.85, 0.78);
+  personGroup.add(upperChest);
+
+  // -- SHOULDER MASS (Wide capsule rotated horizontal — the trapezoidal shoulder line) --
+  const shoulders = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.10, 0.72, 6, 12),
+    hoodieMat
+  );
+  shoulders.position.set(0, 1.64, 0.67);
+  shoulders.rotation.z = Math.PI / 2;
+  shoulders.scale.set(1.0, 1.0, 0.82);
+  personGroup.add(shoulders);
+
+  // -- DELTOID ROUNDNESS (Smooth shoulder caps) --
   for (const side of [-1, 1]) {
-    const delt = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 10), hoodieMat);
-    delt.position.set(side * 0.48, 1.66, 0.67);
-    delt.scale.set(1.0, 0.85, 0.8);
+    const delt = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), hoodieMat);
+    delt.position.set(side * 0.46, 1.64, 0.67);
+    delt.scale.set(1.0, 0.9, 0.82);
     personGroup.add(delt);
   }
 
-  // --- HOODIE HOOD (Collapsed fabric drape on upper back, behind neck) ---
-  box(0.42, 0.16, 0.10, hoodFoldMat, new THREE.Vector3(0, 1.62, 0.54), personGroup);
-  const hoodRoll = new THREE.Mesh(
-    new THREE.TorusGeometry(0.15, 0.04, 8, 14),
+  // -- HOODIE HOOD (Collapsed fabric drape behind the neck) --
+  const hoodDrape = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.18, 0.12, 6, 10),
     hoodFoldMat
   );
-  hoodRoll.position.set(0, 1.72, 0.54);
+  hoodDrape.position.set(0, 1.60, 0.52);
+  hoodDrape.rotation.z = Math.PI / 2;
+  hoodDrape.scale.set(0.7, 1.0, 0.6);
+  personGroup.add(hoodDrape);
+
+  // Hood fold crease
+  const hoodRoll = new THREE.Mesh(
+    new THREE.TorusGeometry(0.14, 0.035, 8, 14),
+    hoodFoldMat
+  );
+  hoodRoll.position.set(0, 1.70, 0.53);
   hoodRoll.rotation.x = Math.PI / 2.5;
-  hoodRoll.scale.set(1.3, 0.7, 1.0);
+  hoodRoll.scale.set(1.2, 0.65, 1.0);
   personGroup.add(hoodRoll);
 
-  // --- NECK (Slim, natural-proportion cylinder) ---
-  cyl(0.08, 0.09, 0.16, 14, hairMat, new THREE.Vector3(0, 1.80, 0.66), personGroup);
+  // -- NECK --
+  cyl(0.08, 0.09, 0.14, 14, hairMat, new THREE.Vector3(0, 1.78, 0.66), personGroup);
 
-  // --- HEAD (Vertically elongated, human cranium proportions) ---
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.20, 20, 18), hairMat);
-  head.position.set(0, 1.98, 0.65);
+  // -- HEAD (Vertically elongated human cranium) --
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.20, 22, 18), hairMat);
+  head.position.set(0, 1.96, 0.65);
   head.scale.set(0.88, 1.10, 0.92);
   personGroup.add(head);
 
-  // --- HAIR CAP (Subtle volume on top) ---
+  // -- HAIR --
   const hair = new THREE.Mesh(new THREE.SphereGeometry(0.21, 18, 16), hairMat);
-  hair.position.set(0, 2.02, 0.64);
+  hair.position.set(0, 2.00, 0.64);
   hair.scale.set(0.90, 1.02, 0.96);
   personGroup.add(hair);
 
-  // --- STUDIO OVER-EAR HEADPHONES ---
+  // -- HEADPHONES --
   const headband = new THREE.Mesh(
     new THREE.TorusGeometry(0.22, 0.025, 10, 22, Math.PI),
     headphoneMat
   );
-  headband.position.set(0, 2.0, 0.64);
+  headband.position.set(0, 1.98, 0.64);
   headband.rotation.x = Math.PI;
   personGroup.add(headband);
 
   for (const side of [-1, 1]) {
     const earcupGroup = new THREE.Group();
-    earcupGroup.position.set(side * 0.22, 1.96, 0.64);
+    earcupGroup.position.set(side * 0.22, 1.94, 0.64);
     earcupGroup.rotation.y = side * 0.06;
-
-    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 14), headphoneMat);
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 16), headphoneMat);
     cup.rotation.z = Math.PI / 2;
     earcupGroup.add(cup);
-
-    const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.01, 12), silverMetalMat);
+    const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.01, 14), silverMetalMat);
     badge.position.set(side * 0.028, 0, 0);
     badge.rotation.z = Math.PI / 2;
     earcupGroup.add(badge);
-
     personGroup.add(earcupGroup);
   }
 
-  // --- ARMS (Connected flush to deltoids, angled forward to desk) ---
+  // -- UPPER ARMS (Hoodie sleeves — capsules for soft fabric look, not boxes) --
   for (const side of [-1, 1]) {
-    // Upper arm (flush against shoulder, hanging down and slightly forward)
-    const upperArm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.48, 0.15), hoodieMat);
-    upperArm.position.set(side * 0.52, 1.34, 0.74);
-    upperArm.rotation.x = 0.15;
-    upperArm.rotation.z = side * -0.08;
+    // Upper arm sleeve
+    const upperArm = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.09, 0.38, 6, 12),
+      hoodieMat
+    );
+    upperArm.position.set(side * 0.52, 1.34, 0.72);
+    upperArm.rotation.x = 0.18;
+    upperArm.rotation.z = side * -0.10;
     personGroup.add(upperArm);
 
-    // Forearm (extending forward to keyboard / desk surface)
-    const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.48, 6, 10), hoodieMat);
-    forearm.position.set(side * 0.48, 1.06, 1.12);
+    // Forearm extending to desk (slightly thinner)
+    const forearm = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.065, 0.44, 6, 10),
+      hoodieMat
+    );
+    forearm.position.set(side * 0.46, 1.06, 1.10);
     forearm.rotation.x = 1.0;
     forearm.rotation.y = side * 0.10;
     personGroup.add(forearm);
+
+    // Exposed hand / wrist at the end of the sleeve
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), skinMat);
+    hand.position.set(side * 0.42, 0.94, 1.42);
+    hand.scale.set(1.0, 0.7, 1.2);
+    personGroup.add(hand);
   }
 
-  // Overall person scale — slightly taller, narrower than before
+  // Scale the assembled person
   personGroup.scale.set(1.2, 1.45, 1.25);
 
   silhouetteGroup.add(personGroup);
