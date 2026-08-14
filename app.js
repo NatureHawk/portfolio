@@ -879,156 +879,241 @@ function addRoomAndProps() {
   scene.add(deskLampLight);
 }
 
-// --- SCULPTED HUMAN SILHOUETTE & MID-BACK CHAIR (MATCHING REFERENCE PHOTO) ---
+// --- AUTHENTIC JAPANESE OAK BENTWOOD CHAIR & HOODIE DEVELOPER WITH HEADPHONES ---
 function addPerson() {
   silhouetteGroup = new THREE.Group();
-  silhouetteGroup.position.set(0, 0.02, 1.95);
+  silhouetteGroup.position.set(0, 0.02, 1.85);
 
-  // Clothing material with subtle edge response
-  const shirtMat = new THREE.MeshStandardMaterial({
-    color: 0x0a0c12,
-    roughness: 0.88,
-    metalness: 0.1,
+  // Materials
+  // 1. Japanese Light Oak Wood (matching reference chair photo)
+  const oakWoodMat = new THREE.MeshStandardMaterial({
+    color: 0xbfa07a,
+    roughness: 0.58,
+    metalness: 0.05,
     transparent: true,
     opacity: 1
   });
-
-  const skinHairMat = new THREE.MeshStandardMaterial({
-    color: 0x07080d,
+  // 2. Matte Black Steel Frame
+  const blackSteelMat = new THREE.MeshStandardMaterial({
+    color: 0x16181e,
+    roughness: 0.4,
+    metalness: 0.8,
+    transparent: true,
+    opacity: 1
+  });
+  // 3. Dark Charcoal Navy Hoodie Fabric
+  const hoodieMat = new THREE.MeshStandardMaterial({
+    color: 0x111622,
+    roughness: 0.85,
+    metalness: 0.08,
+    transparent: true,
+    opacity: 1
+  });
+  const hoodFoldMat = new THREE.MeshStandardMaterial({
+    color: 0x0c101a,
     roughness: 0.92,
     transparent: true,
     opacity: 1
   });
-
-  const chairMat = new THREE.MeshStandardMaterial({
-    color: 0x14161c,
-    roughness: 0.75,
-    metalness: 0.25,
+  // 4. Studio Monitor Headphones
+  const headphoneMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1d26,
+    roughness: 0.35,
+    metalness: 0.65,
+    transparent: true,
+    opacity: 1
+  });
+  const silverMetalMat = new THREE.MeshStandardMaterial({
+    color: 0x8fa0b8,
+    roughness: 0.25,
+    metalness: 0.9,
+    transparent: true,
+    opacity: 1
+  });
+  const hairMat = new THREE.MeshStandardMaterial({
+    color: 0x080a10,
+    roughness: 0.9,
     transparent: true,
     opacity: 1
   });
 
-  // 1. MID-BACK ERGONOMIC DESK CHAIR (Stays below shoulder line so human silhouette is dominant)
-  // Low-profile curved mesh backrest
-  const backrest = new THREE.Mesh(new THREE.BoxGeometry(1.42, 1.05, 0.12), chairMat);
-  backrest.position.set(0, 1.15, 0.35);
-  backrest.rotation.x = -0.05;
-  silhouetteGroup.add(backrest);
+  // ==========================================
+  // A. JAPANESE OAK BENTWOOD CHAIR (image-1.png)
+  // ==========================================
+  const chairGroup = new THREE.Group();
 
-  // Spine support frame bar
-  box(0.12, 1.1, 0.14, chairMat, new THREE.Vector3(0, 1.05, 0.22), silhouetteGroup);
+  // 1. Oak Bentwood Low Mid-Backrest Panel (Height ~0.52, reaches only mid-back below shoulder line)
+  const backrestMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1.08, 0.54, 0.05),
+    oakWoodMat
+  );
+  backrestMesh.position.set(0, 0.96, 0.46);
+  backrestMesh.rotation.x = -0.06;
+  chairGroup.add(backrestMesh);
 
-  // Molded seat cushion
-  box(1.55, 0.16, 1.45, chairMat, new THREE.Vector3(0, 0.52, 0.85), silhouetteGroup);
+  // 2. Oak Bentwood Seat Board
+  const seatMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1.04, 0.055, 0.92),
+    oakWoodMat
+  );
+  seatMesh.position.set(0, 0.52, 0.82);
+  chairGroup.add(seatMesh);
 
-  // Slim modern armrests
-  for (const side of [-1, 1]) {
-    box(0.08, 0.42, 0.08, chairMat, new THREE.Vector3(side * 0.82, 0.78, 0.75), silhouetteGroup);
-    box(0.14, 0.05, 0.72, chairMat, new THREE.Vector3(side * 0.82, 0.98, 0.82), silhouetteGroup);
+  // 3. Black Steel Tubular Frame Under Seat & Back Support
+  // Under-seat cross tube
+  cyl(0.022, 0.022, 0.78, 12, blackSteelMat, new THREE.Vector3(0, 0.48, 0.82), chairGroup, new THREE.Euler(0, 0, Math.PI / 2));
+  // Back support spine bars connecting under-seat to oak backrest
+  for (const s of [-0.32, 0.32]) {
+    cyl(0.018, 0.018, 0.52, 10, blackSteelMat, new THREE.Vector3(s, 0.74, 0.52), chairGroup, new THREE.Euler(0.24, 0, 0));
   }
 
-  // Hydraulic lift cylinder & 5-star base
-  cyl(0.06, 0.06, 0.48, 14, chairMat, new THREE.Vector3(0, 0.25, 0.85), silhouetteGroup);
+  // 4. Minimalist Loop Armrests with Oak Wood Armpads
+  for (const side of [-1, 1]) {
+    // Vertical / angled steel tube
+    cyl(0.018, 0.018, 0.42, 10, blackSteelMat, new THREE.Vector3(side * 0.54, 0.72, 0.75), chairGroup, new THREE.Euler(0, 0, side * 0.12));
+    // Oak armpad on top
+    const armpad = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.028, 0.32), oakWoodMat);
+    armpad.position.set(side * 0.56, 0.92, 0.75);
+    chairGroup.add(armpad);
+  }
+
+  // 5. Black Gas Lift Cylinder
+  cyl(0.045, 0.045, 0.36, 16, blackSteelMat, new THREE.Vector3(0, 0.32, 0.82), chairGroup);
+
+  // 6. 5-Star Oak Wood Leg Base with Black Casters
   for (let w = 0; w < 5; w++) {
     const wAngle = (w / 5) * Math.PI * 2;
-    const wx = Math.cos(wAngle) * 0.52;
-    const wz = Math.sin(wAngle) * 0.52;
-    box(0.06, 0.06, 0.52, chairMat, new THREE.Vector3(wx * 0.5, 0.04, 0.85 + wz * 0.5), silhouetteGroup);
+    const wx = Math.cos(wAngle) * 0.48;
+    const wz = Math.sin(wAngle) * 0.48;
+
+    // Oak leg spoke
+    const legMesh = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.055, 0.48), oakWoodMat);
+    legMesh.position.set(wx * 0.5, 0.12, 0.82 + wz * 0.5);
+    legMesh.rotation.y = -wAngle + Math.PI / 2;
+    chairGroup.add(legMesh);
+
+    // Black twin-wheel caster
+    const caster = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.04, 10), blackSteelMat);
+    caster.position.set(wx, 0.04, 0.82 + wz);
+    caster.rotation.z = Math.PI / 2;
+    chairGroup.add(caster);
   }
+  silhouetteGroup.add(chairGroup);
 
-  // 2. SCULPTED HUMAN TORSO & SHOULDERS (Matching photograph posture)
-  // Main upper torso
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.52, 0.72, 10, 16), shirtMat);
-  torso.position.set(0, 1.38, 0.72);
-  torso.scale.set(1.22, 1.0, 0.78);
-  silhouetteGroup.add(torso);
+  // ==========================================
+  // B. HUMANOID IN HOODIE WITH HEADPHONES (image-2.png)
+  // ==========================================
+  const personGroup = new THREE.Group();
 
-  // Natural sloped shoulders (Trapezius to Deltoid transition)
-  const shoulderBeam = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 0.96, 8, 16), shirtMat);
-  shoulderBeam.position.set(0, 1.72, 0.68);
+  // 1. Broad, Natural Torso in Hoodie (slight forward lean)
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.44, 0.65, 12, 16), hoodieMat);
+  torso.position.set(0, 1.15, 0.76);
+  torso.scale.set(1.35, 1.0, 0.75);
+  torso.rotation.x = 0.08;
+  personGroup.add(torso);
+
+  // 2. Anatomical Rounded Shoulders (Trapezius)
+  const shoulderBeam = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.88, 8, 14), hoodieMat);
+  shoulderBeam.position.set(0, 1.48, 0.71);
   shoulderBeam.rotation.z = Math.PI / 2;
-  shoulderBeam.scale.set(1.0, 1.15, 0.85);
-  silhouetteGroup.add(shoulderBeam);
+  shoulderBeam.scale.set(1.0, 1.12, 0.88);
+  personGroup.add(shoulderBeam);
 
-  // Left & Right Deltoids
+  // Left and Right Deltoid volumes
   for (const side of [-1, 1]) {
-    const delt = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), shirtMat);
-    delt.position.set(side * 0.58, 1.68, 0.68);
-    delt.scale.set(1.0, 1.2, 0.9);
-    silhouetteGroup.add(delt);
+    const delt = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), hoodieMat);
+    delt.position.set(side * 0.54, 1.44, 0.71);
+    delt.scale.set(1.0, 1.15, 0.9);
+    personGroup.add(delt);
   }
 
-  // Shirt Crewneck Collar
-  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.04, 8, 18), shirtMat);
-  collar.position.set(0, 1.84, 0.65);
-  collar.rotation.x = Math.PI / 2.2;
-  silhouetteGroup.add(collar);
+  // 3. Draped Fabric Hood on Upper Back / Neck (matching image-2.png)
+  // Main hood drape hanging between shoulder blades
+  const hoodDrape = new THREE.Mesh(
+    new THREE.TorusGeometry(0.28, 0.08, 12, 24),
+    hoodFoldMat
+  );
+  hoodDrape.position.set(0, 1.52, 0.66);
+  hoodDrape.rotation.x = Math.PI / 2.6;
+  hoodDrape.scale.set(1.15, 0.9, 1.1);
+  personGroup.add(hoodDrape);
 
-  // 3. ANATOMICAL NECK & HEAD WITH TEXTURED HAIR (Matching reference photo)
-  // Defined neck column
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.26, 16), skinHairMat);
-  neck.position.set(0, 1.95, 0.64);
-  neck.rotation.x = -0.08;
-  silhouetteGroup.add(neck);
+  // Second hood fabric crease fold
+  const hoodCrease = new THREE.Mesh(
+    new THREE.TorusGeometry(0.22, 0.05, 8, 18),
+    hoodieMat
+  );
+  hoodCrease.position.set(0, 1.42, 0.68);
+  hoodCrease.rotation.x = Math.PI / 2.8;
+  personGroup.add(hoodCrease);
+
+  // 4. Humanoid Head & Natural Hair Silhouette
+  // Neck column
+  cyl(0.12, 0.14, 0.22, 16, hairMat, new THREE.Vector3(0, 1.68, 0.66), personGroup, new THREE.Euler(0.08, 0, 0));
 
   // Cranium base
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 18), skinHairMat);
-  head.position.set(0, 2.26, 0.62);
-  head.scale.set(0.96, 1.14, 1.02);
-  silhouetteGroup.add(head);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 24, 20), hairMat);
+  head.position.set(0, 1.88, 0.64);
+  head.scale.set(0.96, 1.08, 1.02);
+  personGroup.add(head);
 
-  // Ears (visible in silhouette from behind)
+  // Natural stylized hair silhouette volume (clean lo-fi shape without bead bumps)
+  const hairVolume = new THREE.Mesh(new THREE.SphereGeometry(0.275, 20, 18), hairMat);
+  hairVolume.position.set(0, 1.92, 0.63);
+  hairVolume.scale.set(1.02, 1.06, 1.08);
+  personGroup.add(hairVolume);
+
+  // 5. Studio Over-Ear Monitor Headphones (matching image-2.png)
+  // Padded Headband arching over head
+  const headband = new THREE.Mesh(
+    new THREE.TorusGeometry(0.29, 0.035, 10, 24, Math.PI),
+    headphoneMat
+  );
+  headband.position.set(0, 1.92, 0.63);
+  headband.rotation.x = Math.PI;
+  personGroup.add(headband);
+
+  // Earcups (Left & Right) with silver outer disc
   for (const side of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.04, 0.08, 4, 8), skinHairMat);
-    ear.position.set(side * 0.32, 2.24, 0.61);
-    ear.rotation.z = side * -0.15;
-    silhouetteGroup.add(ear);
+    const earcupGroup = new THREE.Group();
+    earcupGroup.position.set(side * 0.29, 1.86, 0.63);
+    earcupGroup.rotation.y = side * 0.1;
+
+    // Thick cushioned earcup
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.07, 18), headphoneMat);
+    cup.rotation.z = Math.PI / 2;
+    earcupGroup.add(cup);
+
+    // Silver metallic outer accent badge
+    const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.015, 16), silverMetalMat);
+    badge.position.set(side * 0.038, 0, 0);
+    badge.rotation.z = Math.PI / 2;
+    earcupGroup.add(badge);
+
+    // Pivot gimbal arm
+    box(0.015, 0.06, 0.03, silverMetalMat, new THREE.Vector3(0, 0.09, 0), earcupGroup);
+
+    personGroup.add(earcupGroup);
   }
 
-  // Textured Human Hair Outline (Matching messy spiked hair silhouette in photo)
-  const hairGroup = new THREE.Group();
-  hairGroup.position.set(0, 2.28, 0.62);
-
-  // Hair main volume cap
-  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), skinHairMat);
-  hairCap.position.set(0, 0.06, -0.02);
-  hairCap.scale.set(1.02, 1.12, 1.06);
-  hairGroup.add(hairCap);
-
-  // Silhouette hair clumps on crown, top, and sides
-  const hairClumps = [
-    { x: 0, y: 0.36, z: -0.02, r: 0.12, sy: 1.4 },
-    { x: -0.14, y: 0.34, z: -0.04, r: 0.11, sy: 1.3 },
-    { x: 0.14, y: 0.34, z: -0.04, r: 0.11, sy: 1.3 },
-    { x: -0.24, y: 0.28, z: -0.06, r: 0.10, sy: 1.2 },
-    { x: 0.24, y: 0.28, z: -0.06, r: 0.10, sy: 1.2 },
-    { x: -0.28, y: 0.15, z: -0.08, r: 0.09, sy: 1.1 },
-    { x: 0.28, y: 0.15, z: -0.08, r: 0.09, sy: 1.1 },
-    { x: 0, y: 0.12, z: 0.18, r: 0.14, sy: 1.0 }
-  ];
-  hairClumps.forEach(hc => {
-    const clump = new THREE.Mesh(new THREE.SphereGeometry(hc.r, 8, 8), skinHairMat);
-    clump.position.set(hc.x, hc.y, hc.z);
-    clump.scale.set(1, hc.sy, 1);
-    hairGroup.add(clump);
-  });
-  silhouetteGroup.add(hairGroup);
-
-  // 4. ARMS EXTENDING NATURALLY TO DESK
+  // 6. Arms Extending Forward to Desk
   for (const side of [-1, 1]) {
-    const upperArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.62, 6, 12), shirtMat);
-    upperArm.position.set(side * 0.62, 1.35, 0.78);
-    upperArm.rotation.z = side * -0.28;
-    upperArm.rotation.x = 0.45;
-    silhouetteGroup.add(upperArm);
+    // Upper arm
+    const upperArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.58, 6, 12), hoodieMat);
+    upperArm.position.set(side * 0.58, 1.25, 0.74);
+    upperArm.rotation.z = side * -0.25;
+    upperArm.rotation.x = 0.42;
+    personGroup.add(upperArm);
 
-    const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.58, 6, 12), shirtMat);
-    forearm.position.set(side * 0.48, 1.02, 1.15);
-    forearm.rotation.x = 1.1;
-    forearm.rotation.y = side * 0.2;
-    silhouetteGroup.add(forearm);
+    // Forearm resting on desk surface
+    const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.55, 6, 12), hoodieMat);
+    forearm.position.set(side * 0.46, 0.98, 1.12);
+    forearm.rotation.x = 1.12;
+    forearm.rotation.y = side * 0.18;
+    personGroup.add(forearm);
   }
 
+  silhouetteGroup.add(personGroup);
   scene.add(silhouetteGroup);
 }
 
@@ -1039,8 +1124,8 @@ makeMonitor(monitorSpecs[1], true);
 makeMonitor(monitorSpecs[2]);
 addPerson();
 
-// Cinematic Directional Night Atmosphere Lighting (Matching reference photo)
-// 1. Balanced Night Hemisphere (Atmospheric, not washed out)
+// Cinematic Directional Night Atmosphere Lighting (Matching reference photo & illustration)
+// 1. Balanced Night Hemisphere
 scene.add(new THREE.HemisphereLight(0x18243c, 0x22160d, 0.95));
 
 // 2. Window Moonlight Directional Light (cool key light from window)
@@ -1052,7 +1137,7 @@ scene.add(moonDir.target);
 
 // 3. Screen Backlight Spill behind character (creates the authentic rim outline from reference photo)
 const screenBacklight = new THREE.PointLight(0x6095ff, 1.8, 4.5, 1.5);
-screenBacklight.position.set(0, 2.15, 0.6);
+screenBacklight.position.set(0, 1.95, 0.6);
 scene.add(screenBacklight);
 
 // --- PROCEDURAL WEB AUDIO ATMOSPHERE & SFX ENGINE ---
