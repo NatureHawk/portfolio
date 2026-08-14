@@ -997,105 +997,103 @@ function addPerson() {
   silhouetteGroup.add(chairGroup);
 
   // ==========================================
-  // B. HUMANOID IN HOODIE WITH HEADPHONES (Taller Proportions)
+  // B. HUMANOID IN HOODIE WITH HEADPHONES — Refined Angular Anatomy
   // ==========================================
   const personGroup = new THREE.Group();
-  personGroup.scale.set(1.42, 1.55, 1.35);
 
-  // 1. Broad, Natural Torso in Hoodie (slight forward lean)
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.44, 0.68, 12, 16), hoodieMat);
-  torso.position.set(0, 1.12, 0.74);
-  torso.scale.set(1.32, 1.0, 0.75);
-  torso.rotation.x = 0.08;
-  personGroup.add(torso);
+  // Slight forward lean (natural seated posture, leaning into desk)
+  personGroup.rotation.x = 0.06;
 
-  // 2. Anatomical Rounded Shoulders (Trapezius)
-  const shoulderBeam = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.88, 8, 14), hoodieMat);
-  shoulderBeam.position.set(0, 1.48, 0.69);
-  shoulderBeam.rotation.z = Math.PI / 2;
-  shoulderBeam.scale.set(1.0, 1.12, 0.88);
-  personGroup.add(shoulderBeam);
+  // --- CORE TORSO: Three overlapping slabs that taper from hips to shoulders ---
+  // Hip / lower abdomen (narrowest)
+  box(0.62, 0.32, 0.34, hoodieMat, new THREE.Vector3(0, 0.96, 0.72), personGroup);
+  // Mid torso / ribcage (medium width, overlaps lower block)
+  box(0.72, 0.36, 0.34, hoodieMat, new THREE.Vector3(0, 1.24, 0.7), personGroup);
+  // Upper chest (widest, overlaps mid block seamlessly)
+  box(0.82, 0.32, 0.32, hoodieMat, new THREE.Vector3(0, 1.50, 0.68), personGroup);
 
-  // Left and Right Deltoid volumes
+  // --- SHOULDER BEAM (Trapezoidal silhouette — slightly wider than upper chest) ---
+  box(0.96, 0.12, 0.28, hoodieMat, new THREE.Vector3(0, 1.66, 0.67), personGroup);
+
+  // --- DELTOID ROUNDNESS (Softens the hard shoulder corners) ---
   for (const side of [-1, 1]) {
-    const delt = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), hoodieMat);
-    delt.position.set(side * 0.54, 1.44, 0.69);
-    delt.scale.set(1.0, 1.15, 0.9);
+    const delt = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 10), hoodieMat);
+    delt.position.set(side * 0.48, 1.66, 0.67);
+    delt.scale.set(1.0, 0.85, 0.8);
     personGroup.add(delt);
   }
 
-  // 3. Draped Fabric Hood on Upper Back / Neck (matching image-2.png)
-  const hoodDrape = new THREE.Mesh(
-    new THREE.TorusGeometry(0.28, 0.08, 12, 24),
+  // --- HOODIE HOOD (Collapsed fabric drape on upper back, behind neck) ---
+  box(0.42, 0.16, 0.10, hoodFoldMat, new THREE.Vector3(0, 1.62, 0.54), personGroup);
+  const hoodRoll = new THREE.Mesh(
+    new THREE.TorusGeometry(0.15, 0.04, 8, 14),
     hoodFoldMat
   );
-  hoodDrape.position.set(0, 1.52, 0.64);
-  hoodDrape.rotation.x = Math.PI / 2.6;
-  hoodDrape.scale.set(1.15, 0.9, 1.1);
-  personGroup.add(hoodDrape);
+  hoodRoll.position.set(0, 1.72, 0.54);
+  hoodRoll.rotation.x = Math.PI / 2.5;
+  hoodRoll.scale.set(1.3, 0.7, 1.0);
+  personGroup.add(hoodRoll);
 
-  const hoodCrease = new THREE.Mesh(
-    new THREE.TorusGeometry(0.22, 0.05, 8, 18),
-    hoodieMat
-  );
-  hoodCrease.position.set(0, 1.42, 0.66);
-  hoodCrease.rotation.x = Math.PI / 2.8;
-  personGroup.add(hoodCrease);
+  // --- NECK (Slim, natural-proportion cylinder) ---
+  cyl(0.08, 0.09, 0.16, 14, hairMat, new THREE.Vector3(0, 1.80, 0.66), personGroup);
 
-  // 4. Humanoid Head & Natural Hair Silhouette
-  cyl(0.12, 0.14, 0.22, 16, hairMat, new THREE.Vector3(0, 1.68, 0.64), personGroup, new THREE.Euler(0.08, 0, 0));
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 24, 20), hairMat);
-  head.position.set(0, 1.88, 0.62);
-  head.scale.set(0.96, 1.08, 1.02);
+  // --- HEAD (Vertically elongated, human cranium proportions) ---
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.20, 20, 18), hairMat);
+  head.position.set(0, 1.98, 0.65);
+  head.scale.set(0.88, 1.10, 0.92);
   personGroup.add(head);
 
-  const hairVolume = new THREE.Mesh(new THREE.SphereGeometry(0.275, 20, 18), hairMat);
-  hairVolume.position.set(0, 1.92, 0.61);
-  hairVolume.scale.set(1.02, 1.06, 1.08);
-  personGroup.add(hairVolume);
+  // --- HAIR CAP (Subtle volume on top) ---
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.21, 18, 16), hairMat);
+  hair.position.set(0, 2.02, 0.64);
+  hair.scale.set(0.90, 1.02, 0.96);
+  personGroup.add(hair);
 
-  // 5. Studio Over-Ear Monitor Headphones (matching image-2.png)
+  // --- STUDIO OVER-EAR HEADPHONES ---
   const headband = new THREE.Mesh(
-    new THREE.TorusGeometry(0.29, 0.035, 10, 24, Math.PI),
+    new THREE.TorusGeometry(0.22, 0.025, 10, 22, Math.PI),
     headphoneMat
   );
-  headband.position.set(0, 1.92, 0.61);
+  headband.position.set(0, 2.0, 0.64);
   headband.rotation.x = Math.PI;
   personGroup.add(headband);
 
   for (const side of [-1, 1]) {
     const earcupGroup = new THREE.Group();
-    earcupGroup.position.set(side * 0.29, 1.86, 0.61);
-    earcupGroup.rotation.y = side * 0.1;
+    earcupGroup.position.set(side * 0.22, 1.96, 0.64);
+    earcupGroup.rotation.y = side * 0.06;
 
-    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.07, 18), headphoneMat);
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 14), headphoneMat);
     cup.rotation.z = Math.PI / 2;
     earcupGroup.add(cup);
 
-    const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.015, 16), silverMetalMat);
-    badge.position.set(side * 0.038, 0, 0);
+    const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.01, 12), silverMetalMat);
+    badge.position.set(side * 0.028, 0, 0);
     badge.rotation.z = Math.PI / 2;
     earcupGroup.add(badge);
 
-    box(0.015, 0.06, 0.03, silverMetalMat, new THREE.Vector3(0, 0.09, 0), earcupGroup);
     personGroup.add(earcupGroup);
   }
 
-  // 6. Arms Extending Forward to Desk
+  // --- ARMS (Connected flush to deltoids, angled forward to desk) ---
   for (const side of [-1, 1]) {
-    const upperArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.62, 6, 12), hoodieMat);
-    upperArm.position.set(side * 0.58, 1.25, 0.72);
-    upperArm.rotation.z = side * -0.25;
-    upperArm.rotation.x = 0.45;
+    // Upper arm (flush against shoulder, hanging down and slightly forward)
+    const upperArm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.48, 0.15), hoodieMat);
+    upperArm.position.set(side * 0.52, 1.34, 0.74);
+    upperArm.rotation.x = 0.15;
+    upperArm.rotation.z = side * -0.08;
     personGroup.add(upperArm);
 
-    const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.68, 6, 12), hoodieMat);
-    forearm.position.set(side * 0.46, 0.95, 1.18);
-    forearm.rotation.x = 1.05;
-    forearm.rotation.y = side * 0.16;
+    // Forearm (extending forward to keyboard / desk surface)
+    const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.48, 6, 10), hoodieMat);
+    forearm.position.set(side * 0.48, 1.06, 1.12);
+    forearm.rotation.x = 1.0;
+    forearm.rotation.y = side * 0.10;
     personGroup.add(forearm);
   }
+
+  // Overall person scale — slightly taller, narrower than before
+  personGroup.scale.set(1.2, 1.45, 1.25);
 
   silhouetteGroup.add(personGroup);
   scene.add(silhouetteGroup);
