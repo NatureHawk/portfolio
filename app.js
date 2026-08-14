@@ -96,30 +96,30 @@ function cyl(rTop, rBot, h, segs, material, pos, parent = scene, rot = null) {
   return mesh;
 }
 
-// --- SEAMLESS HIGH-RESOLUTION CELESTIAL WINDOW BACKDROP GENERATOR ---
+// --- SEAMLESS HIGH-RESOLUTION CELESTIAL SKY GENERATOR (TRUE INFINITE PARALLAX) ---
 function createCosmicBackdropTexture() {
   const c = document.createElement('canvas');
   c.width = 2048;
   c.height = 1024;
   const ctx = c.getContext('2d');
 
-  // Deep midnight to purple-indigo atmospheric gradient
+  // Deep midnight cosmic atmospheric gradient
   const bgGrad = ctx.createLinearGradient(0, 0, 0, 1024);
-  bgGrad.addColorStop(0, '#010309');
-  bgGrad.addColorStop(0.35, '#040718');
-  bgGrad.addColorStop(0.7, '#070a24');
-  bgGrad.addColorStop(1, '#0e0c2a');
+  bgGrad.addColorStop(0, '#010308');
+  bgGrad.addColorStop(0.3, '#030616');
+  bgGrad.addColorStop(0.65, '#070b22');
+  bgGrad.addColorStop(1, '#0c0b26');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, 2048, 1024);
 
-  // Layered Cosmic Nebula Clouds (matching reference image top-right)
+  // Layered Cosmic Nebula Clouds (calibrated for top-right window view at z = -36)
   const nebulae = [
-    { x: 1450, y: 320, rx: 550, ry: 260, color: 'rgba(128, 28, 96, 0.42)', rot: -0.2 },
-    { x: 1520, y: 280, rx: 420, ry: 190, color: 'rgba(68, 24, 120, 0.55)', rot: -0.15 },
-    { x: 1380, y: 390, rx: 380, ry: 160, color: 'rgba(28, 62, 130, 0.45)', rot: -0.28 },
-    { x: 1650, y: 220, rx: 280, ry: 130, color: 'rgba(195, 70, 140, 0.35)', rot: -0.1 },
-    { x: 600, y: 380, rx: 480, ry: 220, color: 'rgba(30, 40, 95, 0.28)', rot: 0.15 },
-    { x: 450, y: 280, rx: 320, ry: 140, color: 'rgba(45, 20, 75, 0.22)', rot: 0.1 }
+    { x: 1350, y: 380, rx: 500, ry: 240, color: 'rgba(145, 32, 110, 0.45)', rot: -0.22 },
+    { x: 1420, y: 340, rx: 380, ry: 180, color: 'rgba(75, 28, 135, 0.58)', rot: -0.15 },
+    { x: 1280, y: 440, rx: 350, ry: 150, color: 'rgba(32, 70, 145, 0.48)', rot: -0.28 },
+    { x: 1520, y: 280, rx: 260, ry: 120, color: 'rgba(210, 80, 155, 0.38)', rot: -0.1 },
+    { x: 650, y: 420, rx: 420, ry: 200, color: 'rgba(35, 45, 110, 0.32)', rot: 0.15 },
+    { x: 500, y: 320, rx: 280, ry: 130, color: 'rgba(55, 25, 90, 0.25)', rot: 0.1 }
   ];
 
   nebulae.forEach(n => {
@@ -129,7 +129,7 @@ function createCosmicBackdropTexture() {
     ctx.scale(n.rx, n.ry);
     const rad = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
     rad.addColorStop(0, n.color);
-    rad.addColorStop(0.5, n.color.replace(/[\d\.]+\)$/, '0.15)'));
+    rad.addColorStop(0.5, n.color.replace(/[\d\.]+\)$/, '0.18)'));
     rad.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = rad;
     ctx.beginPath();
@@ -138,12 +138,12 @@ function createCosmicBackdropTexture() {
     ctx.restore();
   });
 
-  // Dense Multi-Temperature Starfield (1200+ stars)
-  const starColors = ['#ffffff', '#e2edff', '#ffe9c7', '#c2f0ff', '#ffd4f2', '#a8c8ff'];
-  for (let i = 0; i < 1300; i++) {
+  // Dense Multi-Temperature Starfield (1500+ stars)
+  const starColors = ['#ffffff', '#e6f0ff', '#fff0d0', '#c8f4ff', '#ffdaf4', '#b0d0ff'];
+  for (let i = 0; i < 1500; i++) {
     const sx = Math.random() * 2048;
     const sy = Math.random() * 950;
-    const sRad = Math.random() * 1.6 + 0.3;
+    const sRad = Math.random() * 1.6 + 0.35;
     const alpha = Math.random() * 0.85 + 0.15;
     const color = starColors[Math.floor(Math.random() * starColors.length)];
 
@@ -153,11 +153,10 @@ function createCosmicBackdropTexture() {
     ctx.arc(sx, sy, sRad, 0, Math.PI * 2);
     ctx.fill();
 
-    // Subtle soft glow on larger anchor stars
-    if (sRad > 1.4 && Math.random() > 0.6) {
-      ctx.globalAlpha = 0.25;
+    if (sRad > 1.4 && Math.random() > 0.55) {
+      ctx.globalAlpha = 0.28;
       ctx.beginPath();
-      ctx.arc(sx, sy, sRad * 3.2, 0, Math.PI * 2);
+      ctx.arc(sx, sy, sRad * 3.5, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -165,10 +164,10 @@ function createCosmicBackdropTexture() {
 
   // Prominent Anchor Stars with Optical Diffraction Spikes
   const anchorStars = [
-    { x: 1320, y: 190, r: 2.8 },
-    { x: 1580, y: 340, r: 2.4 },
-    { x: 860, y: 220, r: 2.2 },
-    { x: 380, y: 160, r: 2.5 }
+    { x: 1250, y: 240, r: 3.0 },
+    { x: 1480, y: 390, r: 2.6 },
+    { x: 880, y: 260, r: 2.4 },
+    { x: 420, y: 200, r: 2.7 }
   ];
   anchorStars.forEach(st => {
     ctx.fillStyle = '#ffffff';
@@ -176,32 +175,32 @@ function createCosmicBackdropTexture() {
     ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(st.x - 14, st.y); ctx.lineTo(st.x + 14, st.y);
-    ctx.moveTo(st.x, st.y - 14); ctx.lineTo(st.x, st.y + 14);
+    ctx.moveTo(st.x - 16, st.y); ctx.lineTo(st.x + 16, st.y);
+    ctx.moveTo(st.x, st.y - 16); ctx.lineTo(st.x, st.y + 16);
     ctx.stroke();
   });
 
-  // Photorealistic Shaded Moon with Surface Craters (matching top-left window)
-  const mx = 610;
-  const my = 220;
-  const mr = 72;
+  // Photorealistic Shaded Moon (calibrated for top-left window view at z = -36)
+  const mx = 700;
+  const my = 290;
+  const mr = 85;
 
   // Atmospheric lunar glow halo
-  const moonGlow = ctx.createRadialGradient(mx, my, mr * 0.8, mx, my, mr * 3.2);
-  moonGlow.addColorStop(0, 'rgba(205, 225, 255, 0.38)');
-  moonGlow.addColorStop(0.4, 'rgba(140, 180, 255, 0.18)');
-  moonGlow.addColorStop(0.8, 'rgba(90, 130, 240, 0.05)');
+  const moonGlow = ctx.createRadialGradient(mx, my, mr * 0.75, mx, my, mr * 3.4);
+  moonGlow.addColorStop(0, 'rgba(215, 235, 255, 0.42)');
+  moonGlow.addColorStop(0.35, 'rgba(150, 190, 255, 0.22)');
+  moonGlow.addColorStop(0.75, 'rgba(95, 140, 250, 0.06)');
   moonGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = moonGlow;
   ctx.beginPath();
-  ctx.arc(mx, my, mr * 3.2, 0, Math.PI * 2);
+  ctx.arc(mx, my, mr * 3.4, 0, Math.PI * 2);
   ctx.fill();
 
   // Moon spherical base disc with limb darkening
-  const moonDisc = ctx.createRadialGradient(mx - 18, my - 16, mr * 0.1, mx, my, mr);
+  const moonDisc = ctx.createRadialGradient(mx - 22, my - 20, mr * 0.1, mx, my, mr);
   moonDisc.addColorStop(0, '#ffffff');
   moonDisc.addColorStop(0.55, '#ede6d8');
   moonDisc.addColorStop(0.85, '#cfc6b4');
@@ -211,12 +210,12 @@ function createCosmicBackdropTexture() {
   ctx.arc(mx, my, mr, 0, Math.PI * 2);
   ctx.fill();
 
-  // Detailed lunar maria & surface crater shading
-  ctx.fillStyle = 'rgba(110, 105, 96, 0.35)';
+  // Detailed lunar maria & surface craters
+  ctx.fillStyle = 'rgba(110, 105, 96, 0.38)';
   const craters = [
-    { x: -18, y: -12, r: 18 }, { x: 12, y: -22, r: 14 }, { x: 22, y: 8, r: 22 },
-    { x: -8, y: 18, r: 16 }, { x: -28, y: 8, r: 12 }, { x: 8, y: 28, r: 10 },
-    { x: 30, y: -8, r: 11 }, { x: -12, y: -32, r: 8 }, { x: 15, y: -5, r: 7 }
+    { x: -22, y: -14, r: 21 }, { x: 15, y: -26, r: 16 }, { x: 26, y: 10, r: 25 },
+    { x: -10, y: 22, r: 19 }, { x: -32, y: 10, r: 14 }, { x: 10, y: 32, r: 12 },
+    { x: 34, y: -10, r: 13 }, { x: -14, y: -36, r: 9 }, { x: 18, y: -6, r: 8 }
   ];
   craters.forEach(cr => {
     ctx.beginPath();
@@ -544,9 +543,9 @@ function makeMonitor(spec, isCentre = false) {
   led.position.set(0.8, -0.7, 0.37);
   group.add(led);
 
-  // Directional CRT Phosphor Glow forward onto the desk
-  const light = new THREE.PointLight(spec.color, 1.45, 6.2, 1.8);
-  light.position.set(0, 0.1, 1.15);
+  // Wide, Soft Directional CRT Phosphor Glow forward onto the desk & keyboard (radius: 12.0, decay: 1.1)
+  const light = new THREE.PointLight(spec.color, 2.2, 14.0, 1.1);
+  light.position.set(0, 0.1, 1.05);
   group.add(light);
 
   // Clickable Raycast Hitbox
@@ -566,21 +565,34 @@ function makeMonitor(spec, isCentre = false) {
 let steamParticles = null;
 
 function addRoomAndProps() {
-  // Materials with authentic surface responses
+  // Rich, warm wooden desk material with realistic light reflection
   const wood = new THREE.MeshStandardMaterial({
-    color: 0x42281a,
-    roughness: 0.78,
+    color: 0x482a1b,
+    roughness: 0.72,
     metalness: 0.04
   });
-  const wall = new THREE.MeshStandardMaterial({ color: 0x0c0f20, roughness: 0.95 });
-  const floor = new THREE.MeshStandardMaterial({ color: 0x100e16, roughness: 0.95 });
-  const metal = new THREE.MeshStandardMaterial({ color: 0x363a44, roughness: 0.35, metalness: 0.85 });
-  const plasticDark = new THREE.MeshStandardMaterial({ color: 0x1b1c20, roughness: 0.6 });
-  const retroBeige = new THREE.MeshStandardMaterial({ color: 0xd4cbba, roughness: 0.68 });
+  // Moody wall material with texture response to ambient light
+  const wall = new THREE.MeshStandardMaterial({ color: 0x121526, roughness: 0.92 });
+  const floor = new THREE.MeshStandardMaterial({ color: 0x16131c, roughness: 0.92 });
+  const metal = new THREE.MeshStandardMaterial({ color: 0x3e4450, roughness: 0.35, metalness: 0.85 });
+  const plasticDark = new THREE.MeshStandardMaterial({ color: 0x1e2026, roughness: 0.6 });
+  const retroBeige = new THREE.MeshStandardMaterial({ color: 0xd6cdbc, roughness: 0.68 });
 
-  // Main Room Architecture
-  box(24, 11, 0.2, wall, new THREE.Vector3(0, 4.2, -2.1));
-  box(24, 0.2, 15, floor, new THREE.Vector3(0, -0.9, 1.8));
+  // --- ROOM ARCHITECTURE WITH PHYSICAL WINDOW CUTOUT OPENING ---
+  // Window Opening dimensions: x from -4.6 to +4.6, y from 1.35 to 7.35, at z = -1.75
+  // Floor and Ceiling
+  box(28, 0.2, 22, floor, new THREE.Vector3(0, -0.9, 5.0));
+  box(28, 0.2, 22, wall, new THREE.Vector3(0, 9.8, 5.0));
+
+  // Back Wall Panels (Framing the window opening cleanly so sky never bleeds onto walls)
+  box(7.6, 11.0, 0.2, wall, new THREE.Vector3(-8.4, 4.45, -1.75)); // Left wall
+  box(7.6, 11.0, 0.2, wall, new THREE.Vector3(8.4, 4.45, -1.75));  // Right wall
+  box(9.4, 2.7, 0.2, wall, new THREE.Vector3(0, 8.7, -1.75));      // Top wall above window
+  box(9.4, 2.3, 0.2, wall, new THREE.Vector3(0, 0.2, -1.75));      // Bottom wall below window sill
+
+  // Left & Right Room Side Walls
+  box(0.2, 11.0, 20.0, wall, new THREE.Vector3(-12.2, 4.45, 6.0));
+  box(0.2, 11.0, 20.0, wall, new THREE.Vector3(12.2, 4.45, 6.0));
 
   // Desk Surface & Solid Wooden Support Structure
   box(11.5, 0.38, 2.35, wood, new THREE.Vector3(0, 0.74, 0.95));
@@ -589,25 +601,25 @@ function addRoomAndProps() {
     box(0.28, 2.2, 0.36, wood, new THREE.Vector3(x, -0.38, 0.95));
   }
 
-  // --- SEAMLESS HIGH-RESOLUTION CELESTIAL WINDOW (ZERO SPHERE CLIPPING) ---
+  // --- TRUE PARALLAX DEEP CELESTIAL SKY (Placed far in the background at z = -36.0) ---
   const cosmicTex = createCosmicBackdropTexture();
   const skyPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(13.2, 8.2),
-    new THREE.MeshBasicMaterial({ map: cosmicTex })
+    new THREE.PlaneGeometry(54.0, 32.0),
+    new THREE.MeshBasicMaterial({ map: cosmicTex, depthWrite: false })
   );
-  skyPlane.position.set(0, 4.3, -1.95);
+  skyPlane.position.set(0, 10.5, -36.0);
   scene.add(skyPlane);
 
   // Architectural Dark Window Frame with 6 Panes
-  const windowFrameMat = new THREE.MeshStandardMaterial({ color: 0x12141c, roughness: 0.45, metalness: 0.2 });
+  const windowFrameMat = new THREE.MeshStandardMaterial({ color: 0x141722, roughness: 0.45, metalness: 0.2 });
   // Outer perimeter frame
-  box(9.4, 0.22, 0.24, windowFrameMat, new THREE.Vector3(0, 7.3, -1.72));
-  box(9.4, 0.26, 0.34, windowFrameMat, new THREE.Vector3(0, 1.35, -1.7)); // Window Sill
-  box(0.22, 6.2, 0.24, windowFrameMat, new THREE.Vector3(-4.6, 4.3, -1.72));
-  box(0.22, 6.2, 0.24, windowFrameMat, new THREE.Vector3(4.6, 4.3, -1.72));
+  box(9.4, 0.22, 0.24, windowFrameMat, new THREE.Vector3(0, 7.35, -1.72));
+  box(9.4, 0.28, 0.38, windowFrameMat, new THREE.Vector3(0, 1.35, -1.68)); // Window Sill
+  box(0.22, 6.2, 0.24, windowFrameMat, new THREE.Vector3(-4.6, 4.35, -1.72));
+  box(0.22, 6.2, 0.24, windowFrameMat, new THREE.Vector3(4.6, 4.35, -1.72));
   // Central Vertical & Horizontal Mullions
-  box(0.18, 6.0, 0.22, windowFrameMat, new THREE.Vector3(0, 4.3, -1.72));
-  box(9.2, 0.16, 0.22, windowFrameMat, new THREE.Vector3(0, 4.3, -1.72));
+  box(0.18, 6.0, 0.22, windowFrameMat, new THREE.Vector3(0, 4.35, -1.72));
+  box(9.2, 0.16, 0.22, windowFrameMat, new THREE.Vector3(0, 4.35, -1.72));
 
   // --- WALL ART & POSTERS (matching reference image) ---
   // Left Wall: "ENDLESS CURIOSITY" Framed Grid Poster
@@ -617,7 +629,6 @@ function addRoomAndProps() {
   const pctx = posterCanvas.getContext('2d');
   pctx.fillStyle = '#060a14';
   pctx.fillRect(0, 0, 384, 512);
-  // Grid lines
   pctx.strokeStyle = 'rgba(70, 130, 220, 0.28)';
   pctx.lineWidth = 1;
   for (let x = 20; x < 384; x += 24) {
@@ -626,7 +637,6 @@ function addRoomAndProps() {
   for (let y = 20; y < 512; y += 24) {
     pctx.beginPath(); pctx.moveTo(0, y); pctx.lineTo(384, y); pctx.stroke();
   }
-  // Planet sphere
   pctx.fillStyle = '#1e3860';
   pctx.beginPath(); pctx.arc(192, 210, 95, 0, Math.PI * 2); pctx.fill();
   pctx.fillStyle = '#ffffff';
@@ -641,7 +651,7 @@ function addRoomAndProps() {
     new THREE.PlaneGeometry(1.5, 2.0),
     new THREE.MeshStandardMaterial({ map: posterTex, roughness: 0.8 })
   );
-  posterMesh.position.set(-6.8, 5.2, -1.9);
+  posterMesh.position.set(-6.8, 5.2, -1.64);
   scene.add(posterMesh);
 
   // Left Wall: Yellow Sticky Note ("QUESTION EVERYTHING <3")
@@ -659,7 +669,7 @@ function addRoomAndProps() {
     new THREE.PlaneGeometry(0.55, 0.55),
     new THREE.MeshBasicMaterial({ map: sticky1Tex })
   );
-  sticky1Mesh.position.set(-6.8, 3.4, -1.88);
+  sticky1Mesh.position.set(-6.8, 3.4, -1.63);
   sticky1Mesh.rotation.z = -0.06;
   scene.add(sticky1Mesh);
 
@@ -681,7 +691,7 @@ function addRoomAndProps() {
     new THREE.PlaneGeometry(1.1, 1.45),
     new THREE.MeshStandardMaterial({ map: kraftTex, roughness: 0.9 })
   );
-  kraftMesh.position.set(6.8, 5.6, -1.9);
+  kraftMesh.position.set(6.8, 5.6, -1.64);
   scene.add(kraftMesh);
 
   // --- STUDIO SPEAKERS & DESKTOP PLANTS ---
@@ -742,10 +752,9 @@ function addRoomAndProps() {
   const mugGroup = new THREE.Group();
   mugGroup.position.set(-1.88, 0.95, 1.45);
   const mugMat = new THREE.MeshStandardMaterial({ color: 0x1e2632, roughness: 0.45 });
-  cyl(0.38, 0.38, 0.03, 20, wood, new THREE.Vector3(0, 0, 0), mugGroup); // Coaster
-  cyl(0.24, 0.22, 0.44, 20, mugMat, new THREE.Vector3(0, 0.24, 0), mugGroup); // Body
-  cyl(0.21, 0.21, 0.02, 16, new THREE.MeshStandardMaterial({ color: 0x22150e, roughness: 0.3 }), new THREE.Vector3(0, 0.41, 0), mugGroup); // Liquid
-  // Handle
+  cyl(0.38, 0.38, 0.03, 20, wood, new THREE.Vector3(0, 0, 0), mugGroup);
+  cyl(0.24, 0.22, 0.44, 20, mugMat, new THREE.Vector3(0, 0.24, 0), mugGroup);
+  cyl(0.21, 0.21, 0.02, 16, new THREE.MeshStandardMaterial({ color: 0x22150e, roughness: 0.3 }), new THREE.Vector3(0, 0.41, 0), mugGroup);
   const handle = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.035, 8, 16, Math.PI), mugMat);
   handle.position.set(-0.24, 0.24, 0);
   handle.rotation.y = Math.PI / 2;
@@ -784,7 +793,6 @@ function addRoomAndProps() {
   const walkmanMat = new THREE.MeshStandardMaterial({ color: 0x3a404c, metalness: 0.6, roughness: 0.35 });
   box(0.92, 0.14, 0.66, walkmanMat, new THREE.Vector3(3.25, 0.99, 1.45));
   box(0.42, 0.04, 0.36, new THREE.MeshBasicMaterial({ color: 0x10141c }), new THREE.Vector3(3.25, 1.07, 1.45));
-  // Cassettes on right
   for (let c = 0; c < 2; c++) {
     const cassMat = new THREE.MeshStandardMaterial({ color: c === 0 ? 0x2e2824 : 0x1c2430, roughness: 0.6 });
     box(0.94, 0.08, 0.64, cassMat, new THREE.Vector3(4.25, 0.96 + c * 0.09, 1.45), scene, true, true);
@@ -799,7 +807,6 @@ function addRoomAndProps() {
   for (let y = 30; y < 384; y += 22) {
     nbCtx.beginPath(); nbCtx.moveTo(20, y); nbCtx.lineTo(492, y); nbCtx.stroke();
   }
-  // Handwritten notes and diagrams
   nbCtx.fillStyle = '#3a2f26'; nbCtx.font = '700 16px monospace';
   nbCtx.fillText('// late night thoughts', 36, 55);
   nbCtx.font = '14px monospace';
@@ -841,7 +848,7 @@ function addRoomAndProps() {
   noteMesh.rotation.x = -Math.PI / 2;
   scene.add(noteMesh);
 
-  // --- ARTICULATED DESK LAMP (Right Side) ---
+  // --- ARTICULATED DESK LAMP (Right Side with Wide Warm Light Spill) ---
   const lampGroup = new THREE.Group();
   lampGroup.position.set(4.25, 0.94, 0.9);
   cyl(0.38, 0.42, 0.1, 20, plasticDark, new THREE.Vector3(0, 0.05, 0), lampGroup);
@@ -857,24 +864,29 @@ function addRoomAndProps() {
   shade.rotation.x = 0.2;
   lampGroup.add(shade);
 
-  // Visible glowing lamp bulb
+  // Glowing lamp bulb
   const bulb = new THREE.Mesh(
     new THREE.SphereGeometry(0.12, 12, 12),
-    new THREE.MeshBasicMaterial({ color: 0xffcc77 })
+    new THREE.MeshBasicMaterial({ color: 0xffe099 })
   );
   bulb.position.set(-0.72, 1.85, 0.1);
   lampGroup.add(bulb);
   scene.add(lampGroup);
 
-  // Primary warm directional lamp illumination
-  const deskLampLight = new THREE.PointLight(0xffaa5e, 2.8, 9.5, 1.6);
+  // Primary warm directional lamp illumination (wide radius 22.0, soft natural decay 1.05)
+  const deskLampLight = new THREE.PointLight(0xffaa5e, 3.2, 22.0, 1.05);
   deskLampLight.position.set(3.45, 2.7, 1.0);
   scene.add(deskLampLight);
 
-  // Secondary soft warm fill for right desk
-  const warmFill = new THREE.PointLight(0xff9944, 1.2, 7.0, 2.0);
-  warmFill.position.set(2.0, 1.8, 1.4);
-  scene.add(warmFill);
+  // Wide warm ambient lamp spill illuminating right wall, desk surface, and speaker
+  const warmSpill = new THREE.PointLight(0xff9440, 1.8, 26.0, 1.0);
+  warmSpill.position.set(2.5, 2.2, 1.5);
+  scene.add(warmSpill);
+
+  // Soft wooden desk bounce fill
+  const deskBounce = new THREE.PointLight(0xffaa66, 1.2, 14.0, 1.0);
+  deskBounce.position.set(2.8, 0.9, 1.6);
+  scene.add(deskBounce);
 }
 
 // --- RE-ENGINEERED ANATOMICAL CHARACTER & ERGONOMIC CHAIR ---
@@ -975,7 +987,7 @@ function addPerson() {
   scene.add(silhouetteGroup);
 }
 
-// --- INITIALIZE SCENE & PHYSICAL LIGHTING ---
+// --- INITIALIZE SCENE & MULTI-LAYERED PHYSICAL LIGHTING ---
 addRoomAndProps();
 makeMonitor(monitorSpecs[0]);
 makeMonitor(monitorSpecs[1], true);
@@ -983,12 +995,22 @@ makeMonitor(monitorSpecs[2]);
 addPerson();
 
 // Physically-Motivated Night Atmosphere Lighting
-// 1. Ambient Hemisphere: Deep Indigo Sky + Warm Earth Ground
-scene.add(new THREE.HemisphereLight(0x223566, 0x301e12, 1.6));
+// 1. Ambient Hemisphere: Deep Indigo Sky + Rich Warm Earth Ground
+scene.add(new THREE.HemisphereLight(0x2c4078, 0x442c18, 1.85));
 
-// 2. Window Moonlight Fill: Cool blue directional illumination
-const moonFill = new THREE.PointLight(0x7ca0ff, 1.5, 14, 1.8);
-moonFill.position.set(-2.2, 6.4, -0.8);
+// 2. Global Soft Ambient Fill: Ensures room textures, walls, and floor have natural high-ISO visibility
+scene.add(new THREE.AmbientLight(0x182038, 1.2));
+
+// 3. Window Moonlight Directional Light (angled from top-left through window)
+const moonDir = new THREE.DirectionalLight(0x82a6ff, 1.6);
+moonDir.position.set(-4.0, 8.0, -2.0);
+moonDir.target.position.set(0, 1.5, 1.0);
+scene.add(moonDir);
+scene.add(moonDir.target);
+
+// 4. Secondary Window Area Moonlight Fill
+const moonFill = new THREE.PointLight(0x7ca0ff, 1.8, 18, 1.1);
+moonFill.position.set(-2.2, 6.4, -0.6);
 scene.add(moonFill);
 
 // --- PROCEDURAL WEB AUDIO ATMOSPHERE & SFX ENGINE ---
