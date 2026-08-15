@@ -4,7 +4,7 @@ A real-time 3D portfolio room you look at over the shoulder of the person sittin
 
 Built with vanilla JavaScript and [Three.js](https://threejs.org/) — **no framework, no bundler, no build step.** Every texture in the scene is drawn procedurally to a `<canvas>` at load time, and every sound is synthesised with the Web Audio API. There are exactly two binary assets in the whole project, both `.glb` models.
 
-> **Status:** the room is finished; the three worlds behind the monitors are placeholder pages. See [Roadmap](#roadmap).
+> **Status:** the room is finished. `01 CODE` is built — a full editorial product page of its own. `02 DESIGN` and `03 EXPLORE` are still placeholders. See [Roadmap](#roadmap).
 
 ---
 
@@ -64,19 +64,30 @@ This is also why the repo won't deploy to GitHub Pages as-is: `node_modules/` is
 ## How it's put together
 
 ```
-index.html      HTML structure, HUD overlays, world-view pages, the import map
+index.html      The room — structure, HUD overlays, the import map
 styles.css      Design tokens, CRT/world-view transitions, reduced-motion support
-app.js          Everything else — the entire scene graph, in one file
+app.js          Everything else in the room — the entire scene graph, in one file
+
+code.html       01 CODE — a separate page with its own visual system
+code.css        …and its own stylesheet. Shares nothing with the room, on purpose
+code.js         Scroll choreography and card rendering
+projects.js     All CODE content. Reorder the array, the showcase reorders
+
 assets/
   cat.glb              Sleeping cat, decimated 50k → 3k tris in headless Blender
   fairy_lights.glb     Cable + bulb string
   fairy_lights.blend   Source file, kept for re-export
   lofi-room.png        Reference mood image (not loaded at runtime)
+  projects/            Drop project previews here — see the README inside
 ```
 
 `app.js` is ~2,700 lines and reads top to bottom in build order: geometry helpers → procedural texture generators → CRT monitor builder → room and props → character → clutter → lighting → audio engine → interaction state machine → render loop.
 
 One file is a deliberate choice, not neglect. There's no bundler, so every split would become another `<script>` or another network round-trip, and the scene is authored as one continuous pass of set dressing where almost everything is positioned relative to something else.
+
+### Two design systems, kept apart
+
+The room is cinematic, dark, 3D. `01 CODE` is white, tactile, editorial — a datasheet for the things Priyanshu has built. That contrast is the point, so CODE gets its own document, its own stylesheet, and its own typefaces rather than sharing tokens with the room. Clicking `01 CODE` pushes the camera into the monitor, floods the viewport with that screen's colour, and hands off to `code.html`; **Back** returns to the room via `history.back()` so the browser can restore the already-built 3D scene from the bfcache instead of booting Three.js cold. → [HANDOFF §15](HANDOFF.md#15-the-code-world-codehtml)
 
 ---
 
@@ -120,7 +131,7 @@ Both models are auto-fit and grounded at load by measuring their own bounding bo
 
 ## Roadmap
 
-**Phase 1 — World content.** `01 CODE`: project catalog, live demo embeds, GitHub integration. `02 DESIGN`: gallery, case studies, design system docs. `03 EXPLORE`: creative-coding demos, generative art, essays.
+**Phase 1 — World content.** `01 CODE` is built; what's left is the case study behind each project's `EXPLORE →` (the cards render those as inert controls tagged `SOON` until the routes exist). `02 DESIGN`: gallery, case studies, design system docs. `03 EXPLORE`: creative-coding demos, generative art, essays.
 
 **Phase 2 — Mobile and touch.** There is currently *no* touch input handling. Tapping a monitor works via the raycast click handler, but hover-to-preview has no touch equivalent, so the entire preview interaction is desktop-only.
 

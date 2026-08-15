@@ -104,6 +104,20 @@ body.is-hovering .intro { transform: translateY(-50%) translateX(-12px); }
 .back-button { margin-top: 20px; border: 1px solid var(--world); padding: 11px 15px; background: transparent; color: var(--world); cursor: pointer; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
 .back-button:hover, .back-button:focus-visible { color: var(--ink); background: var(--world); }
 
+/* Hand-off flood for worlds that navigate to a page of their own: the monitor's
+   own colour swallows the viewport so the document swap lands behind it. */
+.screen-flood {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--flood, var(--code));
+  opacity: 0;
+  transform: scale(1.06);
+  pointer-events: none;
+  transition: opacity .42s cubic-bezier(.7, 0, .84, 0), transform .42s ease-out;
+}
+.screen-flood.active { opacity: 1; transform: scale(1); }
+
 @media (max-width: 700px) {
   .intro { top: auto; bottom: 103px; left: 22px; transform: none; }
   h1 { font-size: clamp(3.2rem, 14vw, 5rem); }

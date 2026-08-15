@@ -2423,6 +2423,14 @@ function setHover(target) {
   }
 }
 
+// Worlds that have grown into real pages of their own. The rest still open as
+// the in-page overlay. Entering a routed world plays the same camera push into
+// the monitor, then floods the viewport with that screen's colour and hands off
+// to the document — so the cut lands while the screen already fills the frame
+// and reads as travelling INTO it rather than as a page navigation.
+const WORLD_ROUTES = { code: 'code.html' };
+const screenFlood = document.querySelector('.screen-flood');
+
 function openWorld(id) {
   if (entering) return;
   const target = monitorTargets.find((hit) => hit.userData.spec.id === id);
@@ -2441,6 +2449,24 @@ function openWorld(id) {
   cameraGoal.copy(target.userData.spec.enterCamera);
   lookGoal.set(target.userData.spec.x, 2.05, -0.15);
 
+  const route = WORLD_ROUTES[id];
+  if (route) {
+    if (prefersReducedMotion) {
+      window.location.href = route;
+      return;
+    }
+    // Flood starts before the glide finishes so the two overlap instead of
+    // queueing; the camera is still moving underneath as the screen whites out.
+    window.setTimeout(() => {
+      if (screenFlood) {
+        screenFlood.style.setProperty('--flood', `var(--${id})`);
+        screenFlood.classList.add('active');
+      }
+    }, 620);
+    window.setTimeout(() => { window.location.href = route; }, 1060);
+    return;
+  }
+
   window.setTimeout(() => {
     const page = pages.find((item) => item.dataset.worldView === id);
     if (!page) return;
@@ -2448,6 +2474,23 @@ function openWorld(id) {
     requestAnimationFrame(() => page.classList.add('visible'));
   }, prefersReducedMotion ? 0 : 820);
 }
+
+// Coming back from a routed world, the browser may restore this document from
+// the back/forward cache with every variable exactly as we left it — mid-entry,
+// flood still up, camera parked inside a monitor. Reset to the room.
+window.addEventListener('pageshow', (event) => {
+  if (!event.persisted) return;
+  entering = false;
+  body.classList.remove('is-entering');
+  if (screenFlood) screenFlood.classList.remove('active');
+  setHover(null);
+  suppressHoverUntil = performance.now() + 300;
+  camera.position.copy(homeCamera);
+  lookNow.copy(homeLook);
+  cameraGoal.copy(homeCamera);
+  lookGoal.copy(homeLook);
+  silhouetteFadeAmount = 0;
+});
 
 function returnRoom() {
   const page = pages.find((item) => !item.hidden);

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Things Priyanshu Ghosh has built — systems, products, software, experiments." />
+    <meta name="theme-color" content="#EFEEE9" />
+    <title>Priyanshu Ghosh — Code</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="code.css" />
+  </head>
+  <body>
+    <!-- Arrival wipe: the tail of the flood we left index.html under. -->
+    <div class="boot" aria-hidden="true"><span class="boot-scan"></span></div>
+
+    <!-- ── CHASSIS ─────────────────────────────────────────────────────── -->
+    <header class="chassis-top">
+      <a class="back" href="index.html" data-back>
+        <span class="back-glyph" aria-hidden="true">←</span>
+        <span class="back-label">Back to the room</span>
+      </a>
+      <p class="ident">
+        <span class="ident-name">PRIYANSHU GHOSH</span>
+        <span class="ident-sheet">SHEET 01 — CODE</span>
+      </p>
+      <nav class="chassis-nav" aria-label="Sections">
+        <a href="#work">WORK</a>
+        <a href="#info">INFO</a>
+        <a href="https://github.com/NatureHawk" target="_blank" rel="noopener">GITHUB ↗</a>
+      </nav>
+    </header>
+
+    <main>
+      <!-- ── ACT I ─────────────────────────────────────────────────────── -->
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-band">
+          <p class="hero-meta">
+            <span>PRIYANSHU GHOSH</span>
+            <span>CSE / ENGINEERING</span>
+            <span>2026</span>
+          </p>
+          <ul class="hero-tags">
+            <li>SYSTEMS</li>
+            <li>PRODUCTS</li>
+            <li>SOFTWARE</li>
+            <li>EXPERIMENTS</li>
+          </ul>
+        </div>
+        <h1 class="hero-title" id="hero-title">
+          <span class="line">THINGS</span>
+          <span class="line">I'VE</span>
+          <span class="line">BUILT<em>.</em></span>
+        </h1>
+        <p class="hero-scroll"><span class="hero-scroll-rule"></span>SCROLL</p>
+      </section>
+
+      <!-- ── BUILD PHILOSOPHY ──────────────────────────────────────────── -->
+      <section class="philosophy" id="info" aria-labelledby="philosophy-title">
+        <div class="sheet-rule"><span>02</span><b></b><span>BUILD PHILOSOPHY</span></div>
+        <h2 class="philosophy-title" id="philosophy-title">
+          I build things<br />I wish existed<em>.</em>
+        </h2>
+        <ol class="principles" id="principles"></ol>
+      </section>
+
+      <!-- ── WHAT I WORK WITH ──────────────────────────────────────────── -->
+      <section class="spec" aria-labelledby="spec-title">
+        <div class="sheet-rule"><span>03</span><b></b><span>SPECIFICATION</span></div>
+        <h2 class="spec-title" id="spec-title">What I work with<em>.</em></h2>
+        <div class="spec-table" id="spec-table"></div>
+      </section>
+
+      <!-- ── ACT II ────────────────────────────────────────────────────── -->
+      <section class="showcase" id="work" aria-labelledby="showcase-title">
+        <div class="showcase-intro">
+          <div class="sheet-rule"><span>04</span><b></b><span>INDEX OF WORK</span></div>
+          <h2 class="showcase-title" id="showcase-title">Things I've built<em>.</em></h2>
+          <p class="showcase-note">Five of them. Keep scrolling — they come to you.</p>
+        </div>
+
+        <div class="rail" id="rail">
+          <div class="rail-stage">
+            <div class="track" id="track"></div>
+            <div class="gauge" aria-hidden="true">
+              <div class="gauge-scale" id="gauge-scale"></div>
+              <div class="gauge-carriage" id="gauge-carriage"></div>
+            </div>
+            <p class="gauge-readout" aria-live="polite">
+              <span id="readout-index">01</span><i>/</i><span id="readout-total">05</span>
+              <b id="readout-name">AMBASSU</b>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── FOOTER ────────────────────────────────────────────────────── -->
+      <footer class="colophon">
+        <p class="colophon-mark">STILL<br />BUILDING<em>.</em></p>
+        <div class="colophon-links">
+          <a href="https://github.com/NatureHawk" target="_blank" rel="noopener">GITHUB ↗</a>
+          <a href="mailto:mailtoaayushj@gmail.com">EMAIL ↗</a>
+          <a href="index.html" data-back>THE ROOM ↗</a>
+        </div>
+        <p class="colophon-meta">
+          <span>PRIYANSHU GHOSH</span><span>2026</span><span>REV. A</span>
+        </p>
+      </footer>
+    </main>
+
+    <!-- ── STATUS STRIP ────────────────────────────────────────────────── -->
+    <div class="chassis-bottom" aria-hidden="true">
+      <span class="status-lamp"></span>
+      <span class="status-section" id="status-section">HERO</span>
+      <span class="status-bar"><i id="status-fill"></i></span>
+      <span class="status-pct" id="status-pct">00%</span>
+    </div>
+
+    <script type="module" src="code.js"></script>
+  </body>
+</html>

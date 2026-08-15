@@ -25,6 +25,10 @@ A high-performance, real-time 3D portfolio experience built with Vanilla JavaScr
 │   ├── fairy_lights.blend      # Source Blender file (kept for re-export if the asset needs changes)
 │   ├── lofi-room.png           # Reference mood image (not loaded at runtime)
 │   └── sleeping-fat-cat-figurine.../  # Source OBJ/STL/zip cat.glb came from — GITIGNORED, local only
+├── code.html                   # The CODE world — a real page, not an overlay (see §15)
+├── code.css                    # CODE's own visual system. Shares nothing with styles.css
+├── code.js                     # CODE's scroll choreography + card rendering
+├── projects.js                 # Project/discipline/principle data for CODE
 ├── package.json                # Dependencies (three ^0.185.1) + `npm start`
 ├── package-lock.json
 ├── .gitignore
@@ -260,7 +264,7 @@ The CSS fade-out for `.world-view` is `.48s`, but the JS was hiding the page (`h
 ## 13. Future Roadmap
 
 ### Phase 1: World Content
-- `01 CODE`: project catalog, live demo embeds, GitHub integration.
+- `01 CODE`: **built** — see §15. Still to come: the per-project case studies behind each `EXPLORE →`.
 - `02 DESIGN`: portfolio gallery, case studies, design system docs.
 - `03 EXPLORE`: creative-coding demos, generative art, essays.
 
@@ -284,3 +288,51 @@ npx -y serve -l 5173 .
 Open `http://localhost:5173`. Requires a browser with import-map support (all current evergreen browsers).
 
 **Only needed if regenerating the GLB assets in §3**: Blender 4.x, run headlessly via `blender.exe --background <file.blend> --python <script.py>` — no GUI needed, see §3 for the exact operations used.
+
+---
+
+## 15. The CODE World (`code.html`)
+
+### Why it's a page, not an overlay
+
+`02 DESIGN` and `03 EXPLORE` are still `.world-view` overlays inside `index.html`. `01 CODE` is a real document. It deliberately shares **nothing** with the room's visual system — no tokens, no stylesheet, no fonts — because the whole point is the contrast: the room is cinematic and dark, CODE is a white, tactile, editorial product. Two design systems in one stylesheet would have leaked into each other within a week.
+
+The routing lives in one map in `app.js`:
+
+```js
+const WORLD_ROUTES = { code: 'code.html' };
+```
+
+Add a world's page there and `openWorld()` routes to it instead of revealing the overlay. Nothing else changes.
+
+### The handoff, in both directions
+
+**Going in**: the camera push into the monitor runs exactly as before, then `.screen-flood` (a fixed div tinted with that monitor's accent) fades up at 620ms and the navigation fires at 1060ms. The flood *overlaps* the tail of the camera glide rather than queueing after it, so the cut lands while the screen already fills the frame — it reads as travelling into the screen, not as a page load.
+
+**Coming back**: `[data-back]` links call `history.back()` when `document.referrer` says we came from the room, so the browser can restore `index.html` **from the bfcache** — the whole Three.js scene comes back already built instead of paying a cold boot. A direct visit or an external referrer falls through to a normal `href` navigation.
+
+That bfcache restore is also a trap: the document comes back with every module variable exactly as it was left — mid-entry, `entering === true`, flood still up, camera parked inside a monitor. The `pageshow` handler in `app.js` (guarded on `event.persisted`) resets the camera, the fade, and the hover state. **If you add new mutable state to the entry flow, reset it there too**, or the room will come back frozen.
+
+### Structure
+
+| File | Holds |
+|---|---|
+| `code.html` | Markup and the chassis (top bar, bottom status strip) |
+| `code.css` | The entire visual system. Three physical primitives — `.plate` (raised), `.well` (recessed), `.lamp` (indicator) — compose everything else |
+| `code.js` | One rAF loop for anything scroll- or cursor-driven; `IntersectionObserver` for one-shot reveals |
+| `projects.js` | All content. Reorder the array and the showcase reorders — index badges, rail ticks, carriage readout and scroll length all derive from it |
+
+### The pinned showcase
+
+Vertical scroll drives horizontal movement. `.rail` is tall, `.rail-stage` is `position: sticky`, and the track's `translateX` is interpolated between "card 1 centred" and "card N centred".
+
+Two things are easy to get wrong here:
+
+- **Card positions are measured, never assumed.** Card widths are `clamp()`ed, so the only reliable answer to "where is card *i*" is the laid-out DOM (`offsetLeft + offsetWidth / 2`). `measure()` re-runs on resize *and* on `document.fonts.ready`, because the display face changes card widths when it swaps in.
+- **The rail's height is derived** (`100 + (n - 1) * DWELL_VH` vh), so adding a sixth project lengthens the scroll instead of making all six fly past faster.
+
+The track position is lightly eased (0.18) rather than mapped straight from scroll — wheel input arrives in ~100px steps, and direct mapping makes those steps visible. Cursor tilt is scaled by each card's centre-proximity, so off-centre cards stay still instead of all five reacting at once.
+
+### Colour rule (worth keeping)
+
+Each project's accent is full strength **only on surfaces** — the identity band across the card's top edge, the status lamp. Anything carrying *text* uses `--accent-ink`, a `color-mix()` derivation darkened 55% toward black. Without it, SwipeSort's yellow is invisible the moment it's a foreground colour, and white-on-yellow index badges are unreadable. Any new accent gets this for free; don't hand-pick a second hex.
