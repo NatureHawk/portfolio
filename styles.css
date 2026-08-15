@@ -92,7 +92,7 @@ h1 { max-width: 450px; margin: 0 0 16px; font: 400 clamp(3.6rem, 6.5vw, 7.8rem)/
 body.is-hovering .intro, body.is-hovering .cursor-note { opacity: 0; }
 body.is-hovering .intro { transform: translateY(-50%) translateX(-12px); }
 
-.world-view { position: fixed; inset: 0; z-index: 5; display: grid; align-content: center; justify-items: center; gap: 14px; color: var(--world); background: var(--world-bg); text-align: center; opacity: 0; transform: scale(.93); transition: opacity .34s ease, transform .65s cubic-bezier(.22,.78,.18,1); }
+.world-view { position: fixed; inset: 0; z-index: 5; display: grid; align-content: center; justify-items: center; gap: 14px; color: var(--world); background: var(--world-bg); text-align: center; opacity: 0; transform: scale(.95); transition: opacity .48s cubic-bezier(.16, 1, 0.3, 1), transform .55s cubic-bezier(.16, 1, 0.3, 1); }
 .world-view[hidden] { display: none; }
 .world-view.visible { opacity: 1; transform: scale(1); }
 .world-view p { margin: 0; font-size: 10px; letter-spacing: .13em; text-transform: uppercase; }

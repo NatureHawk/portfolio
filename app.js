@@ -51,26 +51,26 @@ const monitorSpecs = [
     x: -2.85,
     ry: 0.18,
     color: 0x8eff56,
-    hoverCamera: new THREE.Vector3(-2.4, 3.42, 9.35),
-    hoverLook: new THREE.Vector3(-2.85, 2.2, -0.2),
-    enterCamera: new THREE.Vector3(-2.85, 2.15, 2.75)
+    hoverCamera: new THREE.Vector3(-2.20, 2.35, 6.40),
+    hoverLook: new THREE.Vector3(-2.85, 2.05, -0.15),
+    enterCamera: new THREE.Vector3(-2.85, 2.05, 1.25)
   },
   {
     id: 'design',
     x: 0,
     color: 0x5aa2ff,
-    hoverCamera: new THREE.Vector3(2.75, 3.75, 8.85),
-    hoverLook: new THREE.Vector3(0, 2.28, -0.35),
-    enterCamera: new THREE.Vector3(0, 2.25, 2.65)
+    hoverCamera: new THREE.Vector3(1.10, 2.40, 6.00),
+    hoverLook: new THREE.Vector3(0, 2.05, -0.15),
+    enterCamera: new THREE.Vector3(0, 2.05, 1.25)
   },
   {
     id: 'explore',
     x: 2.85,
     ry: -0.18,
     color: 0xff9158,
-    hoverCamera: new THREE.Vector3(2.4, 3.42, 9.35),
-    hoverLook: new THREE.Vector3(2.85, 2.2, -0.2),
-    enterCamera: new THREE.Vector3(2.85, 2.15, 2.75)
+    hoverCamera: new THREE.Vector3(2.20, 2.35, 6.40),
+    hoverLook: new THREE.Vector3(2.85, 2.05, -0.15),
+    enterCamera: new THREE.Vector3(2.85, 2.05, 1.25)
   }
 ];
 
@@ -1688,7 +1688,9 @@ if (audioToggleBtn) {
   audioToggleBtn.addEventListener('click', () => audio.toggle());
 }
 
-// --- INTERACTION & CAMERA GLIDE ---
+// --- INTERACTION & CAMERA GLIDE WITH STICKY HYSTERESIS ---
+let hoverDebounceTimer = null;
+
 function setHover(target) {
   if (entering || hovered === target) return;
   const previous = hovered;
@@ -1704,10 +1706,10 @@ function setHover(target) {
   );
 
   monitorTargets.forEach((hit) => {
-    hit.userData.light.intensity = hit === target ? 2.6 : 1.35;
+    hit.userData.light.intensity = hit === target ? 2.8 : 1.35;
     hit.userData.group.scale.setScalar(
       hit === target
-        ? hit.userData.spec.id === 'design' ? 1.26 : 1.08
+        ? hit.userData.spec.id === 'design' ? 1.24 : 1.06
         : hit.userData.spec.id === 'design' ? 1.18 : 1
     );
   });
@@ -1726,20 +1728,25 @@ function openWorld(id) {
   const target = monitorTargets.find((hit) => hit.userData.spec.id === id);
   if (!target) return;
 
+  if (hoverDebounceTimer) {
+    clearTimeout(hoverDebounceTimer);
+    hoverDebounceTimer = null;
+  }
+
   entering = true;
   setHover(target);
   body.classList.add('is-entering');
   audio.playEnter(id);
 
   cameraGoal.copy(target.userData.spec.enterCamera);
-  lookGoal.set(target.userData.spec.x, 2.15, -0.2);
+  lookGoal.set(target.userData.spec.x, 2.05, -0.15);
 
   window.setTimeout(() => {
     const page = pages.find((item) => item.dataset.worldView === id);
     if (!page) return;
     page.hidden = false;
     requestAnimationFrame(() => page.classList.add('visible'));
-  }, prefersReducedMotion ? 0 : 320);
+  }, prefersReducedMotion ? 0 : 500);
 }
 
 function returnRoom() {
@@ -1754,34 +1761,90 @@ function returnRoom() {
     entering = false;
     body.classList.remove('is-entering');
     setHover(null);
-  }, prefersReducedMotion ? 0 : 200);
+  }, prefersReducedMotion ? 0 : 250);
 }
 
-// Event Listeners
+// Event Listeners with Sticky Workspace Hysteresis
 canvas.addEventListener('pointermove', (event) => {
+  if (entering) return;
   const rect = canvas.getBoundingClientRect();
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
   raycaster.setFromCamera(pointer, camera);
   const hit = raycaster.intersectObjects(monitorTargets, false)[0]?.object || null;
-  setHover(hit);
+
+  if (hit) {
+    // Direct hit on any monitor: immediately switch/focus
+    if (hoverDebounceTimer) {
+      clearTimeout(hoverDebounceTimer);
+      hoverDebounceTimer = null;
+    }
+    setHover(hit);
+    return;
+  }
+
+  // If already previewing a monitor:
+  if (hovered) {
+    // Check if cursor is still in the active workspace area:
+    // User can move mouse freely across the zoomed preview without losing focus!
+    const inDeskZone = pointer.y > -0.68 && pointer.y < 0.72 && Math.abs(pointer.x) < 0.90;
+    
+    if (inDeskZone) {
+      if (hoverDebounceTimer) {
+        clearTimeout(hoverDebounceTimer);
+        hoverDebounceTimer = null;
+      }
+      return; // Keep active preview locked in place!
+    }
+
+    // Cursor deliberately moved away (down to floor, up to ceiling, or out of window):
+    if (!hoverDebounceTimer) {
+      hoverDebounceTimer = setTimeout(() => {
+        setHover(null);
+        hoverDebounceTimer = null;
+      }, 120);
+    }
+  } else {
+    setHover(null);
+  }
 });
 
-canvas.addEventListener('pointerleave', () => setHover(null));
+canvas.addEventListener('pointerleave', () => {
+  if (entering) return;
+  if (hoverDebounceTimer) clearTimeout(hoverDebounceTimer);
+  hoverDebounceTimer = setTimeout(() => {
+    setHover(null);
+    hoverDebounceTimer = null;
+  }, 160);
+});
 
 canvas.addEventListener('click', () => {
   if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume();
-  if (hovered) openWorld(hovered.userData.spec.id);
+  if (hovered) {
+    openWorld(hovered.userData.spec.id);
+  } else {
+    raycaster.setFromCamera(pointer, camera);
+    const hit = raycaster.intersectObjects(monitorTargets, false)[0]?.object || null;
+    if (hit) openWorld(hit.userData.spec.id);
+  }
 });
 
 buttons.forEach((button) => {
-  button.addEventListener('mouseenter', () =>
-    setHover(monitorTargets.find((hit) => hit.userData.spec.id === button.dataset.world))
-  );
-  button.addEventListener('focus', () =>
-    setHover(monitorTargets.find((hit) => hit.userData.spec.id === button.dataset.world))
-  );
+  button.addEventListener('mouseenter', () => {
+    if (hoverDebounceTimer) {
+      clearTimeout(hoverDebounceTimer);
+      hoverDebounceTimer = null;
+    }
+    setHover(monitorTargets.find((hit) => hit.userData.spec.id === button.dataset.world));
+  });
+  button.addEventListener('focus', () => {
+    if (hoverDebounceTimer) {
+      clearTimeout(hoverDebounceTimer);
+      hoverDebounceTimer = null;
+    }
+    setHover(monitorTargets.find((hit) => hit.userData.spec.id === button.dataset.world));
+  });
   button.addEventListener('click', () => {
     if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume();
     openWorld(button.dataset.world);
@@ -1814,7 +1877,7 @@ function animate() {
   const delta = Math.min((now - lastTime) / 1000, 0.05);
   lastTime = now;
   const time = now * 0.001;
-  const dampFactor = prefersReducedMotion ? 25 : 7.2;
+  const dampFactor = prefersReducedMotion ? 25 : entering ? 4.8 : hovered ? 6.2 : 5.8;
 
   // Frame-rate independent smooth damping for buttery camera gliding
   camera.position.x = THREE.MathUtils.damp(camera.position.x, cameraGoal.x, dampFactor, delta);
