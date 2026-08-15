@@ -1,4 +1,5 @@
-import * as THREE from './node_modules/three/build/three.module.js';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const canvas = document.querySelector('#scene');
 const body = document.body;
@@ -44,6 +45,7 @@ const lookNow = homeLook.clone();
 let hovered = null;
 let entering = false;
 let silhouetteGroup = null;
+let silhouetteFadeAmount = 0;
 
 const monitorSpecs = [
   {
@@ -96,6 +98,52 @@ function cyl(rTop, rBot, h, segs, material, pos, parent = scene, rot = null) {
   mesh.receiveShadow = true;
   parent.add(mesh);
   return mesh;
+}
+
+// The character + chair are ~30 overlapping capsules/spheres/boxes, which makes
+// every "fade the figure out" approach fail in its own way:
+//
+//  - Tweening each material's .opacity turns the figure into an x-ray of its
+//    own component parts, because every overlapping layer blends through.
+//  - A Fresnel rim term (the previous fix) fails more subtly: every primitive
+//    contributes its OWN rim, so the interior fills with the outlines of
+//    individual body parts — the "bubbles" of arm/shoulder/skull ellipsoids.
+//
+// Overlapping primitives only read as one shape if each pixel is blended
+// exactly once, in exactly one colour. Two halves to that:
+//
+//  1. A depth pre-pass (built at init, below) writes the nearest silhouette
+//     surface's depth with colour writes off; the real materials then draw with
+//     depthWrite off, so every fragment behind that nearest surface fails the
+//     depth test and never blends. One blend per pixel — no stacking, so no
+//     seams where parts intersect and no darker patches where they overlap.
+//  2. This shader patch collapses each part's shaded colour toward a single
+//     flat silhouette tint and a single shared alpha as the fade rises, so the
+//     one surviving layer is uniform across the whole figure. The only edge
+//     left anywhere is the outer boundary against the background.
+const SILHOUETTE_TINT = 'vec3(0.016, 0.020, 0.030)';
+const SILHOUETTE_MIN_ALPHA = 0.72; // translucent, deliberately not see-through
+
+function applySilhouetteFade(material) {
+  // Depth is owned entirely by the pre-pass proxies; if these wrote depth too
+  // they would occlude each other and reintroduce per-primitive edges.
+  material.transparent = true;
+  material.opacity = 1;
+  material.depthWrite = false;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uFadeAmount = { value: 0 };
+    material.userData.shader = shader;
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\nuniform float uFadeAmount;`)
+      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
+float fade = clamp(uFadeAmount, 0.0, 1.0);
+// Colour flattens well ahead of the alpha so no part's own material (skin,
+// oak, sole white) is ever recognisable through the translucent figure.
+float tint = smoothstep(0.0, 0.30, fade);
+gl_FragColor.rgb = mix(gl_FragColor.rgb, ${SILHOUETTE_TINT}, tint);
+gl_FragColor.a *= mix(1.0, ${SILHOUETTE_MIN_ALPHA.toFixed(2)}, fade);`);
+  };
+  material.needsUpdate = true;
 }
 
 // --- SEAMLESS HIGH-RESOLUTION CELESTIAL SKY GENERATOR (TRUE INFINITE PARALLAX) ---
@@ -474,12 +522,84 @@ function createScreenTexture(id, color) {
     bctx.beginPath(); bctx.moveTo(0, y); bctx.lineTo(1024, y); bctx.stroke();
   }
 
+  // Tube vignette: darken toward the corners so the flat canvas reads as the
+  // curved, rounded glass of a CRT rather than a sharp-edged flat panel
+  const vignette = bctx.createRadialGradient(512, 384, 260, 512, 384, 640);
+  vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vignette.addColorStop(0.75, 'rgba(0, 0, 0, 0.12)');
+  vignette.addColorStop(1, 'rgba(0, 0, 0, 0.62)');
+  bctx.fillStyle = vignette;
+  bctx.fillRect(0, 0, 1024, 768);
+
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.minFilter = THREE.LinearFilter;
   tex.magFilter = THREE.LinearFilter;
   tex.generateMipmaps = false;
   return tex;
+}
+
+// --- SHARED CRT GLASS-EFFECT RESOURCES (highlight streak, phosphor glow, scan bar) ---
+function createGlassHighlightTexture() {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 220, 256);
+  grad.addColorStop(0, 'rgba(255,255,255,0.5)');
+  grad.addColorStop(0.16, 'rgba(255,255,255,0.16)');
+  grad.addColorStop(0.3, 'rgba(255,255,255,0)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(c);
+}
+function createSoftGlowTexture() {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255,255,255,0.85)');
+  grad.addColorStop(0.5, 'rgba(255,255,255,0.28)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+// A tiny repeating tile of dark scanlines — tiled densely down the screen and
+// scrolled very slowly in the render loop, for a subtle rolling-scanline feel
+// instead of a brightness flicker (which read as the whole screen "breathing")
+function createScanlineOverlayTexture() {
+  const c = document.createElement('canvas');
+  c.width = 4; c.height = 6;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, 4, 6);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+  ctx.fillRect(0, 0, 4, 2);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1, 140);
+  tex.magFilter = THREE.NearestFilter;
+  return tex;
+}
+const glassHighlightTex = createGlassHighlightTexture();
+const softGlowTex = createSoftGlowTexture();
+const scanlineOverlayTex = createScanlineOverlayTexture();
+
+// Displaces a subdivided plane into a shallow convex bulge — the "tube glass"
+// curvature that reads as CRT rather than a flat LCD panel
+function createCurvedScreenGeometry(w, h, bulge = 0.05) {
+  const segs = 20;
+  const geo = new THREE.PlaneGeometry(w, h, segs, segs);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const nx = pos.getX(i) / (w / 2);
+    const ny = pos.getY(i) / (h / 2);
+    const d = Math.min(1, Math.sqrt(nx * nx + ny * ny));
+    pos.setZ(i, bulge * (1 - d * d));
+  }
+  geo.computeVertexNormals();
+  return geo;
 }
 
 // --- REALISTIC RETRO SONY CRT MONITOR BUILDER ---
@@ -508,7 +628,7 @@ function makeMonitor(spec, isCentre = false) {
 
   const screenTex = createScreenTexture(spec.id, spec.color);
   const screenMat = new THREE.MeshBasicMaterial({ map: screenTex });
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.88, 1.34), screenMat);
+  const screen = new THREE.Mesh(createCurvedScreenGeometry(1.88, 1.34, 0.05), screenMat);
 
   // Main Chiseled Monitor Cabinet
   box(2.28, 1.76, 0.62, shellMat, new THREE.Vector3(0, 0, 0), group);
@@ -516,6 +636,41 @@ function makeMonitor(spec, isCentre = false) {
   box(2.06, 1.52, 0.08, darkBezelMat, new THREE.Vector3(0, 0.04, 0.31), group);
   screen.position.set(0, 0.075, 0.36);
   group.add(screen);
+
+  // Glass highlight streak — a soft diagonal sheen across the curved tube
+  const glassHighlight = new THREE.Mesh(
+    createCurvedScreenGeometry(1.86, 1.32, 0.05),
+    new THREE.MeshBasicMaterial({
+      map: glassHighlightTex, transparent: true, opacity: 0.5,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    })
+  );
+  glassHighlight.position.set(0, 0.075, 0.361);
+  group.add(glassHighlight);
+
+  // Phosphor bloom — the glow bleeding past the tube edge that makes a CRT
+  // read as an emissive light source rather than a printed flat panel.
+  // Fixed opacity (no per-frame pulsing) so the screen doesn't visibly
+  // "breathe" — the scanline roll below carries the sense of motion instead.
+  const phosphorGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: softGlowTex, color: spec.color, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.5
+  }));
+  phosphorGlow.scale.set(2.3, 1.7, 1);
+  phosphorGlow.position.set(0, 0.075, 0.42);
+  group.add(phosphorGlow);
+
+  // Rolling scanlines — dense, dim, and scrolled very slowly in the render
+  // loop, for a subtle CRT-refresh feel without a distracting sweep or flicker
+  const scanlineOverlay = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.86, 1.32),
+    new THREE.MeshBasicMaterial({
+      map: scanlineOverlayTex, transparent: true,
+      blending: THREE.NormalBlending, depthWrite: false, opacity: 0.5
+    })
+  );
+  scanlineOverlay.position.set(0, 0.075, 0.363);
+  group.add(scanlineOverlay);
 
   // Sony Model Badge Header
   box(0.55, 0.04, 0.02, darkBezelMat, new THREE.Vector3(0, 0.82, 0.32), group);
@@ -540,11 +695,14 @@ function makeMonitor(spec, isCentre = false) {
   box(0.96, 0.14, 0.74, shellMat, new THREE.Vector3(0, -1.02, -0.04), group);
   box(1.52, 0.09, 0.84, darkBezelMat, new THREE.Vector3(0, -1.11, -0.15), group);
 
-  // Power Status LED
+  // Power Status LED — gently pulses in the render loop (a small, localized
+  // dynamic touch rather than the whole screen breathing)
   const ledMat = new THREE.MeshBasicMaterial({ color: spec.color });
   const led = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 12), ledMat);
   led.position.set(0.8, -0.7, 0.37);
   group.add(led);
+  const ledBaseHsl = { h: 0, s: 0, l: 0 };
+  ledMat.color.getHSL(ledBaseHsl);
 
   // Directional CRT Phosphor Glow forward onto the desk (boosted for visibility)
   const light = new THREE.PointLight(spec.color, 2.2, 11.0, 1.3);
@@ -557,7 +715,7 @@ function makeMonitor(spec, isCentre = false) {
     new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
   );
   hit.position.set(0, 0.075, 0.39);
-  hit.userData = { spec, group, light, screen };
+  hit.userData = { spec, group, light, screen, phosphorGlow, scanlineOverlay, led, ledMat, ledBaseHsl };
   group.add(hit);
   monitorTargets.push(hit);
 
@@ -687,11 +845,17 @@ function addRoomAndProps() {
   sticky1Tex.colorSpace = THREE.SRGBColorSpace;
   const sticky1Mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(0.55, 0.55),
-    new THREE.MeshBasicMaterial({ map: sticky1Tex })
+    new THREE.MeshStandardMaterial({ map: sticky1Tex, roughness: 0.9 })
   );
   sticky1Mesh.position.set(-6.8, 3.4, -1.63);
   sticky1Mesh.rotation.z = -0.06;
   scene.add(sticky1Mesh);
+
+  // Small, tightly-scoped fill light so the poster + sticky note read by eye
+  // without washing out the rest of the (still-dark, still-night) room
+  const leftWallFill = new THREE.PointLight(0x8fa8e0, 0.9, 4.2, 1.8);
+  leftWallFill.position.set(-6.5, 4.3, -1.0);
+  scene.add(leftWallFill);
 
   // Right Wall: Kraft Paper Note ("IDEAS ARE CHEAP. EXPLORATION IS EVERYTHING.")
   const kraftCanvas = document.createElement('canvas');
@@ -894,27 +1058,54 @@ function addRoomAndProps() {
   cyl(0.03, 0.03, 1.4, 12, metal, new THREE.Vector3(-0.15, 0.72, 0), lampGroup, new THREE.Euler(0, 0, -0.22));
   cyl(0.03, 0.03, 1.1, 12, metal, new THREE.Vector3(-0.45, 1.7, 0), lampGroup, new THREE.Euler(0, 0, 0.45));
 
+  // Lamp head: a single group anchored at the arm's actual tip, so the shade
+  // and bulb are defined relative to EACH OTHER (bulb nested inside the shade's
+  // local space) instead of as two independently-guessed world coordinates
+  // that merely happened to sit near each other. The arm's second segment is
+  // centered at (-0.45, 1.7, 0) with length 1.1 and Euler(0,0,0.45); its free
+  // (non-base) end — where the head attaches — is that center offset by half
+  // its length along its own rotated axis, i.e. (-0.689, 2.195, 0).
+  const lampHeadGroup = new THREE.Group();
+  lampHeadGroup.position.set(-0.689, 2.195, 0.1);
+  // Negative Z rotation tips the head down-and-LEFT (toward the desk centre).
+  // A positive angle here mirrors it to down-and-right, aiming the cone off the
+  // right edge of the desk at nothing — the head hangs from the joint either
+  // way, so this sign is the only thing that decides which way it points.
+  lampHeadGroup.rotation.z = -0.75;
+  lampGroup.add(lampHeadGroup);
+
+  const shadeRadius = 0.38;
+  const shadeHeight = 0.52;
   const shade = new THREE.Mesh(
-    new THREE.ConeGeometry(0.38, 0.52, 20, 1, true),
+    new THREE.ConeGeometry(shadeRadius, shadeHeight, 20, 1, true),
     new THREE.MeshStandardMaterial({ color: 0x1b1d24, roughness: 0.5, metalness: 0.4, side: THREE.DoubleSide })
   );
-  shade.position.set(-0.72, 2.05, 0.1);
-  shade.rotation.z = Math.PI / 3;
-  shade.rotation.x = 0.2;
-  lampGroup.add(shade);
+  // A cone's apex sits at local +height/2 by default; shifting it down by
+  // half its height puts that apex exactly at the group origin (the arm
+  // joint), so the shade hangs from the joint with its wide opening below.
+  shade.position.set(0, -shadeHeight / 2, 0);
+  lampHeadGroup.add(shade);
 
-  // Glowing lamp bulb
+  // Bulb nested inside the shade's hollow interior, near the open end so it
+  // reads as the actual light source rather than a separate floating sphere.
+  // At 58% of the way down from the apex the cone's interior radius is ~0.22,
+  // comfortably larger than the bulb's 0.12 radius.
   const bulb = new THREE.Mesh(
     new THREE.SphereGeometry(0.12, 12, 12),
     new THREE.MeshBasicMaterial({ color: 0xffe099 })
   );
-  bulb.position.set(-0.72, 1.85, 0.1);
-  lampGroup.add(bulb);
+  bulb.position.set(0, -shadeHeight * 0.58, 0);
+  lampHeadGroup.add(bulb);
   scene.add(lampGroup);
 
-  // Primary warm directional lamp illumination (boosted for scene warmth)
+  // Primary warm directional lamp illumination — positioned to exactly match
+  // the bulb's true world position (computed, not guessed) so the light
+  // genuinely appears to originate from inside the shade
+  lampGroup.updateMatrixWorld(true);
+  const bulbWorldPos = new THREE.Vector3();
+  bulb.getWorldPosition(bulbWorldPos);
   const deskLampLight = new THREE.PointLight(0xffa045, 3.8, 16.0, 1.2);
-  deskLampLight.position.set(3.45, 2.7, 1.0);
+  deskLampLight.position.copy(bulbWorldPos);
   scene.add(deskLampLight);
 }
 
@@ -1435,12 +1626,498 @@ function addPerson() {
   scene.add(silhouetteGroup);
 }
 
+// --- LO-FI NIGHT DESK CLUTTER (cat, fairy lights, vinyl stack, rug, wall clock) ---
+function addLofiClutter() {
+  // ==========================================
+  // SLEEPING CAT FIGURINE (real modeled/textured asset, floor level, front of desk)
+  // ==========================================
+  const catLoader = new GLTFLoader();
+  catLoader.load(
+    './assets/cat.glb',
+    (gltf) => {
+      const catModel = gltf.scene;
+
+      // The source asset's raw scale/pivot are unknown ahead of time, so measure
+      // its bounding box and fit it to a deliberately chosen footprint sized
+      // against this scene's own desk/chair/character proportions, then ground
+      // it and center it at the desired floor spot regardless of its internal origin.
+      const targetLength = 0.6;
+      const rawBox = new THREE.Box3().setFromObject(catModel);
+      const rawSize = rawBox.getSize(new THREE.Vector3());
+      const scale = targetLength / Math.max(rawSize.x, rawSize.y, rawSize.z);
+      catModel.scale.setScalar(scale);
+      catModel.rotation.y = 0.6;
+
+      const box = new THREE.Box3().setFromObject(catModel);
+      const center = box.getCenter(new THREE.Vector3());
+      const desiredX = -2.05, desiredZ = 3.2, desiredGroundY = 0.03;
+      catModel.position.set(
+        desiredX - center.x,
+        desiredGroundY - box.min.y,
+        desiredZ - center.z
+      );
+
+      catModel.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          // The source asset ships with no fur texture (plain white material),
+          // so give it a warm ginger tint directly rather than leaving it to
+          // pick up whatever tint the scene's cool moonlit ambient happens to cast
+          if (child.material) {
+            child.material.color.set(0xc9793d);
+            child.material.roughness = 0.82;
+            child.material.metalness = 0.0;
+          }
+        }
+      });
+
+      scene.add(catModel);
+
+      // Small warm fill so the figurine's own coloring reads instead of
+      // washing out to the room's cool moonlit ambient
+      const catFill = new THREE.PointLight(0xffc98a, 0.8, 2.4, 1.8);
+      catFill.position.set(desiredX + 0.3, 0.5, desiredZ + 0.3);
+      scene.add(catFill);
+    },
+    undefined,
+    (error) => console.error('Cat model failed to load:', error)
+  );
+
+  // ==========================================
+  // WARM FAIRY LIGHTS DRAPED ACROSS THE WINDOW HEADER
+  // Real modeled cable + cylindrical-bulb string asset (cable/socket/metal/
+  // emissive-glass materials), scaled to the window span, with a few small
+  // short-range lights layered on top so the bulbs cast a little natural glow.
+  // ==========================================
+  const spanStart = -4.3;
+  const spanEnd = 4.3;
+  // Anchor points sit high enough that they're out of frame in the default,
+  // unzoomed view — only the sagging middle swoop is meant to read there —
+  // while the deeper sag still brings the bulbs back down to their old height.
+  const fairyTopY = 6.2;
+  const sagAt = (t) => Math.sin(t * Math.PI) * 1.15;
+
+  // Two wide, soft lights (not five tight ones): a real strung light casts a
+  // broad, diffuse pool rather than a tiny hotspot, so this trades a small
+  // count for a much larger falloff radius and a gentler decay — which also
+  // halves the light count for the GPU's sake.
+  for (const t of [0.28, 0.72]) {
+    const x = spanStart + (spanEnd - spanStart) * t;
+    const y = fairyTopY - sagAt(t);
+    const twinkle = new THREE.PointLight(0xffcf9a, 0.7, 6.5, 1.3);
+    twinkle.position.set(x, y, -1.4);
+    scene.add(twinkle);
+  }
+
+  const fairyLoader = new GLTFLoader();
+  fairyLoader.load(
+    './assets/fairy_lights.glb',
+    (gltf) => {
+      const fairyModel = gltf.scene;
+      const rawBox = new THREE.Box3().setFromObject(fairyModel);
+      const rawSize = rawBox.getSize(new THREE.Vector3());
+      const scale = (spanEnd - spanStart) / rawSize.x;
+      fairyModel.scale.setScalar(scale);
+
+      const box = new THREE.Box3().setFromObject(fairyModel);
+      const center = box.getCenter(new THREE.Vector3());
+      fairyModel.position.set(0 - center.x, fairyTopY - box.max.y, -1.58 - center.z);
+
+      fairyModel.traverse((child) => {
+        if (child.isMesh && child.material) {
+          child.material.roughness = Math.min(child.material.roughness ?? 0.6, 0.7);
+          if (/emiss/i.test(child.material.name || '')) {
+            child.material.color.set(0xfff0c8);
+            if (child.material.emissive) {
+              child.material.emissive.set(0xffdca0);
+              child.material.emissiveIntensity = 1.8;
+            }
+          }
+        }
+      });
+
+      scene.add(fairyModel);
+    },
+    undefined,
+    (error) => console.error('Fairy lights model failed to load:', error)
+  );
+
+  // ==========================================
+  // LEANING VINYL RECORD STACK (against the left desk leg)
+  // ==========================================
+  const vinylGroup = new THREE.Group();
+  vinylGroup.position.set(-5.55, 0.05, 1.4);
+  vinylGroup.rotation.z = 0.24;
+  const sleeveColors = [0x8b3a3a, 0x2f4f6b, 0x5c7a3a, 0x6b4a8b];
+  sleeveColors.forEach((color, i) => {
+    const sleeve = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.34, 0.34, 0.016, 24),
+      new THREE.MeshStandardMaterial({ color, roughness: 0.55 })
+    );
+    sleeve.position.set(0, 0.02 + i * 0.05, i * -0.045);
+    sleeve.rotation.x = Math.PI / 2;
+    vinylGroup.add(sleeve);
+    const label = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.1, 0.1, 0.02, 16),
+      new THREE.MeshStandardMaterial({ color: 0xe8ddc8, roughness: 0.5 })
+    );
+    label.position.copy(sleeve.position);
+    label.position.z += 0.001;
+    label.rotation.x = Math.PI / 2;
+    vinylGroup.add(label);
+  });
+  scene.add(vinylGroup);
+
+  // ==========================================
+  // FLOOR RUG (beneath the chair, adds warmth underfoot)
+  // ==========================================
+  const rugCanvas = document.createElement('canvas');
+  rugCanvas.width = 256; rugCanvas.height = 256;
+  const rctx = rugCanvas.getContext('2d');
+  rctx.fillStyle = '#26150f'; rctx.fillRect(0, 0, 256, 256);
+  const rugBands = [
+    { c: '#341c14', w: 20 }, { c: '#4a2a1c', w: 10 }, { c: '#22283a', w: 8 }, { c: '#341c14', w: 20 }
+  ];
+  let ry = 10;
+  while (ry < 246) {
+    for (const band of rugBands) {
+      rctx.fillStyle = band.c;
+      rctx.fillRect(10, ry, 236, band.w);
+      ry += band.w + 6;
+      if (ry >= 246) break;
+    }
+  }
+  rctx.strokeStyle = 'rgba(74, 42, 28, 0.7)';
+  rctx.lineWidth = 5;
+  rctx.strokeRect(14, 14, 228, 228);
+  // Soft vignette so the rug's edge dissolves into the floor instead of reading as a hard rectangle
+  const rugVignette = rctx.createRadialGradient(128, 128, 60, 128, 128, 150);
+  rugVignette.addColorStop(0, 'rgba(0,0,0,0)');
+  rugVignette.addColorStop(1, 'rgba(5, 3, 2, 0.85)');
+  rctx.fillStyle = rugVignette;
+  rctx.fillRect(0, 0, 256, 256);
+  const rugTex = new THREE.CanvasTexture(rugCanvas);
+  rugTex.colorSpace = THREE.SRGBColorSpace;
+  const rug = new THREE.Mesh(
+    new THREE.PlaneGeometry(3.7, 2.9),
+    new THREE.MeshStandardMaterial({ map: rugTex, roughness: 0.95 })
+  );
+  rug.rotation.x = -Math.PI / 2;
+  rug.position.set(0, 0.005, 2.75);
+  scene.add(rug);
+
+  // ==========================================
+  // UNDER-DESK FLOOR CLUTTER — fills out the empty floor/shelf area, kept
+  // dim and out of the main light so it reads as background detail
+  // ==========================================
+  // Yarn ball with a trailing thread, dropped beside the sleeping cat
+  const yarnGroup = new THREE.Group();
+  yarnGroup.position.set(-1.55, 0.1, 3.0);
+  const yarnCanvas = document.createElement('canvas');
+  yarnCanvas.width = 128; yarnCanvas.height = 128;
+  const yctx = yarnCanvas.getContext('2d');
+  yctx.fillStyle = '#8a3a42';
+  yctx.fillRect(0, 0, 128, 128);
+  yctx.strokeStyle = 'rgba(55, 18, 24, 0.55)';
+  yctx.lineWidth = 2;
+  for (let i = 0; i < 16; i++) {
+    yctx.beginPath();
+    const r = 8 + i * 7;
+    const a0 = (i * 2.4) % (Math.PI * 2);
+    yctx.arc(64 + (i % 2 === 0 ? -5 : 5), 64, r, a0, a0 + 3.2);
+    yctx.stroke();
+  }
+  const yarnTex = new THREE.CanvasTexture(yarnCanvas);
+  yarnTex.colorSpace = THREE.SRGBColorSpace;
+  const yarnBall = new THREE.Mesh(
+    new THREE.SphereGeometry(0.1, 16, 14),
+    new THREE.MeshStandardMaterial({ map: yarnTex, roughness: 0.9 })
+  );
+  yarnGroup.add(yarnBall);
+  const threadCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, -0.03, 0.09),
+    new THREE.Vector3(0.16, -0.04, 0.24),
+    new THREE.Vector3(0.34, -0.03, 0.32),
+    new THREE.Vector3(0.5, -0.01, 0.3)
+  ]);
+  const thread = new THREE.Mesh(
+    new THREE.TubeGeometry(threadCurve, 16, 0.006, 5, false),
+    new THREE.MeshStandardMaterial({ color: 0x8a3a42, roughness: 0.9 })
+  );
+  yarnGroup.add(thread);
+  scene.add(yarnGroup);
+
+  // Empty coffee mug, tipped over and forgotten near the right desk leg
+  const floorMugGroup = new THREE.Group();
+  floorMugGroup.position.set(4.55, 0.03, 2.15);
+  floorMugGroup.rotation.z = 1.35;
+  floorMugGroup.rotation.y = 0.5;
+  const floorMugMat = new THREE.MeshStandardMaterial({ color: 0x23262e, roughness: 0.5 });
+  cyl(0.13, 0.12, 0.2, 14, floorMugMat, new THREE.Vector3(0, 0.13, 0), floorMugGroup);
+  const floorMugHandle = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.017, 8, 14, Math.PI), floorMugMat);
+  floorMugHandle.position.set(0.12, 0.13, 0);
+  floorMugHandle.rotation.y = Math.PI / 2;
+  floorMugGroup.add(floorMugHandle);
+  scene.add(floorMugGroup);
+
+  // Small stack of books on the floor by the right leg, leaned at a slight angle
+  const bookColors = [0x4a3a2a, 0x2e3a4a, 0x5a2e2e];
+  for (let i = 0; i < 3; i++) {
+    const book = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4 - i * 0.03, 0.052, 0.29),
+      new THREE.MeshStandardMaterial({ color: bookColors[i], roughness: 0.8 })
+    );
+    book.position.set(3.55, 0.055 + i * 0.056, 2.55);
+    book.rotation.y = 0.5 + (i - 1) * 0.07;
+    scene.add(book);
+  }
+
+  // Loose cables trailing off the desk down to the floor by the right leg
+  const cableMat = new THREE.MeshStandardMaterial({ color: 0x0e0e12, roughness: 0.6 });
+  for (const offset of [-0.06, 0.05]) {
+    const cableCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(5.05 + offset, 0.7, 0.9),
+      new THREE.Vector3(5.18 + offset, 0.32, 0.88),
+      new THREE.Vector3(5.05 + offset, 0.05, 1.05),
+      new THREE.Vector3(4.85 + offset, 0.02, 1.3)
+    ]);
+    const cable = new THREE.Mesh(new THREE.TubeGeometry(cableCurve, 20, 0.012, 5, false), cableMat);
+    scene.add(cable);
+  }
+
+  // ==========================================
+  // "LATE NIGHT" LIVED-IN DETAIL — the small human touches a workspace
+  // accumulates after hours: leftover takeout, a charging phone, kicked-off
+  // slippers, a bin that hasn't been emptied
+  // ==========================================
+  // Takeout container, lid propped open, chopsticks resting across it
+  const takeoutGroup = new THREE.Group();
+  takeoutGroup.position.set(4.75, 0.94, 1.85);
+  takeoutGroup.rotation.y = 0.32;
+  const takeoutMat = new THREE.MeshStandardMaterial({ color: 0xe8e0c8, roughness: 0.6 });
+  const takeoutBox = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.15, 0.24), takeoutMat);
+  takeoutBox.position.set(0, 0.075, 0);
+  takeoutGroup.add(takeoutBox);
+  const takeoutLid = new THREE.Mesh(new THREE.BoxGeometry(0.33, 0.015, 0.25), takeoutMat);
+  takeoutLid.position.set(0.05, 0.16, 0.3);
+  takeoutLid.rotation.x = -0.65;
+  takeoutGroup.add(takeoutLid);
+  const chopstickMat = new THREE.MeshStandardMaterial({ color: 0xc9a876, roughness: 0.5 });
+  for (const cx of [-0.025, 0.025]) {
+    const chopstick = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.34, 6), chopstickMat);
+    chopstick.position.set(cx + 0.06, 0.16, -0.02);
+    chopstick.rotation.z = Math.PI / 2 - 0.12;
+    chopstick.rotation.y = 0.25;
+    takeoutGroup.add(chopstick);
+  }
+  scene.add(takeoutGroup);
+
+  // Phone, face down and charging, cable coiled beside it on the desk
+  const phoneGroup = new THREE.Group();
+  phoneGroup.position.set(4.35, 0.945, 2.05);
+  phoneGroup.rotation.y = 0.45;
+  phoneGroup.add(new THREE.Mesh(
+    new THREE.BoxGeometry(0.09, 0.012, 0.19),
+    new THREE.MeshStandardMaterial({ color: 0x14161c, roughness: 0.3, metalness: 0.4 })
+  ));
+  scene.add(phoneGroup);
+  const phoneCableCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(4.28, 0.955, 2.15),
+    new THREE.Vector3(4.18, 0.955, 2.24),
+    new THREE.Vector3(4.24, 0.955, 2.32),
+    new THREE.Vector3(4.35, 0.955, 2.28),
+    new THREE.Vector3(4.4, 0.955, 2.18)
+  ]);
+  const phoneCable = new THREE.Mesh(
+    new THREE.TubeGeometry(phoneCableCurve, 24, 0.007, 5, false),
+    new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.6 })
+  );
+  scene.add(phoneCable);
+
+  // Small trash bin with a couple of crumpled paper balls beside it, floor level
+  const binMat = new THREE.MeshStandardMaterial({ color: 0x2a2e38, roughness: 0.55, metalness: 0.15, side: THREE.DoubleSide });
+  const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.12, 0.28, 16, 1, true), binMat);
+  bin.position.set(4.3, 0.17, 2.85);
+  scene.add(bin);
+  const paperMat = new THREE.MeshStandardMaterial({ color: 0xdcd4c0, roughness: 0.9 });
+  const paperOffsets = [[-0.12, -0.05], [0.14, 0.08], [0.02, 0.22]];
+  for (const [dx, dz] of paperOffsets) {
+    const paperBall = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), paperMat);
+    paperBall.position.set(4.3 + dx, 0.045, 2.85 + dz + 0.15);
+    paperBall.scale.set(1, 0.75, 1);
+    scene.add(paperBall);
+  }
+
+  // A pair of kicked-off slippers beside the rug, clear of the chair silhouette
+  const slipperMat = new THREE.MeshStandardMaterial({ color: 0x5a4636, roughness: 0.82 });
+  const slipperSoleMat = new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.7 });
+  for (const side of [-1, 1]) {
+    const slipperGroup = new THREE.Group();
+    slipperGroup.position.set(1.7 + side * 0.22, 0.03, 3.55);
+    slipperGroup.rotation.y = side * 0.4 + 0.3;
+    const slipperTop = new THREE.Mesh(new THREE.CapsuleGeometry(0.062, 0.1, 4, 8), slipperMat);
+    slipperTop.scale.set(1, 0.45, 1.5);
+    slipperTop.position.y = 0.04;
+    slipperGroup.add(slipperTop);
+    const slipperSole = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.02, 0.28), slipperSoleMat);
+    slipperGroup.add(slipperSole);
+    scene.add(slipperGroup);
+  }
+
+  // Spare headphones on a small stand beside the keyboard
+  const headphoneStandGroup = new THREE.Group();
+  headphoneStandGroup.position.set(-2.15, 0.94, 1.75);
+  const standMat = new THREE.MeshStandardMaterial({ color: 0x2e3038, roughness: 0.4, metalness: 0.6 });
+  cyl(0.06, 0.07, 0.02, 16, standMat, new THREE.Vector3(0, 0.01, 0), headphoneStandGroup);
+  cyl(0.012, 0.012, 0.24, 8, standMat, new THREE.Vector3(0, 0.13, 0), headphoneStandGroup);
+  const hpBand = new THREE.Mesh(
+    new THREE.TorusGeometry(0.09, 0.012, 8, 16, Math.PI),
+    new THREE.MeshStandardMaterial({ color: 0x16181e, roughness: 0.5 })
+  );
+  hpBand.position.set(0, 0.25, 0);
+  hpBand.rotation.z = Math.PI;
+  headphoneStandGroup.add(hpBand);
+  const hpCupMat = new THREE.MeshStandardMaterial({ color: 0x1a1d26, roughness: 0.4, metalness: 0.5 });
+  for (const side of [-1, 1]) {
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.03, 14), hpCupMat);
+    cup.position.set(side * 0.09, 0.17, 0);
+    cup.rotation.z = Math.PI / 2;
+    headphoneStandGroup.add(cup);
+  }
+  scene.add(headphoneStandGroup);
+
+  // Pen holder with a few pens/pencils, tucked near the monitor base
+  const penCupGroup = new THREE.Group();
+  penCupGroup.position.set(-1.35, 0.94, 2.05);
+  cyl(0.055, 0.05, 0.11, 14, new THREE.MeshStandardMaterial({ color: 0x3a4048, roughness: 0.5, metalness: 0.3 }), new THREE.Vector3(0, 0.055, 0), penCupGroup);
+  const penColors = [0xd6483c, 0x4a90d6, 0xe8d048, 0xdedede];
+  penColors.forEach((color, i) => {
+    const pen = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.008, 0.008, 0.22, 6),
+      new THREE.MeshStandardMaterial({ color, roughness: 0.4 })
+    );
+    const a = (i / penColors.length) * Math.PI * 2;
+    pen.position.set(Math.cos(a) * 0.02, 0.16, Math.sin(a) * 0.02);
+    pen.rotation.z = Math.cos(a) * 0.18;
+    pen.rotation.x = Math.sin(a) * 0.18;
+    penCupGroup.add(pen);
+  });
+  scene.add(penCupGroup);
+
+  // Second trailing vine on the right side of the window, balancing the left ivy
+  const rightIvyGroup = new THREE.Group();
+  rightIvyGroup.position.set(4.15, 7.2, -1.55);
+  const rightIvyStem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.014, 2.6, 6),
+    new THREE.MeshStandardMaterial({ color: 0x3a5a28, roughness: 0.7 })
+  );
+  rightIvyStem.position.set(-0.25, -1.15, 0.1);
+  rightIvyStem.rotation.z = -0.12;
+  rightIvyGroup.add(rightIvyStem);
+  const rightIvyLeafMat = new THREE.MeshStandardMaterial({ color: 0x2a5e2e, roughness: 0.82 });
+  const rightIvyDarkMat = new THREE.MeshStandardMaterial({ color: 0x1a3e1c, roughness: 0.85 });
+  const rightIvyPositions = [
+    { x: -0.1, y: -0.15, z: 0.12, rot: -0.3, s: 0.75 },
+    { x: -0.3, y: -0.5, z: 0.14, rot: 0.4, s: 0.95 },
+    { x: -0.12, y: -0.85, z: 0.1, rot: -0.5, s: 0.85 },
+    { x: -0.38, y: -1.15, z: 0.15, rot: 0.2, s: 1.05 },
+    { x: -0.2, y: -1.5, z: 0.12, rot: -0.6, s: 0.8 },
+    { x: -0.42, y: -1.85, z: 0.14, rot: 0.5, s: 0.9 },
+    { x: -0.15, y: -2.15, z: 0.16, rot: 0.7, s: 0.65 },
+    { x: -0.32, y: -2.4, z: 0.12, rot: -0.4, s: 0.75 }
+  ];
+  for (const lp of rightIvyPositions) {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.08 * lp.s, 6, 5), Math.random() > 0.5 ? rightIvyLeafMat : rightIvyDarkMat);
+    leaf.position.set(lp.x, lp.y, lp.z);
+    leaf.scale.set(1.2, 0.35, 1.0);
+    leaf.rotation.z = lp.rot;
+    leaf.rotation.x = 0.2 + Math.random() * 0.3;
+    rightIvyGroup.add(leaf);
+  }
+  scene.add(rightIvyGroup);
+
+  // ==========================================
+  // WALL CLOCK (left wall, balances the poster/sticky-note cluster)
+  // ==========================================
+  const clockGroup = new THREE.Group();
+  clockGroup.position.set(-7.6, 3.55, -1.63);
+  const clockFace = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.42, 0.42, 0.04, 28),
+    new THREE.MeshStandardMaterial({ color: 0xe8ddc8, roughness: 0.5 })
+  );
+  clockFace.rotation.x = Math.PI / 2;
+  clockGroup.add(clockFace);
+  const clockRim = new THREE.Mesh(
+    new THREE.TorusGeometry(0.42, 0.03, 10, 28),
+    new THREE.MeshStandardMaterial({ color: 0x1e2026, roughness: 0.4, metalness: 0.4 })
+  );
+  clockGroup.add(clockRim);
+  for (let h = 0; h < 12; h++) {
+    const angle = (h / 12) * Math.PI * 2;
+    const tick = new THREE.Mesh(
+      new THREE.BoxGeometry(0.02, 0.06, 0.01),
+      new THREE.MeshStandardMaterial({ color: 0x2a241c })
+    );
+    tick.position.set(Math.sin(angle) * 0.34, Math.cos(angle) * 0.34, 0.025);
+    tick.rotation.z = -angle;
+    clockGroup.add(tick);
+  }
+  const minuteHand = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.3, 0.012), new THREE.MeshStandardMaterial({ color: 0x181614 }));
+  minuteHand.position.set(0, 0.14, 0.03);
+  clockGroup.add(minuteHand);
+  const hourHand = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.2, 0.012), new THREE.MeshStandardMaterial({ color: 0x181614 }));
+  hourHand.position.set(0.07, 0.08, 0.035);
+  hourHand.rotation.z = -0.9;
+  clockGroup.add(hourHand);
+  scene.add(clockGroup);
+}
+
 // --- INITIALIZE SCENE & CINEMATIC DIRECTIONAL LIGHTING ---
 addRoomAndProps();
 makeMonitor(monitorSpecs[0]);
 makeMonitor(monitorSpecs[1], true);
 makeMonitor(monitorSpecs[2]);
 addPerson();
+addLofiClutter();
+
+// Make the whole character/chair group fade as ONE flat silhouette rather than
+// as ~30 independently-blending primitives (see applySilhouetteFade for why the
+// opacity-tween and Fresnel-rim approaches both failed).
+//
+// Every mesh in the group is enrolled, not just the ones already authored with
+// `transparent: true` — a couple (the backrest grain strips) were not, and they
+// stayed stubbornly solid while the rest of the figure dissolved around them.
+const silhouetteFadeMaterials = [];
+const silhouetteBodyMeshes = [];
+silhouetteGroup.traverse((child) => {
+  if (!child.isMesh || !child.material) return;
+  // Renders after the depth pre-pass proxies below, and after every other
+  // transparent object in the scene.
+  child.renderOrder = 2;
+  silhouetteBodyMeshes.push(child);
+  // Materials are shared across many meshes (one hoodieMat for a dozen parts),
+  // so patch each distinct material exactly once.
+  if (!silhouetteFadeMaterials.includes(child.material)) {
+    applySilhouetteFade(child.material);
+    silhouetteFadeMaterials.push(child.material);
+  }
+});
+
+// Depth pre-pass. `transparent: true` keeps these in the transparent queue —
+// i.e. AFTER all opaque geometry, so the monitors and room behind the character
+// still get drawn — while renderOrder 1 puts them ahead of the body itself, so
+// the body's own depth test has the nearest-surface depth to reject against.
+const silhouetteDepthMat = new THREE.MeshBasicMaterial({
+  colorWrite: false, depthWrite: true, transparent: true
+});
+for (const mesh of silhouetteBodyMeshes) {
+  // Parented to the mesh with an identity local transform, so the proxy shares
+  // its world matrix exactly (including the breathing bob) with no bookkeeping.
+  const proxy = new THREE.Mesh(mesh.geometry, silhouetteDepthMat);
+  proxy.renderOrder = 1;
+  mesh.add(proxy);
+}
 
 // Cinematic Directional Night Atmosphere Lighting
 // 1. Hemisphere ambient (slightly brighter for overall visibility)
@@ -1690,9 +2367,32 @@ if (audioToggleBtn) {
 
 // --- INTERACTION & CAMERA GLIDE WITH STICKY HYSTERESIS ---
 let hoverDebounceTimer = null;
+// Guards against a browser quirk: hiding the full-screen world-view overlay
+// re-runs hit-testing under a stationary cursor, which can fire a "phantom"
+// trusted mouseenter/focus on whichever HUD button was underneath — yanking
+// the camera back into that monitor's hover zoom right after returning home.
+let suppressHoverUntil = 0;
+
+// --- Runaway-hover guard (see the pointermove handler for the full story) ---
+// Hover picking raycasts from the live camera, and committing a hover MOVES
+// that camera — so the act of selecting a monitor re-aims the very ray that
+// selected it. Left unguarded that feeds back on itself and walks the camera
+// along the desk. These two are the responsiveness/stability dial: lower the
+// epsilon to unblock sooner after a glide, lower the travel to react to
+// smaller cursor moves. Both only ever gate RAYCAST-driven changes.
+const CAMERA_SETTLE_EPSILON = 0.12;   // world units from cameraGoal
+const HOVER_SWITCH_TRAVEL = 0.05;     // NDC distance; ~2.5% of viewport width
+let cameraSettled = true;
+// Where the cursor was the moment the camera last finished gliding. Switch
+// travel is measured from here rather than from the previous hover commit,
+// because the tail of a gesture keeps firing events all through the glide —
+// measuring from the commit would bank that motion and spend it the instant
+// the camera arrived, which is the runaway all over again.
+const switchAnchor = new THREE.Vector2(3, 3);
 
 function setHover(target) {
   if (entering || hovered === target) return;
+  if (target && performance.now() < suppressHoverUntil) return;
   const previous = hovered;
   hovered = target;
   body.classList.toggle('is-hovering', Boolean(target));
@@ -1746,7 +2446,7 @@ function openWorld(id) {
     if (!page) return;
     page.hidden = false;
     requestAnimationFrame(() => page.classList.add('visible'));
-  }, prefersReducedMotion ? 0 : 500);
+  }, prefersReducedMotion ? 0 : 820);
 }
 
 function returnRoom() {
@@ -1761,7 +2461,8 @@ function returnRoom() {
     entering = false;
     body.classList.remove('is-entering');
     setHover(null);
-  }, prefersReducedMotion ? 0 : 250);
+    suppressHoverUntil = performance.now() + 300;
+  }, prefersReducedMotion ? 0 : 480);
 }
 
 // Event Listeners with Sticky Workspace Hysteresis
@@ -1771,15 +2472,34 @@ canvas.addEventListener('pointermove', (event) => {
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
+  // Picking raycasts from the live camera, and every hover change MOVES that
+  // camera — so a hover change re-aims the very ray that produced it. The tail
+  // of a gesture (a real mouse fires 100+ events/sec, and the hand keeps
+  // trickling them out while it decelerates) then gets evaluated against a
+  // camera that has already swung, lands somewhere completely different, and
+  // commits again. Zoom into EXPLORE, flick left to DESIGN, and the camera
+  // coasts straight past DESIGN into CODE with the mouse effectively still;
+  // the same loop in the other direction makes a fresh hover bounce back home
+  // mid-glide.
+  //
+  // So every raycast-driven hover change has to prove it came from the user
+  // and not from the camera: the glide must have finished, and the cursor must
+  // have travelled since it finished (measured from where it was when the
+  // camera came to rest — see switchAnchor for why not from the last commit).
+  // The nav buttons and clicks bypass this entirely; they were never ambiguous.
+  const userDriven = cameraSettled && pointer.distanceTo(switchAnchor) >= HOVER_SWITCH_TRAVEL;
+
   raycaster.setFromCamera(pointer, camera);
   const hit = raycaster.intersectObjects(monitorTargets, false)[0]?.object || null;
 
   if (hit) {
-    // Direct hit on any monitor: immediately switch/focus
+    // The ray is on a monitor, so we are definitely not unhovering — kill any
+    // pending release whether or not the change below is honoured.
     if (hoverDebounceTimer) {
       clearTimeout(hoverDebounceTimer);
       hoverDebounceTimer = null;
     }
+    if (hit !== hovered && !userDriven) return;
     setHover(hit);
     return;
   }
@@ -1788,9 +2508,9 @@ canvas.addEventListener('pointermove', (event) => {
   if (hovered) {
     // Check if cursor is still in the active workspace area:
     // User can move mouse freely across the zoomed preview without losing focus!
-    const inDeskZone = pointer.y > -0.68 && pointer.y < 0.72 && Math.abs(pointer.x) < 0.90;
-    
-    if (inDeskZone) {
+    const inDeskZone = pointer.y > -0.38 && pointer.y < 0.44 && Math.abs(pointer.x) < 0.46;
+
+    if (inDeskZone || !userDriven) {
       if (hoverDebounceTimer) {
         clearTimeout(hoverDebounceTimer);
         hoverDebounceTimer = null;
@@ -1877,7 +2597,7 @@ function animate() {
   const delta = Math.min((now - lastTime) / 1000, 0.05);
   lastTime = now;
   const time = now * 0.001;
-  const dampFactor = prefersReducedMotion ? 25 : entering ? 4.8 : hovered ? 6.2 : 5.8;
+  const dampFactor = prefersReducedMotion ? 25 : entering ? 3.1 : hovered ? 6.2 : 5.8;
 
   // Frame-rate independent smooth damping for buttery camera gliding
   camera.position.x = THREE.MathUtils.damp(camera.position.x, cameraGoal.x, dampFactor, delta);
@@ -1889,19 +2609,47 @@ function animate() {
   lookNow.z = THREE.MathUtils.damp(lookNow.z, lookGoal.z, dampFactor, delta);
   camera.lookAt(lookNow);
 
-  // Silhouette Character POV Fade Out
+  // Re-anchor hover switching whenever the camera comes to rest: from here on
+  // any picking-ray movement is the user's doing, not the glide's.
+  const settledNow = camera.position.distanceToSquared(cameraGoal) < CAMERA_SETTLE_EPSILON * CAMERA_SETTLE_EPSILON;
+  if (settledNow && !cameraSettled) switchAnchor.copy(pointer);
+  cameraSettled = settledNow;
+
+  // CRT Life: a slow scanline roll (visible motion, not a distracting speed)
+  // plus a small, localized status-LED pulse — a tasteful bit of "alive"
+  // without the whole screen brightening and dimming like before
+  monitorTargets.forEach((hit, idx) => {
+    const { scanlineOverlay, ledMat, ledBaseHsl, led } = hit.userData;
+    if (scanlineOverlay) {
+      scanlineOverlay.material.map.offset.y = (time * 0.08) % 1;
+    }
+    if (ledMat && led) {
+      const pulse = 0.5 + 0.5 * Math.sin(time * 2.2 + idx * 2.1);
+      ledMat.color.setHSL(ledBaseHsl.h, ledBaseHsl.s, THREE.MathUtils.lerp(0.35, 0.72, pulse));
+      const s = 1 + 0.16 * pulse;
+      led.scale.setScalar(s);
+    }
+  });
+
+  // Silhouette Character POV Fade Out — flat single-blend dissolve (see applySilhouetteFade)
   if (silhouetteGroup) {
     const breath = Math.sin(time * 1.5) * 0.012;
     silhouetteGroup.position.y = 0.02 + breath;
 
     const distToHome = camera.position.distanceTo(homeCamera);
-    const targetOpacity = entering ? 0 : Math.max(0.08, 1 - (distToHome / 7.2));
+    // The 0.9-unit dead zone matters: the camera itself damps home at 5.8, so
+    // driving the fade off raw distance left the figure visibly ghosted for the
+    // last half-second of an otherwise-finished return. Inside that radius the
+    // figure is simply solid, and the fade still reaches ~0.5 at hover depth.
+    const targetFade = entering ? 1 : THREE.MathUtils.clamp((distToHome - 0.9) / 5.5, 0, 0.94);
+    // Asymmetric: fading out follows the camera's pace, but coming back to
+    // solid is deliberately near-instant so it never lags behind the zoom-out.
+    const fadeDamp = targetFade < silhouetteFadeAmount ? 16.0 : 8.0;
+    silhouetteFadeAmount = THREE.MathUtils.damp(silhouetteFadeAmount, targetFade, fadeDamp, delta);
 
-    silhouetteGroup.traverse((child) => {
-      if (child.isMesh && child.material && child.material.transparent) {
-        child.material.opacity = THREE.MathUtils.damp(child.material.opacity, targetOpacity, 8.0, delta);
-      }
-    });
+    for (const mat of silhouetteFadeMaterials) {
+      if (mat.userData.shader) mat.userData.shader.uniforms.uFadeAmount.value = silhouetteFadeAmount;
+    }
   }
 
   // Realistic Coffee Steam Simulation (Organic Curling Dissipation)
