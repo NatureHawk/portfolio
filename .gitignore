@@ -2,3 +2,12 @@ node_modules/
 .staging_skills/
 .DS_Store
 Thumbs.db
+
+# Playwright MCP scratch output
+.playwright-mcp/
+
+# Third-party source pack the cat GLB was derived from (~6.7 MB of OBJ/STL/zip).
+# Not used at runtime — assets/cat.glb is the only thing loaded — and it is
+# someone else's asset, so it is kept local rather than redistributed here.
+# See HANDOFF.md §3 if you need to regenerate cat.glb from it.
+assets/sleeping-fat-cat-figurine-*/
