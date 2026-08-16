@@ -460,16 +460,19 @@ Three fixes to one sequence:
 
 ### The phosphor blow-out
 
-The monitor's colour blooms up to fill the frame, then over-exposes like a camera losing its exposure: the phosphor washes hot **through its own hue**, overshoots to pure white, holds a beat, and settles back down onto the destination page's exact background. The settle is what sells it — an exposure recovering rather than a colour being swapped. Nothing moves geometrically; it is entirely brightness, and it runs in 180ms.
+The monitor's colour blooms up to fill the frame, then over-exposes like a camera losing its exposure: the phosphor washes hot **through its own hue**, reaches pure white, holds a beat, and settles back down onto the destination page's exact background. Nothing moves geometrically; it is entirely brightness, over 200ms.
 
-Two things this depends on, both easy to break:
+It lives in `openWorld()` in `app.js`, driven through the **Web Animations API** — not CSS. That is not a stylistic preference; both alternatives were tried and both broke.
 
-- **`ENTER_NAVIGATE_MS` is derived, not hand-set** (`ENTER_BLOWOUT_MS + BLOWOUT_MS + 30`). The first version navigated 60ms *before* the colour animation finished, so it was cut off mid-ramp and the swap read as a hard jump to white — exactly what the flood exists to prevent, and invisible unless you sample the computed colour frame by frame. If you retune any of these, keep navigation after the animation ends.
-- **`background-color` is animated by keyframes and must not also be in the `transition` list.** A transition and an animation both driving the same property race for it, and which wins is not worth relying on.
+**It must not use custom properties inside keyframes.** The first version was a `@keyframes` rule whose hot midpoint was `color-mix()` reached through `var(--flood-hot)`. It played in Chrome and did nothing whatsoever in Edge. A `var()` that fails to resolve inside a keyframe is invalid at computed-value time and takes the whole declaration with it, so the ramp simply did not exist — silently, with nothing in the console. Colours are now resolved to literal `rgb()` strings in JS (a canvas 2D context does the parsing, so any CSS colour form works) and handed to `element.animate()`. Keyframes reference nothing that can fail to resolve.
 
-`--flood-hot` (the hot midpoint) is derived with `color-mix` from whichever world is being entered, so a new world gets a correct one for free rather than needing a second hex picked by hand.
+**Its easing must stay `linear` at the effect level.** With `cubic-bezier(.33,0,.1,1)` the flood hit pure white by 68ms and then spent 112ms travelling from `rgb(255,255,255)` to `rgb(236,240,243)` — about 7% luminance, visually nothing. Four frames of colour followed by a long imperceptible settle: a jump wearing an animation. An ease-out maps most of the ramp into the first few milliseconds, which is exactly wrong when the *middle* of the ramp is the thing worth seeing. Shaping lives in per-keyframe easings instead, so each stage occupies the share of the duration its offsets claim.
 
-Measured across the ramp: green → L 0.92 hot → L 0.999 white → settles to `rgb(237,241,243)` against the page's `rgb(236,240,243)`. One unit apart, and the document swaps there.
+**Navigation waits on `blowout.finished`**, not a hand-set offset. An earlier version navigated 60ms before the animation ended and cut the ramp short. `ENTER_NAVIGATE_FALLBACK_MS` exists only in case the promise never settles.
+
+Measured across the ramp at 200ms: `rgb(178,255,120)` green → `rgb(230,255,211)` hot at 100ms → white at 150ms → `rgb(236,240,243)` at 200ms, against the page's `rgb(236,240,243)`. Roughly nine frames of visible ramp.
+
+**On verifying this kind of work**: the first attempt was checked by sampling `getComputedStyle().backgroundColor` each frame. That confirmed the CSS was animating — which was true, and beside the point. It never established that anything reached the screen. Freeze the animation (`anim.pause(); anim.currentTime = …`) and take an actual screenshot.
 
 ### Reveal timing
 
