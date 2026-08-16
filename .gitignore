@@ -11,3 +11,7 @@ Thumbs.db
 # someone else's asset, so it is kept local rather than redistributed here.
 # See HANDOFF.md §3 if you need to regenerate cat.glb from it.
 assets/sleeping-fat-cat-figurine-*/
+
+# Local screenshot scratch
+*.png
+!assets/**/*.png

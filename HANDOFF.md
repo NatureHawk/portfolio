@@ -29,7 +29,12 @@ A high-performance, real-time 3D portfolio experience built with Vanilla JavaScr
 ├── code.css                    # CODE's own visual system. Shares nothing with styles.css
 ├── code.js                     # CODE's scroll choreography + card rendering
 ├── projects.js                 # Project/discipline/principle data for CODE
-├── package.json                # Dependencies (three ^0.185.1) + `npm start`
+├── vendor/three/               # The 5 Three.js files the BROWSER loads. Committed — see §16
+├── scripts/vendor-three.mjs    # `npm run vendor` — re-copies them, verifies their imports
+├── favicon.svg
+├── vercel.json                 # No build command, clean URLs, cache headers (§16)
+├── .vercelignore               # Keeps node_modules + source material out of the upload
+├── package.json                # three in devDependencies only + `npm start` / `npm run vendor`
 ├── package-lock.json
 ├── .gitignore
 ├── README.md                   # Orientation, quickstart, highlights — start there
@@ -40,7 +45,7 @@ A high-performance, real-time 3D portfolio experience built with Vanilla JavaScr
 
 **`index.html`**
 - `#scene` — WebGL canvas mount point.
-- `<script type="importmap">` — maps the bare specifier `"three"` and `"three/addons/"` to `node_modules/three/...`. This exists *specifically* so `GLTFLoader.js` (which imports from the bare specifier `'three'` internally) resolves in the browser with no bundler. `app.js` itself imports Three via the same bare specifier now, not a relative path.
+- `<script type="importmap">` — maps the bare specifier `"three"` and `"three/addons/"` to **`vendor/three/...`**. This exists *specifically* so `GLTFLoader.js` (which imports from the bare specifier `'three'` internally) resolves in the browser with no bundler. `app.js` itself imports Three via the same bare specifier now, not a relative path. It points at `vendor/`, not `node_modules/` — see §16 for why that distinction is what makes the site deployable at all.
 - HUD layer: `.hud-top` (brand + audio toggle), `.intro` (title copy), `.monitor-ui` (`01/02/03` world nav), `.cursor-note`.
 - `.world-view[data-world-view]` — fullscreen overlay pages for each world, with a `.back-button`.
 
@@ -61,7 +66,7 @@ Two real 3D assets are loaded at runtime instead of being built from primitives:
 
 Both are loaded via `GLTFLoader` (`three/addons/loaders/GLTFLoader.js`), auto-fit and grounded by **measuring their own bounding box** (`THREE.Box3().setFromObject(...)`) rather than hardcoding a scale/offset — this makes both loaders robust to the source asset's arbitrary internal scale, pivot, and orientation. See `addLofiClutter()` in `app.js` for both loader callbacks.
 
-**Do not** re-introduce a relative `./node_modules/three/build/three.module.js` import in `app.js` without also either removing the `GLTFLoader` import or keeping the import map — `GLTFLoader.js`'s own `from 'three'` import will break without the map.
+**Do not** re-introduce a relative `./node_modules/three/build/three.module.js` import in `app.js` without also either removing the `GLTFLoader` import or keeping the import map — `GLTFLoader.js`'s own `from 'three'` import will break without the map. And do not repoint the map itself back at `node_modules/`; see §16.
 
 ---
 
@@ -358,3 +363,61 @@ Three consequences worth knowing:
 Each project's accent is full strength **only on surfaces** — the inlay pill on the card, the status lamp, the dial's indicator notch. Anything carrying *text* uses `--accent-ink`, a `color-mix()` derivation pulled 50% toward the navy ink. Without it, SwipeSort's yellow is invisible the moment it's a foreground colour. Any new accent gets this for free; don't hand-pick a second hex.
 
 Neumorphism's known weakness is that borderless low-contrast controls disappear. Countered here by keeping all *text* at proper contrast against `--surface` and never letting shadow alone be the only signal for a control that matters.
+
+### Fitting the rail to the viewport
+
+The cards are content-sized; the sticky stage is viewport-sized. Those disagree constantly — a laptop screen, browser zoom (which shrinks the viewport in *CSS* pixels, so a 100% -width layout silently loses vertical room), or one extra spec row all push the cards taller than the stage, and `overflow: hidden` eats the difference. The dial goes first, then the bottom of the card.
+
+`fitTrack()` measures both and scales the track to fit, always leaving `FIT_MARGIN` above and below. Two things about it are load-bearing:
+
+- **The scale is compensated for in the width.** Shrinking the track also shrinks the cards on screen, which lets three full ones into frame and destroys the half-card-either-side composition. So the *layout* width is inflated by the inverse of the scale, holding the on-screen width at `CARD_SHARE` of the viewport. Widening a card rewraps its text and changes its height, which changes the scale — hence the loop, which converges in two passes.
+- **The horizontal maths carries the scale explicitly.** `transform-origin` is `0 50%`, so a card's on-screen centre is `centers[i] * fit + trackX`. The stored `centers` stay untransformed; the scale is applied where they're consumed. Mixing the two spaces silently offsets every card.
+
+---
+
+## 16. Deployment
+
+Static files, no build step, no install step. Push the repo to any host that serves a directory.
+
+### Why `vendor/` is committed
+
+An import map names files the **browser** will fetch. Pointing it at `node_modules/` — the obvious thing to do in a no-build setup, and what this repo did originally — means the site only works on a machine that has run `npm install`, in a directory the server is willing to serve. A clean clone renders a blank page; a static host has nothing to publish.
+
+So the five files the browser actually loads are committed to `vendor/three/`:
+
+```
+three.module.min.js          ← the "three" bare specifier resolves here
+└── three.core.min.js        ← …which imports this
+addons/loaders/GLTFLoader.js ← loads the two GLBs
+├── addons/utils/BufferGeometryUtils.js
+└── addons/utils/SkeletonUtils.js
+```
+
+That's the complete reachable set from `app.js`. `three` moved to `devDependencies`; it now exists only to regenerate those copies via `npm run vendor`, which re-copies them and then **verifies every relative import inside them resolves to something it copied**. If a future `GLTFLoader.js` picks up a new dependency, that script fails loudly instead of the browser 404-ing at runtime.
+
+### What is not minified, and why
+
+The Three.js `build/` files are the minified ones (750 KB → ~190 KB compressed). `app.js`, `code.js` and `projects.js` are **not**, deliberately: in a no-build repo they are the source of truth, their comments are a large part of this project's documentation, and there is no source map to recover them from. Compression on any modern host takes `app.js` from 104 KB to roughly 20 KB over the wire, which is the same order as minifying would achieve — for the cost of making the deployed code unreadable and undebuggable.
+
+### Vercel specifics
+
+`vercel.json` sets no build command, output directory `.`, `cleanUrls: true`, immutable caching for `vendor/` and `assets/`, and revalidation for the source files. `.vercelignore` keeps `node_modules/`, the Blender source, and the docs out of the upload.
+
+`cleanUrls` means `/code.html` 308s to `/code`. Links still use `code.html` on purpose — that path works on *every* static host, and letting hosts that prefer clean URLs redirect costs one edge hop, whereas linking to `/code` would 404 on a host without the feature.
+
+Two things that would have broken in production and are worth re-checking after any file rename:
+
+- **Vercel's filesystem is case-sensitive; Windows is not.** A path that works locally can 404 on deploy. All references are relative and lowercase, and were audited against `git ls-files`.
+- **No absolute (`/`-rooted) paths anywhere**, so the site also works from a subdirectory.
+
+### Verifying a deploy before pushing
+
+Copy the tracked files somewhere clean and serve *that* — it's the only check that actually proves `node_modules` isn't load-bearing:
+
+```bash
+mkdir -p /tmp/deploytest
+git ls-files -c | while read -r f; do mkdir -p "/tmp/deploytest/$(dirname "$f")"; cp "$f" "/tmp/deploytest/$f"; done
+cd /tmp/deploytest && npx -y serve -l 5199 .
+```
+
+Both pages, both GLBs, and the full room → CODE → back round trip were confirmed against that copy with an empty console.

@@ -6,6 +6,7 @@
     <meta name="description" content="A three-dimensional portfolio room." />
     <meta name="theme-color" content="#070914" />
     <title>Priyanshu Ghosh — The Late Night Desk</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -62,11 +63,15 @@
       </section>
       <div class="screen-flood" aria-hidden="true"></div>
     </main>
+    <!-- Maps the bare specifier "three" so GLTFLoader's own `from 'three'`
+         resolves in the browser with no bundler. Points at vendor/, not
+         node_modules/, so the site runs from a clean checkout and deploys as
+         plain static files. Regenerate with `npm run vendor`. -->
     <script type="importmap">
       {
         "imports": {
-          "three": "./node_modules/three/build/three.module.js",
-          "three/addons/": "./node_modules/three/examples/jsm/"
+          "three": "./vendor/three/three.module.min.js",
+          "three/addons/": "./vendor/three/addons/"
         }
       }
     </script>

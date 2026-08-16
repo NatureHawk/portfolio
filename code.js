@@ -184,13 +184,51 @@ rail.style.setProperty('--rail-height', `${100 + (projects.length - 1) * DWELL_V
 
 // Measured, not assumed: card widths are clamped in CSS, so the only reliable
 // source for "where does card i sit" is the laid-out DOM.
-let geometry = { start: 0, end: 0, centers: [] };
+const trackViewport = document.getElementById('track-viewport');
+let geometry = { start: 0, end: 0, centers: [], fit: 1 };
+
+// The cards are content-sized; the stage is viewport-sized. Browser zoom, a
+// laptop screen, or a sixth spec row all make the first exceed the second, and
+// the stage clips whatever doesn't fit — the dial goes first. So measure both
+// and scale the row down until it fits, keeping a margin top and bottom so the
+// cards sit in the space rather than filling it edge to edge.
+const FIT_MARGIN = 28;
+// Card width as a share of the viewport, on screen. This is what produces the
+// "half a card either side of a full one" composition, so it has to hold after
+// the fit scale is applied — not before it.
+const CARD_SHARE = 0.45;
+const CARD_MAX = 660;
+const GAP_SHARE = 0.034;
+
+function fitTrack() {
+  // Scaling the track down would otherwise shrink the cards on screen and let
+  // three full ones into frame. So the layout width is inflated by the inverse
+  // of the scale, holding the on-screen width constant. Widening a card also
+  // rewraps its text, which changes its height, which changes the scale — so
+  // this runs a few times. It converges immediately; the later passes are a
+  // correction, not a search.
+  for (let pass = 0; pass < 3; pass++) {
+    const available = trackViewport.clientHeight - FIT_MARGIN;
+    // offsetHeight is the untransformed layout height — the track's own scale
+    // does not feed back into it, so this stays stable across resizes.
+    const natural = track.offsetHeight;
+    geometry.fit = natural > 0 ? Math.min(1, available / natural) : 1;
+
+    const targetWidth = Math.min(window.innerWidth * CARD_SHARE, CARD_MAX);
+    const targetGap = Math.max(22, window.innerWidth * GAP_SHARE);
+    track.style.setProperty('--card-w', `${Math.round(targetWidth / geometry.fit)}px`);
+    track.style.setProperty('--card-gap', `${Math.round(targetGap / geometry.fit)}px`);
+  }
+}
 
 function measure() {
   const viewport = window.innerWidth;
+  fitTrack();
+  // Centres are untransformed offsets; the fit scale is applied where they are
+  // consumed, so the two measurements stay independent of each other.
   geometry.centers = cards.map((card) => card.offsetLeft + card.offsetWidth / 2);
-  geometry.start = viewport / 2 - geometry.centers[0];
-  geometry.end = viewport / 2 - geometry.centers[geometry.centers.length - 1];
+  geometry.start = viewport / 2 - geometry.centers[0] * geometry.fit;
+  geometry.end = viewport / 2 - geometry.centers[geometry.centers.length - 1] * geometry.fit;
 }
 
 /* ══ FRAME LOOP ═════════════════════════════════════════════════════════ */
@@ -246,13 +284,15 @@ function frame() {
     if (Math.abs(targetX - trackX) < 0.05) trackX = targetX;
     else needsFrame = true;
 
-    track.style.transform = `translate3d(${trackX.toFixed(2)}px, 0, 0)`;
+    track.style.transform = `translate3d(${trackX.toFixed(2)}px, 0, 0) scale(${geometry.fit.toFixed(4)})`;
 
     // Emphasis + cursor tilt, per card, from the same measured centres.
     const focus = window.innerWidth / 2;
     cards.forEach((card, i) => {
-      const centre = geometry.centers[i] + trackX;
-      const dist = Math.abs(centre - focus) / (window.innerWidth * 0.55);
+      const centre = geometry.centers[i] * geometry.fit + trackX;
+      // Falloff measured in card-widths, not viewport-widths, so a scaled-down
+      // row doesn't leave three cards all reading as "focused" at once.
+      const dist = Math.abs(centre - focus) / (card.offsetWidth * geometry.fit * 1.15);
       const emph = Math.max(0, 1 - dist);
       card.style.setProperty('--emph', emph.toFixed(3));
 

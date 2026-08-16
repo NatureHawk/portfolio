@@ -1,0 +1,15 @@
+# Nothing here is needed to serve the site — vendor/ holds the only runtime
+# dependency, so node_modules exists purely to regenerate it.
+node_modules
+
+# Source material and docs. Keeping them out of the deployment keeps the
+# upload small; they stay in the repo.
+assets/sleeping-fat-cat-figurine-*
+assets/fairy_lights.blend
+assets/lofi-room.png
+scripts
+.vscode
+HANDOFF.md
+README.md
+vendor/README.md
+assets/projects/README.md

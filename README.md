@@ -10,41 +10,48 @@ Built with vanilla JavaScript and [Three.js](https://threejs.org/) — **no fram
 
 ## Quickstart
 
-Requires Node (any recent version) and a browser with [import-map](https://caniuse.com/import-maps) support — all current evergreen browsers.
+No build step, and **no install step either** — a clean clone runs as-is. Any static file server works:
 
 ```bash
-npm install          # pulls in three@0.185.1 — required, see "The import map" below
-npm start            # serves on http://localhost:5173
-```
-
-`npm start` just shells out to `npx -y serve`; any static file server works just as well:
-
-```bash
-npx -y serve -l 5173 .
+npx -y serve -l 5173 .    # or: npm start
 python -m http.server 5173
 ```
 
-It must be served over HTTP — opening `index.html` from the filesystem will fail, because ES modules and the import map are both subject to CORS.
+It must be served over HTTP — opening `index.html` from the filesystem will fail, because ES modules and the import map are both subject to CORS. You need a browser with [import-map](https://caniuse.com/import-maps) support, which is all current evergreen browsers.
 
-### The import map
+`npm install` is only needed to *update* Three.js (see [Updating Three.js](#updating-threejs)).
 
-`index.html` maps the bare specifier `"three"` to `./node_modules/three/...`:
+## Deploying
+
+It's static files. Push to Vercel, Netlify, GitHub Pages, S3 — anything that serves a directory. `vercel.json` sets clean URLs, long-lived caching for `vendor/` and `assets/`, and revalidation for the source files; `.vercelignore` keeps `node_modules/` and source material out of the upload.
+
+There is no build command. If a host asks, leave it empty and set the output directory to the repo root.
+
+### The import map, and why `vendor/` is committed
+
+`index.html` maps the bare specifier `"three"` so `GLTFLoader.js` resolves without a bundler — it does `import ... from 'three'` internally and nothing rewrites that for us:
 
 ```html
 <script type="importmap">
   { "imports": {
-      "three": "./node_modules/three/build/three.module.js",
-      "three/addons/": "./node_modules/three/examples/jsm/"
+      "three": "./vendor/three/three.module.min.js",
+      "three/addons/": "./vendor/three/addons/"
   } }
 </script>
 ```
 
-This exists specifically so `GLTFLoader.js` resolves without a bundler — it does `import ... from 'three'` internally, and nothing rewrites that for us. **Two consequences worth knowing before you change anything:**
+It points at [`vendor/`](vendor/), **not** `node_modules/`. That distinction is the whole reason the site deploys: an import map names files the browser will actually fetch, and `node_modules/` is gitignored, so pointing there means a clean checkout renders a blank page and a static host has nothing to serve. Five files live in `vendor/` instead — the minified Three.js build, its core, and the three addon modules `GLTFLoader` pulls in. Nothing else in Three is reachable from `app.js`.
 
-- `npm install` is genuinely required. `node_modules/` is gitignored, so a fresh clone will show a blank page until you run it.
-- Don't swap `app.js` back to a relative `./node_modules/...` import without also either dropping `GLTFLoader` or keeping the map. The map is what makes the loader's own import resolve.
+Don't repoint the map back at `node_modules/` without also dropping `GLTFLoader`, and don't point `app.js` at a relative build path — the map is what makes the loader's own import resolve.
 
-This is also why the repo won't deploy to GitHub Pages as-is: `node_modules/` isn't published. Either commit the two Three.js files the map points at, or repoint the map at a CDN.
+### Updating Three.js
+
+```bash
+npm install three@latest
+npm run vendor
+```
+
+`npm run vendor` re-copies the five files and then verifies that every relative import inside them resolves to something it copied. If a future `GLTFLoader.js` picks up a new dependency the script fails loudly, instead of the browser 404-ing at runtime.
 
 ---
 
@@ -73,6 +80,9 @@ code.css        …and its own stylesheet. Shares nothing with the room, on purp
 code.js         Scroll choreography and card rendering
 projects.js     All CODE content. Reorder the array, the showcase reorders
 
+vendor/three/   The five Three.js files the browser loads. Committed — see below
+scripts/        vendor-three.mjs, run by `npm run vendor`
+vercel.json     Caching + clean URLs. No build command
 assets/
   cat.glb              Sleeping cat, decimated 50k → 3k tris in headless Blender
   fairy_lights.glb     Cable + bulb string

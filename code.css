@@ -527,19 +527,34 @@ section { padding: 0 var(--pad); }
   overflow: hidden;
 }
 
+/* The cards are content-sized and the stage is viewport-sized, so on a short
+   window (or at browser zoom, which shrinks the viewport in CSS pixels) the
+   cards are simply taller than the room available and get clipped — dial and
+   all. Rather than fight that with breakpoints, the track is measured and
+   scaled to fit whatever height it's given, always leaving a margin above and
+   below. See fitTrack() in code.js. */
+.track-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
 .track {
+  /* Both overwritten by fitTrack(); these are the pre-script fallback. */
   --card-gap: clamp(22px, 3.4vw, 58px);
+  --card-w: clamp(340px, 45vw, 660px);
   display: flex;
   align-items: stretch;
   gap: var(--card-gap);
-  /* Room for the shadows to fall without being clipped by the stage. */
+  /* Room for the shadows to fall without being clipped. */
   padding-block: 18px;
   will-change: transform;
-  /* Allowed to shrink below its content height so a short window squeezes the
-     cards instead of pushing the dial out through the bottom of the stage.
-     The preview recess absorbs it — everything else is intrinsically sized. */
-  min-height: 0;
-  flex: 0 1 auto;
+  /* Left-centre origin: scaling about the left edge keeps the horizontal maths
+     to `screenX = trackX + centre * fit`, and about the vertical middle keeps
+     the row centred in the viewport as it shrinks. */
+  transform-origin: 0 50%;
 }
 .selector { flex: none; }
 
@@ -549,7 +564,7 @@ section { padding: 0 var(--pad); }
   --accent-ink: color-mix(in srgb, var(--accent) 50%, #2e3f59);
   position: relative;
   flex: none;
-  width: clamp(340px, 45vw, 660px);
+  width: var(--card-w);
   transform: scale(calc(0.93 + 0.07 * var(--emph, 0)));
   opacity: calc(0.66 + 0.34 * var(--emph, 0));
   transform-origin: center 60%;

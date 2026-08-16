@@ -5,7 +5,7 @@
   "main": "app.js",
   "scripts": {
     "start": "npx -y serve -l 5173 .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "vendor": "node scripts/vendor-three.mjs"
   },
   "keywords": [
     "three.js",
@@ -17,7 +17,7 @@
   "author": "Priyanshu Ghosh",
   "license": "ISC",
   "type": "commonjs",
-  "dependencies": {
+  "devDependencies": {
     "three": "^0.185.1"
   }
 }
