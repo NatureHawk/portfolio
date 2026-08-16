@@ -87,7 +87,7 @@ One file is a deliberate choice, not neglect. There's no bundler, so every split
 
 ### Two design systems, kept apart
 
-The room is cinematic, dark, 3D. `01 CODE` is white, tactile, editorial — a datasheet for the things Priyanshu has built. That contrast is the point, so CODE gets its own document, its own stylesheet, and its own typefaces rather than sharing tokens with the room. Clicking `01 CODE` pushes the camera into the monitor, floods the viewport with that screen's colour, and hands off to `code.html`; **Back** returns to the room via `history.back()` so the browser can restore the already-built 3D scene from the bfcache instead of booting Three.js cold. → [HANDOFF §15](HANDOFF.md#15-the-code-world-codehtml)
+The room is cinematic, dark, 3D. `01 CODE` is soft, tactile, editorial — a neumorphic surface where every panel, switch and dial is extruded from one continuous sheet, with no borders anywhere. That contrast is the point, so CODE gets its own document, its own stylesheet, and its own typefaces rather than sharing tokens with the room. Clicking `01 CODE` pushes the camera into the monitor, floods the viewport with that screen's colour, and hands off to `code.html`; **Back** returns to the room via `history.back()` so the browser can restore the already-built 3D scene from the bfcache instead of booting Three.js cold. → [HANDOFF §15](HANDOFF.md#15-the-code-world-codehtml)
 
 ---
 

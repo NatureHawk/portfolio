@@ -318,7 +318,7 @@ That bfcache restore is also a trap: the document comes back with every module v
 | File | Holds |
 |---|---|
 | `code.html` | Markup and the chassis (top bar, bottom status strip) |
-| `code.css` | The entire visual system. Three physical primitives — `.plate` (raised), `.well` (recessed), `.lamp` (indicator) — compose everything else |
+| `code.css` | The entire visual system. Three primitives — `.raised`, `.sunken`, `.groove` — compose everything else |
 | `code.js` | One rAF loop for anything scroll- or cursor-driven; `IntersectionObserver` for one-shot reveals |
 | `projects.js` | All content. Reorder the array and the showcase reorders — index badges, rail ticks, carriage readout and scroll length all derive from it |
 
@@ -333,6 +333,28 @@ Two things are easy to get wrong here:
 
 The track position is lightly eased (0.18) rather than mapped straight from scroll — wheel input arrives in ~100px steps, and direct mapping makes those steps visible. Cursor tilt is scaled by each card's centre-proximity, so off-centre cards stay still instead of all five reacting at once.
 
+### The material: neumorphism
+
+Nothing on this page is a box drawn *on* the surface. Every element is the same continuous sheet, pushed out of it or pressed into it. **There are no borders anywhere** — form comes entirely from a pair of opposed shadows, dark down-right and white up-left, as if one soft light sits at the top-left of the screen.
+
+Three primitives compose everything. Use them rather than inventing a fourth, or the page stops reading as one piece of material:
+
+| | |
+|---|---|
+| `--pop-sm/md/lg` | pushed out of the surface (outer dark + outer light) |
+| `--press-sm/md` | pressed into it (inner dark + inner light) |
+| `.groove` | an engraved hairline: 1px `--shade` over 1px `--light`, no blur |
+
+Distance and blur stay in a 1:2 ratio at every elevation step, so everything reads as lit by the same lamp from the same height. Break that ratio and elements start looking like they're on separate pages.
+
+Three consequences worth knowing:
+
+- **The background must stay flat.** An earlier pass had a registration grid on `body`; any pattern breaks the illusion that elements are extruded from an unbroken sheet.
+- **The chrome bars float** (inset by `--bar-gap`) rather than sitting flush to the viewport edges. A neumorphic element needs room for its shadow on all four sides — butted against an edge it just looks clipped. `--chrome` accounts for the bar plus both gaps, and any full-viewport section has to size itself as `100vh - var(--chrome) * 2` to fit *between* the two panels.
+- **Controls are real controls.** The philosophy switches throw when their plate seats, the selector dial turns with scroll and takes the colour of whatever it points at, buttons genuinely press in (`--pop` → `--press`) on `:active`.
+
 ### Colour rule (worth keeping)
 
-Each project's accent is full strength **only on surfaces** — the identity band across the card's top edge, the status lamp. Anything carrying *text* uses `--accent-ink`, a `color-mix()` derivation darkened 55% toward black. Without it, SwipeSort's yellow is invisible the moment it's a foreground colour, and white-on-yellow index badges are unreadable. Any new accent gets this for free; don't hand-pick a second hex.
+Each project's accent is full strength **only on surfaces** — the inlay pill on the card, the status lamp, the dial's indicator notch. Anything carrying *text* uses `--accent-ink`, a `color-mix()` derivation pulled 50% toward the navy ink. Without it, SwipeSort's yellow is invisible the moment it's a foreground colour. Any new accent gets this for free; don't hand-pick a second hex.
+
+Neumorphism's known weakness is that borderless low-contrast controls disappear. Countered here by keeping all *text* at proper contrast against `--surface` and never letting shadow alone be the only signal for a control that matters.

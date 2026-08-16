@@ -51,14 +51,15 @@ document.querySelectorAll('.hero-title .line').forEach((line, i) => {
 
 /* ══ PRINCIPLES ═════════════════════════════════════════════════════════ */
 
+// Each principle carries a real throw switch rather than a bullet. They sit
+// off until the plate reaches you, then flip — the progressive reveal is a
+// physical state change, not a fade.
 const principlesList = document.getElementById('principles');
 principlesList.innerHTML = principles
   .map(
     (p) => `
-    <li class="principle plate">
-      <span class="screw"></span><span class="screw"></span>
-      <span class="screw"></span><span class="screw"></span>
-      <span class="lamp" style="--lamp-color:#ff4a1c"></span>
+    <li class="principle">
+      <span class="switch" style="--switch-color:#ff4a1c"><i></i></span>
       <span class="principle-statement">${p.statement}</span>
       <p class="principle-note">${p.note}</p>
     </li>`
@@ -71,7 +72,7 @@ document.getElementById('spec-table').innerHTML = disciplines
   .map(
     (d) => `
     <div class="spec-row">
-      <span class="spec-name"><span class="lamp lit" style="--lamp-color:#101012"></span>${d.name}</span>
+      <span class="spec-name"><span class="lamp lit" style="--lamp-color:#2e3f59"></span>${d.name}</span>
       <span class="spec-note">${d.note}</span>
       <span class="spec-items">${d.items.map((i) => `<span>${i}</span>`).join('')}</span>
     </div>`
@@ -91,9 +92,6 @@ const buildCard = (p, i) => {
   return `
     <article class="card${p.underConstruction ? ' card--wip' : ''}" style="--accent:${p.accent}" data-index="${i}">
       <div class="card-face">
-        <span class="screw"></span><span class="screw"></span>
-        <span class="screw"></span><span class="screw"></span>
-
         <header class="card-head">
           <span class="card-index"><i>${n}</i>${p.code}</span>
           <span class="card-state">
@@ -106,7 +104,7 @@ const buildCard = (p, i) => {
           <p class="card-kind">${p.kind}</p>
         </div>
 
-        <div class="card-window well" data-window>
+        <div class="card-window" data-window>
           <div class="card-window-pending">
             <b>${p.code}</b>
             <span>Preview pending</span>
@@ -143,26 +141,35 @@ track.querySelectorAll('[data-window]').forEach((win, i) => {
   img.src = src;
 });
 
-/* ══ GAUGE SCALE ════════════════════════════════════════════════════════ */
+/* ══ SELECTOR DIAL ══════════════════════════════════════════════════════ */
 
 const cards = [...track.querySelectorAll('.card')];
-const gaugeScale = document.getElementById('gauge-scale');
-const carriage = document.getElementById('gauge-carriage');
+const dialTicks = document.getElementById('dial-ticks');
+const dialKnob = document.getElementById('dial-knob');
+const dialNotch = dialKnob.querySelector('.dial-notch');
 const readoutIndex = document.getElementById('readout-index');
 const readoutName = document.getElementById('readout-name');
 document.getElementById('readout-total').textContent = String(projects.length).padStart(2, '0');
 
-// One major tick per project, four minor between — a real linear scale, so the
-// carriage position is readable as "between 2 and 3", not just decorative.
-gaugeScale.innerHTML = projects
+// Real potentiometer sweep: 270° of travel with a dead zone at the bottom,
+// the way a physical rotary control is built. One major tick per project with
+// four minors between, so the knob reads as "between 2 and 3" at a glance.
+const SWEEP = 270;
+const START_ANGLE = -SWEEP / 2;
+const steps = projects.length - 1;
+
+dialTicks.innerHTML = projects
   .map((_, i) => {
-    const step = 100 / (projects.length - 1);
-    const majors = `<i class="major" style="left:${i * step}%"></i>`;
-    if (i === projects.length - 1) return majors;
+    const angle = START_ANGLE + (SWEEP / steps) * i;
+    const major = `<i class="major" style="transform:rotate(${angle}deg)"></i>`;
+    if (i === steps) return major;
     const minors = [1, 2, 3, 4]
-      .map((m) => `<i style="left:${i * step + (step * m) / 5}%"></i>`)
+      .map((m) => {
+        const a = angle + (SWEEP / steps) * (m / 5);
+        return `<i style="transform:rotate(${a}deg)"></i>`;
+      })
       .join('');
-    return majors + minors;
+    return major + minors;
   })
   .join('');
 
@@ -266,16 +273,16 @@ function frame() {
       }
     });
 
-    // ── gauge ──
-    // `left` (not transform) so the carriage reads against the tick scale in
-    // the same percentage space the ticks were laid out in.
-    carriage.style.left = `${(p * 100).toFixed(2)}%`;
+    // ── dial ──
+    dialKnob.style.transform = `rotate(${(START_ANGLE + SWEEP * p).toFixed(2)}deg)`;
 
-    const nearest = Math.round(p * (projects.length - 1));
+    const nearest = Math.round(p * steps);
     if (nearest !== lastReadout) {
       lastReadout = nearest;
       readoutIndex.textContent = String(nearest + 1).padStart(2, '0');
       readoutName.textContent = projects[nearest].name.toUpperCase();
+      // The indicator takes the colour of whatever it's pointing at.
+      dialNotch.style.setProperty('--dial-color', projects[nearest].accent);
     }
   }
 }
@@ -306,8 +313,9 @@ const seatObserver = new IntersectionObserver(
       if (!entry.isIntersecting) return;
       entry.target.classList.add('seated');
       seatObserver.unobserve(entry.target);
-      const lamp = entry.target.querySelector('.lamp');
-      if (lamp) setTimeout(() => lamp.classList.add('lit'), 220);
+      // Plate lands first, switch throws a beat later — the order reads as
+      // cause and effect rather than one simultaneous animation.
+      setTimeout(() => entry.target.classList.add('thrown'), 260);
     });
   },
   { rootMargin: '0px 0px -18% 0px', threshold: 0.25 }

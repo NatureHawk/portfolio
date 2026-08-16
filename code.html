@@ -86,14 +86,21 @@
         <div class="rail" id="rail">
           <div class="rail-stage">
             <div class="track" id="track"></div>
-            <div class="gauge" aria-hidden="true">
-              <div class="gauge-scale" id="gauge-scale"></div>
-              <div class="gauge-carriage" id="gauge-carriage"></div>
+
+            <div class="selector">
+              <div class="dial" aria-hidden="true">
+                <div class="dial-ticks" id="dial-ticks"></div>
+                <div class="dial-body">
+                  <div class="dial-knob" id="dial-knob"><span class="dial-notch"></span></div>
+                </div>
+              </div>
+              <p class="readout" aria-live="polite">
+                <span class="readout-count">
+                  <span id="readout-index">01</span><i>/</i><span id="readout-total">05</span>
+                </span>
+                <b id="readout-name">AMBASSU</b>
+              </p>
             </div>
-            <p class="gauge-readout" aria-live="polite">
-              <span id="readout-index">01</span><i>/</i><span id="readout-total">05</span>
-              <b id="readout-name">AMBASSU</b>
-            </p>
           </div>
         </div>
       </section>
