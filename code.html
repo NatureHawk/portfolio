@@ -91,9 +91,17 @@
             </div>
 
             <div class="selector">
-              <div class="dial" aria-hidden="true">
-                <div class="dial-ticks" id="dial-ticks"></div>
-                <div class="dial-body">
+              <div
+                class="dial"
+                id="dial"
+                role="slider"
+                tabindex="0"
+                aria-label="Project selector — drag to turn, or use arrow keys"
+                aria-valuemin="1"
+                aria-valuenow="1"
+              >
+                <div class="dial-ticks" id="dial-ticks" aria-hidden="true"></div>
+                <div class="dial-body" aria-hidden="true">
                   <div class="dial-knob" id="dial-knob"><span class="dial-notch"></span></div>
                 </div>
               </div>

@@ -2450,8 +2450,12 @@ const screenFlood = document.querySelector('.screen-flood');
 // identical on localhost and on a cold connection, and the only way to get
 // that is to stop the timing depending on when the next document arrives
 // (which is what prefetching it at idle makes cheap).
-const ENTER_BLOOM_MS = 520;    // monitor colour swallows the frame
-const ENTER_BLOWOUT_MS = 760;  // …then over-exposes and settles
+// The flood must be FULLY opaque before the blow-out starts, or the green
+// stage of the ramp is drawn onto a transparent element and never seen. Bloom
+// at 440 + a 160ms fade lands it solid at ~600; the blow-out then has 80ms of
+// solid colour to start from.
+const ENTER_BLOOM_MS = 440;    // monitor colour swallows the frame
+const ENTER_BLOWOUT_MS = 680;  // …then over-exposes and settles
 const BLOWOUT_MS = 200;
 // Safety net only. Navigation normally waits on the animation's own `finished`
 // promise, so it cannot be cut off mid-ramp the way a hand-set offset was.

@@ -173,13 +173,82 @@ dialTicks.innerHTML = projects
   })
   .join('');
 
+/* ══ THE DIAL IS A CONTROL ══════════════════════════════════════════════
+   Grab it and turn it and the rail follows. It does not animate the track
+   itself — it converts the angle into a scroll position and moves the page.
+   That keeps scroll as the single source of truth for where the rail is, so
+   dragging, scrolling and the keyboard can never disagree about it. */
+
+const dial = document.getElementById('dial');
+dial.setAttribute('aria-valuemax', String(projects.length));
+
+const angleFromCentre = (event) => {
+  const r = dial.getBoundingClientRect();
+  return (
+    (Math.atan2(event.clientY - (r.top + r.height / 2), event.clientX - (r.left + r.width / 2)) *
+      180) / Math.PI
+  );
+};
+
+let dragStartAngle = 0;
+let dragStartProgress = 0;
+let dragging = false;
+
+dial.addEventListener('pointerdown', (event) => {
+  if (cache.stacked) return;
+  dragging = true;
+  dragStartAngle = angleFromCentre(event);
+  dragStartProgress = railProgress(window.scrollY);
+  dial.setPointerCapture(event.pointerId);
+  dial.classList.add('turning');
+  event.preventDefault();
+});
+
+dial.addEventListener('pointermove', (event) => {
+  if (!dragging) return;
+  let delta = angleFromCentre(event) - dragStartAngle;
+  // Shortest way round, so dragging across the ±180° seam doesn't fling the
+  // rail to the far end.
+  if (delta > 180) delta -= 360;
+  if (delta < -180) delta += 360;
+  const next = clamp01(dragStartProgress + delta / SWEEP);
+  window.scrollTo(0, scrollForProgress(next));
+  // Re-anchor each move so accumulated clamping at either end doesn't build up
+  // a debt you have to unwind before the knob responds again.
+  dragStartAngle = angleFromCentre(event);
+  dragStartProgress = next;
+});
+
+const endDrag = (event) => {
+  if (!dragging) return;
+  dragging = false;
+  dial.classList.remove('turning');
+  if (dial.hasPointerCapture?.(event.pointerId)) dial.releasePointerCapture(event.pointerId);
+};
+dial.addEventListener('pointerup', endDrag);
+dial.addEventListener('pointercancel', endDrag);
+
+// Arrow keys step card to card — the detents the tick marks are drawing.
+dial.addEventListener('keydown', (event) => {
+  const step = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[event.key];
+  const jump = { Home: 0, End: 1 }[event.key];
+  if (step === undefined && jump === undefined) return;
+  event.preventDefault();
+  const current = railProgress(window.scrollY);
+  const next =
+    jump !== undefined ? jump : clamp01(Math.round(current * steps + step) / steps);
+  window.scrollTo({ top: scrollForProgress(next), behavior: reduceMotion ? 'auto' : 'smooth' });
+});
+
 /* ══ RAIL GEOMETRY ══════════════════════════════════════════════════════ */
 
 const rail = document.getElementById('rail');
 
 // Pin length grows with the collection so adding a project lengthens the
 // scroll instead of speeding the whole thing up.
-const DWELL_VH = 88;
+// Raised from 88 to keep per-card pacing after RAIL_LEAD/RAIL_TAIL took ~18%
+// of the pinned range for dwell at the two ends.
+const DWELL_VH = 106;
 rail.style.setProperty('--rail-height', `${100 + (projects.length - 1) * DWELL_VH}vh`);
 
 // Measured, not assumed: card widths are clamped in CSS, so the only reliable
@@ -247,11 +316,43 @@ function measure() {
   cache.stacked = window.matchMedia('(max-width: 760px)').matches;
   cache.docMax = document.documentElement.scrollHeight - cache.viewportH;
   cache.sectionTops = sections.map((section) => section.offsetTop);
-  cache.railTop = rail.offsetTop;
-  cache.railRange = rail.offsetHeight - cache.viewportH;
+
+  // The pinned range is the rail's height minus the STAGE's height, offset by
+  // the stage's sticky `top` — not `rail.offsetHeight - viewportH`, which is
+  // what this used to be. The stage is shorter than the viewport (it sits
+  // between the two floating chrome panels), so that older figure ran out
+  // early: progress reached 1 only ~68px before the pin released, and with the
+  // easing lag the last card never actually arrived at centre before the page
+  // scrolled on. RetailHub was permanently half off-screen.
+  const stage = document.querySelector('.rail-stage');
+  const stickyTop = parseFloat(getComputedStyle(stage).top) || 0;
+  cache.railTop = rail.offsetTop - stickyTop;
+  cache.railRange = Math.max(1, rail.offsetHeight - stage.offsetHeight);
   // Falloff is measured in card-widths, so this is a geometry constant, not a
   // per-frame lookup.
   cache.falloff = (cards[0]?.offsetWidth || 1) * geometry.fit * 1.15;
+}
+
+// Travel finishes before the pin does, and starts after it begins. Without the
+// tail the last card reaches centre at the exact moment the stage unsticks, so
+// it is never actually seen there — the eased track is still catching up as
+// the page scrolls away. The lead gives the first card the same courtesy.
+const RAIL_LEAD = 0.05;
+const RAIL_TAIL = 0.13;
+
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
+
+function railProgress(scrollY) {
+  const raw = (scrollY - cache.railTop) / cache.railRange;
+  return clamp01((raw - RAIL_LEAD) / (1 - RAIL_LEAD - RAIL_TAIL));
+}
+
+// Inverse of the above: where must the page be scrolled for the rail to sit at
+// `p`? Used by the dial, which drives the scroll position rather than fighting
+// it with a second source of truth for where the track is.
+function scrollForProgress(p) {
+  const raw = clamp01(p) * (1 - RAIL_LEAD - RAIL_TAIL) + RAIL_LEAD;
+  return cache.railTop + raw * cache.railRange;
 }
 
 /* ══ FRAME LOOP ═════════════════════════════════════════════════════════ */
@@ -313,9 +414,7 @@ function frame(now) {
 
   // ── the rail ──
   if (!cache.stacked) {
-    const p = cache.railRange > 0
-      ? Math.min(1, Math.max(0, (scrollY - cache.railTop) / cache.railRange))
-      : 0;
+    const p = railProgress(scrollY);
 
     trackTarget = lerp(geometry.start, geometry.end, p);
     // Exponential damping toward the target: the carriage keeps its sense of
@@ -361,6 +460,8 @@ function frame(now) {
       readoutName.textContent = projects[nearest].name.toUpperCase();
       // The indicator takes the colour of whatever it's pointing at.
       dialNotch.style.setProperty('--dial-color', projects[nearest].accent);
+      dial.setAttribute('aria-valuenow', String(nearest + 1));
+      dial.setAttribute('aria-valuetext', projects[nearest].name);
     }
   }
 }

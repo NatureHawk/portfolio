@@ -817,7 +817,21 @@ section { padding: 0 var(--pad); }
   margin: 0 var(--pad);
 }
 
-.dial { position: relative; width: 84px; height: 84px; flex: none; }
+.dial {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  flex: none;
+  cursor: grab;
+  /* The dial owns the gesture; without this a drag scrolls the page instead. */
+  touch-action: none;
+  border-radius: 50%;
+}
+.dial.turning { cursor: grabbing; }
+.dial:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; }
+/* Grabbing it lifts the knob out of its socket, the way a real control gives
+   under your fingers before it turns. */
+.dial.turning .dial-knob { box-shadow: var(--pop-md); }
 
 .dial-ticks { position: absolute; inset: 0; }
 .dial-ticks i {

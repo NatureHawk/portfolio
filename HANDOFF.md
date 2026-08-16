@@ -460,19 +460,23 @@ Three fixes to one sequence:
 
 ### The phosphor blow-out
 
-The monitor's colour blooms up to fill the frame, then over-exposes like a camera losing its exposure: the phosphor washes hot **through its own hue**, reaches pure white, holds a beat, and settles back down onto the destination page's exact background. Nothing moves geometrically; it is entirely brightness, over 200ms.
+The monitor's colour blooms up to fill the frame, then over-exposes like a camera losing its exposure: the phosphor washes hot **through its own hue**, reaches pure white, holds a beat, and settles onto the destination page's exact background. Nothing moves geometrically; it is entirely brightness, over 200ms.
 
-It lives in `openWorld()` in `app.js`, driven through the **Web Animations API** — not CSS. That is not a stylistic preference; both alternatives were tried and both broke.
+It took three attempts. Each failure had a different cause and each one is easy to reintroduce.
 
-**It must not use custom properties inside keyframes.** The first version was a `@keyframes` rule whose hot midpoint was `color-mix()` reached through `var(--flood-hot)`. It played in Chrome and did nothing whatsoever in Edge. A `var()` that fails to resolve inside a keyframe is invalid at computed-value time and takes the whole declaration with it, so the ramp simply did not exist — silently, with nothing in the console. Colours are now resolved to literal `rgb()` strings in JS (a canvas 2D context does the parsing, so any CSS colour form works) and handed to `element.animate()`. Keyframes reference nothing that can fail to resolve.
+**1. It must not use custom properties inside keyframes.** The first version was a `@keyframes` rule whose hot midpoint was `color-mix()` reached through `var(--flood-hot)`. It played in Chrome and did nothing at all in Edge. A `var()` that fails to resolve inside a keyframe is invalid at computed-value time and takes the whole declaration with it, so the ramp simply did not exist — silently, with nothing in the console. Colours are now resolved to literal `rgb()` in JS (a canvas 2D context does the parsing) and handed to `element.animate()`.
 
-**Its easing must stay `linear` at the effect level.** With `cubic-bezier(.33,0,.1,1)` the flood hit pure white by 68ms and then spent 112ms travelling from `rgb(255,255,255)` to `rgb(236,240,243)` — about 7% luminance, visually nothing. Four frames of colour followed by a long imperceptible settle: a jump wearing an animation. An ease-out maps most of the ramp into the first few milliseconds, which is exactly wrong when the *middle* of the ramp is the thing worth seeing. Shaping lives in per-keyframe easings instead, so each stage occupies the share of the duration its offsets claim.
+**2. Its easing must stay `linear` at the effect level.** With `cubic-bezier(.33,0,.1,1)` the flood hit pure white by 68ms and then spent 112ms travelling from `rgb(255,255,255)` to `rgb(236,240,243)` — about 7% luminance, visually nothing. An ease-out maps most of the ramp into the first few milliseconds, which is exactly wrong when the *middle* of the ramp is the part worth seeing. Shaping lives in per-keyframe easings instead.
 
-**Navigation waits on `blowout.finished`**, not a hand-set offset. An earlier version navigated 60ms before the animation ended and cut the ramp short. `ENTER_NAVIGATE_FALLBACK_MS` exists only in case the promise never settles.
+**3. The flood must be fully opaque before the ramp starts.** This is the one that survived the first two fixes and made the whole thing look like a hard cut anyway. `.screen-flood`'s own fade-in used `cubic-bezier(.7, 0, .84, 0)` — an extreme ease-*in*, which holds opacity near zero for almost the entire transition and then snaps up at the very end. Measured on the deployed site: opacity `0` at 667ms, `0.06` at 754ms, `0.91` at 827ms, while the blow-out had started at 760ms. The green and hot stages were being painted onto a transparent element. Only 11 of ~60 frames were visible at all, and what reached the eye was nothing, then a white flash.
 
-Measured across the ramp at 200ms: `rgb(178,255,120)` green → `rgb(230,255,211)` hot at 100ms → white at 150ms → `rgb(236,240,243)` at 200ms, against the page's `rgb(236,240,243)`. Roughly nine frames of visible ramp.
+The lesson is worth stating plainly, because two separate debugging passes missed it: **an animation can be provably correct and still be invisible.** Sampling `getComputedStyle().backgroundColor` confirmed the colour ramp every time. It never once asked whether the element carrying that colour was on screen. Check opacity, visibility and stacking alongside the property you are animating.
 
-**On verifying this kind of work**: the first attempt was checked by sampling `getComputedStyle().backgroundColor` each frame. That confirmed the CSS was animating — which was true, and beside the point. It never established that anything reached the screen. Freeze the animation (`anim.pause(); anim.currentTime = …`) and take an actual screenshot.
+Timing is now: bloom at 440ms + a 160ms **ease-out** fade lands the flood solid at ~600ms; the blow-out starts at 680ms with 80ms of solid colour in hand; navigation waits on `blowout.finished` rather than a hand-set offset, with `ENTER_NAVIGATE_FALLBACK_MS` purely as a safety net.
+
+Measured ramp at 200ms: `rgb(178,255,120)` green → `rgb(230,255,211)` hot at 100ms → white at 150ms → `rgb(236,240,243)` at 200ms, against the page's `rgb(236,240,243)`.
+
+**Testing note.** Frame-sampling this in a headless browser is unreliable — rAF gets throttled when nothing is compositing, and a sampling loop can capture two frames across a 900ms window and report a transition as broken when it is fine. Verify against the deployed site, or temporarily scale the timing constants up and take real screenshots.
 
 ### Reveal timing
 
@@ -494,3 +498,21 @@ Reported as "micro jitters, but FPS is fine" — which is the precise symptom of
 Also removed: a CSS `transition` on `.card` opacity while JS rewrote that value every frame, so the transition restarted continuously and fought its own target.
 
 Measured after: **mean 16.68ms, standard deviation 0.96ms** across a 90-frame scroll sweep. Standard deviation is the number that matters here; average FPS was never the problem.
+
+### The rail's pinned range, and the last card
+
+`cache.railRange` used to be `rail.offsetHeight - viewportH`. That is wrong: the stage is **shorter than the viewport** (it floats between the two chrome panels), and it is stuck at `top: var(--chrome)` rather than at the viewport top. The correct pinned range is `rail.offsetHeight - stage.offsetHeight`, starting at `rail.offsetTop - stickyTop`, both read from the DOM in `measure()`.
+
+The consequence of the old figure was subtle and specific: progress reached `1` roughly 68px before the stage unstuck, so the last card arrived at centre at almost exactly the moment the page began scrolling past it — and since the track is eased, it was still catching up when it left. RetailHub was permanently half off-screen and could not be read.
+
+`RAIL_LEAD` (5%) and `RAIL_TAIL` (13%) now reserve dwell at both ends, so travel finishes well before the pin does and the last card sits centred for a real stretch of scroll. `DWELL_VH` rose from 88 to 106 to keep per-card pacing after those reservations.
+
+`scrollForProgress()` is the exact inverse of `railProgress()` — the dial uses it, so there is one definition of where the rail sits and everything agrees.
+
+### The dial is a control
+
+Drag it and the rail follows; arrow keys step card to card; Home/End jump to the ends. It carries `role="slider"` with `aria-valuenow`/`aria-valuetext` updated from the same place as the readout.
+
+The important design decision: **it does not move the track.** It converts the knob's angle into a scroll position and moves the *page*. Scroll stays the single source of truth for where the rail is, so dragging, scrolling and the keyboard can never disagree — and the existing easing, emphasis and readout logic all keep working untouched.
+
+Two details that matter in the implementation: the angle delta is normalised to the shortest way round (or dragging across the ±180° seam flings the rail to the far end), and the drag anchor is re-set on every move so clamping at either end doesn't accumulate a debt you have to unwind before the knob responds again.

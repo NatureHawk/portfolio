@@ -193,9 +193,16 @@ body.booting .intro { transform: translateY(-50%) translateX(-18px); }
   transform: scale(1.06);
   pointer-events: none;
   /* background-color is deliberately NOT transitioned — the blow-out drives it
-     as a keyframe animation, and a transition on the same property would race
-     the animation for control of it. */
-  transition: opacity .22s cubic-bezier(.7, 0, .84, 0), transform .22s ease-out;
+     from JS, and a transition on the same property would race it for control.
+
+     The opacity curve must be ease-OUT. It was cubic-bezier(.7,0,.84,0), an
+     extreme ease-in that holds opacity near zero for almost the whole
+     transition and then snaps up at the end. Measured on the deployed site,
+     the flood was still at opacity 0 at 667ms and 0.06 at 754ms — so the green
+     stage of the blow-out was being drawn onto an invisible element, and all
+     anyone saw was a white flash. The ramp was never the problem; nothing was
+     on screen to show it. */
+  transition: opacity .16s ease-out, transform .16s ease-out;
 }
 .screen-flood.active { opacity: 1; transform: scale(1); }
 
