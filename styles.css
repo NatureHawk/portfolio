@@ -199,18 +199,13 @@ body.booting .intro { transform: translateY(-50%) translateX(-18px); }
 }
 .screen-flood.active { opacity: 1; transform: scale(1); }
 
-.screen-flood.blown {
-  animation: phosphorBlowout var(--blowout, 180ms) cubic-bezier(.33, 0, .1, 1) forwards;
-}
-@keyframes phosphorBlowout {
-  0%   { background-color: var(--flood, var(--code)); }
-  /* Through the accent's own hue on the way up, so it reads as the phosphor
-     itself getting hotter rather than a crossfade to a different colour. */
-  38%  { background-color: var(--flood-hot, #fff); }
-  62%  { background-color: #fff; }
-  74%  { background-color: #fff; }
-  100% { background-color: var(--flood-end, #ecf0f3); }
-}
+/* The blow-out itself is driven from app.js via the Web Animations API, with
+   literal colour values resolved at runtime. It was originally a @keyframes
+   rule whose midpoint used color-mix() through a custom property — which
+   worked in Chrome and silently produced no ramp at all in Edge, because a
+   var() that fails to resolve inside a keyframe takes the whole declaration
+   with it. Keyframes get no custom properties now; nothing to fail to
+   resolve, and the same code path runs in every browser. */
 
 @media (max-width: 700px) {
   .intro { top: auto; bottom: 103px; left: 22px; transform: none; }

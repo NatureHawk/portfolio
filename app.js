@@ -2451,12 +2451,39 @@ const screenFlood = document.querySelector('.screen-flood');
 // that is to stop the timing depending on when the next document arrives
 // (which is what prefetching it at idle makes cheap).
 const ENTER_BLOOM_MS = 520;    // monitor colour swallows the frame
-const ENTER_BLOWOUT_MS = 760;  // …then over-exposes and settles (see .blown)
-const BLOWOUT_MS = 180;
-// Must land AFTER the blow-out has finished settling. It previously fired 60ms
-// early, so the colour animation was cut off mid-way and the swap read as a
-// hard jump to white — which is the whole thing the flood exists to prevent.
-const ENTER_NAVIGATE_MS = ENTER_BLOWOUT_MS + BLOWOUT_MS + 30;
+const ENTER_BLOWOUT_MS = 760;  // …then over-exposes and settles
+const BLOWOUT_MS = 200;
+// Safety net only. Navigation normally waits on the animation's own `finished`
+// promise, so it cannot be cut off mid-ramp the way a hand-set offset was.
+const ENTER_NAVIGATE_FALLBACK_MS = ENTER_BLOWOUT_MS + BLOWOUT_MS + 260;
+
+// Resolves any CSS colour — hex, rgb(), a var() lookup — to a literal rgb()
+// string, by letting the canvas 2D context do the parsing. The blow-out needs
+// real values rather than custom properties: see the note in styles.css.
+const colourProbe = document.createElement('canvas').getContext('2d');
+function resolveColour(value, fallback = '#ffffff') {
+  try {
+    colourProbe.fillStyle = fallback;
+    colourProbe.fillStyle = value;
+    return colourProbe.fillStyle;
+  } catch {
+    return fallback;
+  }
+}
+function mixColours(a, b, amount) {
+  const parse = (c) => {
+    colourProbe.fillStyle = c;
+    const hex = colourProbe.fillStyle;
+    if (hex.startsWith('#')) {
+      return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    }
+    return hex.match(/\d+/g).slice(0, 3).map(Number);
+  };
+  const [ar, ag, ab] = parse(a);
+  const [br, bg, bb] = parse(b);
+  const m = (x, y) => Math.round(x + (y - x) * amount);
+  return `rgb(${m(ar, br)}, ${m(ag, bg)}, ${m(ab, bb)})`;
+}
 
 function openWorld(id) {
   if (entering) return;
@@ -2485,18 +2512,57 @@ function openWorld(id) {
     // The bloom starts before the glide finishes so the two overlap instead of
     // queueing; the camera is still pushing in underneath as the screen takes
     // over the frame.
+    // Resolved now, once, into literal colours the animation can interpolate
+    // without depending on custom-property resolution inside keyframes.
+    const accent = resolveColour(
+      getComputedStyle(document.documentElement).getPropertyValue(`--${id}`).trim(),
+      '#ffffff'
+    );
+    // Midpoint: the accent's own hue washed hot, so the phosphor reads as
+    // getting brighter rather than crossfading to a different colour.
+    const hot = mixColours(accent, '#ffffff', 0.5);
+
+    let navigated = false;
+    const go = () => {
+      if (navigated) return;
+      navigated = true;
+      window.location.href = route.href;
+    };
+
     window.setTimeout(() => {
-      if (!screenFlood) return;
-      screenFlood.style.setProperty('--flood', `var(--${id})`);
-      // The midpoint of the blow-out: the accent's own hue, washed hot. Derived
-      // rather than picked, so any world's colour gets a correct one for free.
-      screenFlood.style.setProperty('--flood-hot', `color-mix(in srgb, var(--${id}) 38%, #fff)`);
-      screenFlood.style.setProperty('--flood-end', route.surface);
-      screenFlood.style.setProperty('--blowout', `${BLOWOUT_MS}ms`);
-      screenFlood.classList.add('active');
+      if (screenFlood) {
+        screenFlood.style.backgroundColor = accent;
+        screenFlood.classList.add('active');
+      }
     }, ENTER_BLOOM_MS);
-    window.setTimeout(() => screenFlood?.classList.add('blown'), ENTER_BLOWOUT_MS);
-    window.setTimeout(() => { window.location.href = route.href; }, ENTER_NAVIGATE_MS);
+
+    window.setTimeout(() => {
+      if (!screenFlood?.animate) return;
+      // Easing is LINEAR on purpose. An ease-out here maps most of the colour
+      // ramp into the first few milliseconds: measured with a
+      // cubic-bezier(.33,0,.1,1) the flood hit pure white by 68ms and then
+      // spent 112ms travelling from rgb(255,255,255) to rgb(236,240,243),
+      // which is visually nothing. The result was green, four frames, white —
+      // a jump wearing an animation. Linear keeps each stage on screen for the
+      // share of the duration its offsets claim; the shaping lives in the
+      // per-keyframe easings instead.
+      const blowout = screenFlood.animate(
+        [
+          { backgroundColor: accent, offset: 0, easing: 'cubic-bezier(.5, 0, .8, .4)' },
+          { backgroundColor: hot, offset: 0.45, easing: 'cubic-bezier(.3, .5, .5, 1)' },
+          { backgroundColor: '#ffffff', offset: 0.70 },
+          { backgroundColor: '#ffffff', offset: 0.82 },
+          { backgroundColor: route.surface, offset: 1 },
+        ],
+        { duration: BLOWOUT_MS, easing: 'linear', fill: 'forwards' }
+      );
+      // Navigating off the animation's own completion, rather than a hand-set
+      // offset, is what guarantees the ramp is never cut short.
+      blowout.finished.then(go, go);
+    }, ENTER_BLOWOUT_MS);
+
+    // Fires only if the animation never resolves (or WAAPI is unavailable).
+    window.setTimeout(go, ENTER_NAVIGATE_FALLBACK_MS);
     return;
   }
 
