@@ -167,28 +167,50 @@ body.booted .boot-room { opacity: 0; visibility: hidden; }
 }
 @keyframes bootPulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
 
-/* HUD is held back until the room is actually behind it, then eased in. */
+/* HUD is held back until the room is actually behind it, then crossfaded with
+   the wipe — no delay, or it reads as text arriving late rather than as a
+   reveal. Matches the .boot-room fade so the two happen as one gesture. */
 body.booting .hud { opacity: 0; }
-.hud { transition: opacity .5s ease .15s; }
+.hud { transition: opacity .5s ease; }
 body.booting .intro { transform: translateY(-50%) translateX(-18px); }
 
-/* Hand-off flood for worlds that navigate to a page of their own. Two stages:
-   the monitor's own colour blooms first, then blows out to the destination
-   page's background — so the document swap happens between two frames of the
-   same colour instead of cutting from a dark room to a white one. */
+/* Hand-off flood for worlds that navigate to a page of their own.
+
+   The monitor's own colour blooms up to fill the frame, then blows out like a
+   camera losing its exposure: the phosphor washes hot, overshoots past pure
+   white, holds for a beat, and settles back down onto the destination page's
+   exact background. That settle is what sells it — an exposure recovering,
+   not a colour being swapped — and it means the document swap happens between
+   two frames of identical colour instead of cutting to a white page.
+
+   Nothing moves geometrically. It is entirely brightness. */
 .screen-flood {
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: var(--flood, var(--code));
+  background-color: var(--flood, var(--code));
   opacity: 0;
   transform: scale(1.06);
   pointer-events: none;
-  transition: opacity .3s cubic-bezier(.7, 0, .84, 0), transform .3s ease-out,
-    background-color .24s linear;
+  /* background-color is deliberately NOT transitioned — the blow-out drives it
+     as a keyframe animation, and a transition on the same property would race
+     the animation for control of it. */
+  transition: opacity .22s cubic-bezier(.7, 0, .84, 0), transform .22s ease-out;
 }
 .screen-flood.active { opacity: 1; transform: scale(1); }
-.screen-flood.blown { background: var(--flood-end, #ecf0f3); }
+
+.screen-flood.blown {
+  animation: phosphorBlowout var(--blowout, 180ms) cubic-bezier(.33, 0, .1, 1) forwards;
+}
+@keyframes phosphorBlowout {
+  0%   { background-color: var(--flood, var(--code)); }
+  /* Through the accent's own hue on the way up, so it reads as the phosphor
+     itself getting hotter rather than a crossfade to a different colour. */
+  38%  { background-color: var(--flood-hot, #fff); }
+  62%  { background-color: #fff; }
+  74%  { background-color: #fff; }
+  100% { background-color: var(--flood-end, #ecf0f3); }
+}
 
 @media (max-width: 700px) {
   .intro { top: auto; bottom: 103px; left: 22px; transform: none; }

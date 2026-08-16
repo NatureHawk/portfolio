@@ -456,7 +456,24 @@ Three fixes to one sequence:
 
 - **The camera was far too close.** `enterCamera` sat 1.04 units from a 1.34-unit-tall screen at 40° FOV — the screen covered ~180% of the frame, so you arrived at a wall of green with no bezel in sight. Now `z: 2.55, y: 2.125` (the screen's true centre), which fills ~78% of frame height and keeps the monitor legible as a monitor. **2.65 is a hard ceiling**: the character sits there, and a camera behind it stares at the back of his head.
 - **The push read as a stall.** Entering used the *slowest* damp of the three (3.1) and was still crawling when the flood arrived. Now 5.0, which completes inside `ENTER_BLOOM_MS`.
-- **The cut was dark-room-to-white-page.** The flood is now two-stage: it blooms in the monitor's own colour, then blows out to the destination page's exact background (`WORLD_ROUTES[id].surface`) before navigating. `code.html`'s own `.boot` starts on that same value, so the document swap happens between two frames of identical colour.
+- **The cut was dark-room-to-white-page.** See the blow-out below.
+
+### The phosphor blow-out
+
+The monitor's colour blooms up to fill the frame, then over-exposes like a camera losing its exposure: the phosphor washes hot **through its own hue**, overshoots to pure white, holds a beat, and settles back down onto the destination page's exact background. The settle is what sells it — an exposure recovering rather than a colour being swapped. Nothing moves geometrically; it is entirely brightness, and it runs in 180ms.
+
+Two things this depends on, both easy to break:
+
+- **`ENTER_NAVIGATE_MS` is derived, not hand-set** (`ENTER_BLOWOUT_MS + BLOWOUT_MS + 30`). The first version navigated 60ms *before* the colour animation finished, so it was cut off mid-ramp and the swap read as a hard jump to white — exactly what the flood exists to prevent, and invisible unless you sample the computed colour frame by frame. If you retune any of these, keep navigation after the animation ends.
+- **`background-color` is animated by keyframes and must not also be in the `transition` list.** A transition and an animation both driving the same property race for it, and which wins is not worth relying on.
+
+`--flood-hot` (the hot midpoint) is derived with `color-mix` from whichever world is being entered, so a new world gets a correct one for free rather than needing a second hex picked by hand.
+
+Measured across the ramp: green → L 0.92 hot → L 0.999 white → settles to `rgb(237,241,243)` against the page's `rgb(236,240,243)`. One unit apart, and the document swaps there.
+
+### Reveal timing
+
+The HUD originally came in 220ms behind the room, plus a 150ms transition delay, as deliberate choreography. It read as the copy *loading late* rather than as a reveal — the room is the thing you notice arriving, so anything trailing it looks like it was waiting on something. Both now fire together and crossfade with the wipe.
 
 Timings are fixed offsets on purpose (560 / 820 / 1000ms). The sequence has to feel identical on localhost and on a cold connection, which is only possible if it does not depend on when the next document arrives — hence prefetching `code.html` and its assets at idle, so by the time anyone has read the intro copy the whole page is already cached.
 

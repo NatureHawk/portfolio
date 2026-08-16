@@ -2450,9 +2450,13 @@ const screenFlood = document.querySelector('.screen-flood');
 // identical on localhost and on a cold connection, and the only way to get
 // that is to stop the timing depending on when the next document arrives
 // (which is what prefetching it at idle makes cheap).
-const ENTER_BLOOM_MS = 560;   // monitor colour swallows the frame
-const ENTER_BLOWOUT_MS = 820; // …and turns into the destination's background
-const ENTER_NAVIGATE_MS = 1000;
+const ENTER_BLOOM_MS = 520;    // monitor colour swallows the frame
+const ENTER_BLOWOUT_MS = 760;  // …then over-exposes and settles (see .blown)
+const BLOWOUT_MS = 180;
+// Must land AFTER the blow-out has finished settling. It previously fired 60ms
+// early, so the colour animation was cut off mid-way and the swap read as a
+// hard jump to white — which is the whole thing the flood exists to prevent.
+const ENTER_NAVIGATE_MS = ENTER_BLOWOUT_MS + BLOWOUT_MS + 30;
 
 function openWorld(id) {
   if (entering) return;
@@ -2484,7 +2488,11 @@ function openWorld(id) {
     window.setTimeout(() => {
       if (!screenFlood) return;
       screenFlood.style.setProperty('--flood', `var(--${id})`);
+      // The midpoint of the blow-out: the accent's own hue, washed hot. Derived
+      // rather than picked, so any world's colour gets a correct one for free.
+      screenFlood.style.setProperty('--flood-hot', `color-mix(in srgb, var(--${id}) 38%, #fff)`);
       screenFlood.style.setProperty('--flood-end', route.surface);
+      screenFlood.style.setProperty('--blowout', `${BLOWOUT_MS}ms`);
       screenFlood.classList.add('active');
     }, ENTER_BLOOM_MS);
     window.setTimeout(() => screenFlood?.classList.add('blown'), ENTER_BLOWOUT_MS);
@@ -2769,9 +2777,12 @@ const bootStart = performance.now();
 
 function revealRoom() {
   if (body.classList.contains('booted')) return;
+  // Both at once. Staggering the HUD behind the room read as the copy loading
+  // in late rather than as choreography — the room is the thing you notice
+  // arriving, so anything that follows it looks like it was waiting on
+  // something.
   body.classList.add('booted');
-  // HUD comes in after the wipe has started, not with it.
-  window.setTimeout(() => body.classList.remove('booting'), 220);
+  body.classList.remove('booting');
 }
 
 Promise.race([
