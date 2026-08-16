@@ -55,7 +55,7 @@ const monitorSpecs = [
     color: 0x8eff56,
     hoverCamera: new THREE.Vector3(-2.20, 2.35, 6.40),
     hoverLook: new THREE.Vector3(-2.85, 2.05, -0.15),
-    enterCamera: new THREE.Vector3(-2.85, 2.05, 1.25)
+    enterCamera: new THREE.Vector3(-2.85, 2.125, 2.55)
   },
   {
     id: 'design',
@@ -63,7 +63,7 @@ const monitorSpecs = [
     color: 0x5aa2ff,
     hoverCamera: new THREE.Vector3(1.10, 2.40, 6.00),
     hoverLook: new THREE.Vector3(0, 2.05, -0.15),
-    enterCamera: new THREE.Vector3(0, 2.05, 1.25)
+    enterCamera: new THREE.Vector3(0, 2.125, 2.55)
   },
   {
     id: 'explore',
@@ -72,7 +72,7 @@ const monitorSpecs = [
     color: 0xff9158,
     hoverCamera: new THREE.Vector3(2.20, 2.35, 6.40),
     hoverLook: new THREE.Vector3(2.85, 2.05, -0.15),
-    enterCamera: new THREE.Vector3(2.85, 2.05, 1.25)
+    enterCamera: new THREE.Vector3(2.85, 2.125, 2.55)
   }
 ];
 
@@ -1627,11 +1627,22 @@ function addPerson() {
 }
 
 // --- LO-FI NIGHT DESK CLUTTER (cat, fairy lights, vinyl stack, rug, wall clock) ---
+// Both GLBs share one manager so the boot overlay can wait on the pair of them
+// rather than revealing an empty floor and popping the cat in a beat later.
+// onError resolves too — a missing asset should cost us a prop, not the room.
+let resolveClutter;
+const clutterReady = new Promise((resolve) => { resolveClutter = resolve; });
+const clutterManager = new THREE.LoadingManager(
+  () => resolveClutter(),
+  undefined,
+  () => resolveClutter()
+);
+
 function addLofiClutter() {
   // ==========================================
   // SLEEPING CAT FIGURINE (real modeled/textured asset, floor level, front of desk)
   // ==========================================
-  const catLoader = new GLTFLoader();
+  const catLoader = new GLTFLoader(clutterManager);
   catLoader.load(
     './assets/cat.glb',
     (gltf) => {
@@ -1710,7 +1721,7 @@ function addLofiClutter() {
     scene.add(twinkle);
   }
 
-  const fairyLoader = new GLTFLoader();
+  const fairyLoader = new GLTFLoader(clutterManager);
   fairyLoader.load(
     './assets/fairy_lights.glb',
     (gltf) => {
@@ -2428,8 +2439,20 @@ function setHover(target) {
 // the monitor, then floods the viewport with that screen's colour and hands off
 // to the document — so the cut lands while the screen already fills the frame
 // and reads as travelling INTO it rather than as a page navigation.
-const WORLD_ROUTES = { code: 'code.html' };
+// `surface` is the destination page's background. The flood blooms in the
+// monitor's own colour, then blows out to that exact value before the
+// navigation fires — so the document swap happens between two frames of the
+// same colour instead of cutting from a dark room to a white page.
+const WORLD_ROUTES = { code: { href: 'code.html', surface: '#ecf0f3' } };
 const screenFlood = document.querySelector('.screen-flood');
+
+// Entry choreography. Fixed offsets, deliberately: the camera push has to feel
+// identical on localhost and on a cold connection, and the only way to get
+// that is to stop the timing depending on when the next document arrives
+// (which is what prefetching it at idle makes cheap).
+const ENTER_BLOOM_MS = 560;   // monitor colour swallows the frame
+const ENTER_BLOWOUT_MS = 820; // …and turns into the destination's background
+const ENTER_NAVIGATE_MS = 1000;
 
 function openWorld(id) {
   if (entering) return;
@@ -2447,23 +2470,25 @@ function openWorld(id) {
   audio.playEnter(id);
 
   cameraGoal.copy(target.userData.spec.enterCamera);
-  lookGoal.set(target.userData.spec.x, 2.05, -0.15);
+  lookGoal.set(target.userData.spec.x, 2.125, -0.15);
 
   const route = WORLD_ROUTES[id];
   if (route) {
     if (prefersReducedMotion) {
-      window.location.href = route;
+      window.location.href = route.href;
       return;
     }
-    // Flood starts before the glide finishes so the two overlap instead of
-    // queueing; the camera is still moving underneath as the screen whites out.
+    // The bloom starts before the glide finishes so the two overlap instead of
+    // queueing; the camera is still pushing in underneath as the screen takes
+    // over the frame.
     window.setTimeout(() => {
-      if (screenFlood) {
-        screenFlood.style.setProperty('--flood', `var(--${id})`);
-        screenFlood.classList.add('active');
-      }
-    }, 620);
-    window.setTimeout(() => { window.location.href = route; }, 1060);
+      if (!screenFlood) return;
+      screenFlood.style.setProperty('--flood', `var(--${id})`);
+      screenFlood.style.setProperty('--flood-end', route.surface);
+      screenFlood.classList.add('active');
+    }, ENTER_BLOOM_MS);
+    window.setTimeout(() => screenFlood?.classList.add('blown'), ENTER_BLOWOUT_MS);
+    window.setTimeout(() => { window.location.href = route.href; }, ENTER_NAVIGATE_MS);
     return;
   }
 
@@ -2482,7 +2507,7 @@ window.addEventListener('pageshow', (event) => {
   if (!event.persisted) return;
   entering = false;
   body.classList.remove('is-entering');
-  if (screenFlood) screenFlood.classList.remove('active');
+  if (screenFlood) screenFlood.classList.remove('active', 'blown');
   setHover(null);
   suppressHoverUntil = performance.now() + 300;
   camera.position.copy(homeCamera);
@@ -2640,7 +2665,10 @@ function animate() {
   const delta = Math.min((now - lastTime) / 1000, 0.05);
   lastTime = now;
   const time = now * 0.001;
-  const dampFactor = prefersReducedMotion ? 25 : entering ? 3.1 : hovered ? 6.2 : 5.8;
+  // Entering used to be the slowest of the three (3.1) so the push would read
+  // as cinematic. It read as a stall instead — the camera was still crawling
+  // when the flood arrived. It now completes inside ENTER_BLOOM_MS.
+  const dampFactor = prefersReducedMotion ? 25 : entering ? 5.0 : hovered ? 6.2 : 5.8;
 
   // Frame-rate independent smooth damping for buttery camera gliding
   camera.position.x = THREE.MathUtils.damp(camera.position.x, cameraGoal.x, dampFactor, delta);
@@ -2728,3 +2756,47 @@ function animate() {
 camera.position.copy(homeCamera);
 camera.lookAt(homeLook);
 animate();
+
+// --- REVEAL ---------------------------------------------------------------
+// Everything above this point ran synchronously; the GLBs did not. Hold the
+// boot overlay until both have landed AND a frame has been rendered with them
+// in it, so the room appears complete rather than materialising the cat a beat
+// later. The floor keeps a fast connection from flashing the overlay for 80ms,
+// which is what made localhost and the deployed site feel like different sites.
+const BOOT_FLOOR_MS = 900;
+const BOOT_CEILING_MS = 9000;
+const bootStart = performance.now();
+
+function revealRoom() {
+  if (body.classList.contains('booted')) return;
+  body.classList.add('booted');
+  // HUD comes in after the wipe has started, not with it.
+  window.setTimeout(() => body.classList.remove('booting'), 220);
+}
+
+Promise.race([
+  clutterReady,
+  new Promise((resolve) => window.setTimeout(resolve, BOOT_CEILING_MS)),
+]).then(() => {
+  const held = performance.now() - bootStart;
+  const wait = Math.max(0, BOOT_FLOOR_MS - held);
+  window.setTimeout(() => {
+    // Two frames: one to draw the newly-added props, one to be sure it landed.
+    requestAnimationFrame(() => requestAnimationFrame(revealRoom));
+  }, wait);
+});
+
+// The CODE page is a separate document, so entering it is a real navigation.
+// Warmed at idle rather than on hover: by the time anyone has read the intro
+// copy and moved to a monitor, the whole page is already in the HTTP cache, so
+// the hand-off costs the same on a cold connection as it does on localhost.
+const warmCodePage = () => {
+  for (const href of ['code.html', 'code.css', 'code.js', 'projects.js']) {
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = href;
+    document.head.appendChild(link);
+  }
+};
+if ('requestIdleCallback' in window) requestIdleCallback(warmCodePage, { timeout: 3000 });
+else window.setTimeout(warmCodePage, 2000);

@@ -186,6 +186,12 @@ rail.style.setProperty('--rail-height', `${100 + (projects.length - 1) * DWELL_V
 // source for "where does card i sit" is the laid-out DOM.
 const trackViewport = document.getElementById('track-viewport');
 let geometry = { start: 0, end: 0, centers: [], fit: 1 };
+// Layout values, read once in measure() and never inside the frame loop.
+const cache = {
+  viewportH: 0, focusX: 0, stacked: false, docMax: 0,
+  sectionTops: [], railTop: 0, railRange: 0, falloff: 1,
+};
+let trackTarget = 0;
 
 // The cards are content-sized; the stage is viewport-sized. Browser zoom, a
 // laptop screen, or a sixth spec row all make the first exceed the second, and
@@ -221,6 +227,12 @@ function fitTrack() {
   }
 }
 
+// EVERY layout read the frame loop needs is taken here and cached. That is the
+// whole point of this function: reading offsetTop/offsetWidth/scrollHeight
+// inside the loop forces the browser to flush pending layout on each call, and
+// interleaving those reads with style writes makes it flush repeatedly per
+// frame. It doesn't cost frames-per-second — it costs *even* frame times, which
+// is exactly what micro-jitter is. Nothing below may read layout.
 function measure() {
   const viewport = window.innerWidth;
   fitTrack();
@@ -229,6 +241,17 @@ function measure() {
   geometry.centers = cards.map((card) => card.offsetLeft + card.offsetWidth / 2);
   geometry.start = viewport / 2 - geometry.centers[0] * geometry.fit;
   geometry.end = viewport / 2 - geometry.centers[geometry.centers.length - 1] * geometry.fit;
+
+  cache.viewportH = window.innerHeight;
+  cache.focusX = viewport / 2;
+  cache.stacked = window.matchMedia('(max-width: 760px)').matches;
+  cache.docMax = document.documentElement.scrollHeight - cache.viewportH;
+  cache.sectionTops = sections.map((section) => section.offsetTop);
+  cache.railTop = rail.offsetTop;
+  cache.railRange = rail.offsetHeight - cache.viewportH;
+  // Falloff is measured in card-widths, so this is a geometry constant, not a
+  // per-frame lookup.
+  cache.falloff = (cards[0]?.offsetWidth || 1) * geometry.fit * 1.15;
 }
 
 /* ══ FRAME LOOP ═════════════════════════════════════════════════════════ */
@@ -239,60 +262,75 @@ const statusPct = document.getElementById('status-pct');
 const sections = [...document.querySelectorAll('main > section, main > footer')];
 const sectionNames = ['HERO', 'PHILOSOPHY', 'SPECIFICATION', 'INDEX OF WORK', 'COLOPHON'];
 
-const pointer = { x: 0.5, y: 0.5, active: false };
+const pointer = { x: 0.5, y: 0.5, active: false, dirty: true };
 let trackX = null;      // smoothed, so wheel steps don't read as stutter
-let needsFrame = true;
 let lastReadout = -1;
+let lastScrollY = -1;
+let lastPct = -1;
+let lastFrameTime = performance.now();
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
-function frame() {
+function frame(now) {
   requestAnimationFrame(frame);
-  if (!needsFrame && trackX === null) return;
-  needsFrame = false;
+
+  // Frame-rate independent. A fixed per-frame lerp factor smooths by a
+  // different amount on every frame whose duration differs from the last,
+  // which turns variable frame timing into visible wobble — the thing it was
+  // supposed to hide.
+  const delta = Math.min((now - lastFrameTime) / 1000, 0.05);
+  lastFrameTime = now;
 
   const scrollY = window.scrollY;
-  const viewportH = window.innerHeight;
+  const scrolled = scrollY !== lastScrollY;
+  const settling = trackX !== null && Math.abs(trackX - trackTarget) > 0.05;
+  if (!scrolled && !settling && !pointer.dirty) return;
+  lastScrollY = scrollY;
+  pointer.dirty = false;
 
   // ── document progress readout ──
-  const docMax = document.documentElement.scrollHeight - viewportH;
-  const docProgress = docMax > 0 ? Math.min(1, scrollY / docMax) : 0;
-  statusFill.style.width = `${docProgress * 100}%`;
-  statusPct.textContent = `${String(Math.round(docProgress * 100)).padStart(2, '0')}%`;
+  const docProgress = cache.docMax > 0 ? Math.min(1, scrollY / cache.docMax) : 0;
+  // scaleX, not width: width is a layout property, so animating it re-lays out
+  // the status bar every single frame.
+  statusFill.style.transform = `scaleX(${docProgress.toFixed(4)})`;
+  const pct = Math.round(docProgress * 100);
+  if (pct !== lastPct) {
+    lastPct = pct;
+    statusPct.textContent = `${String(pct).padStart(2, '0')}%`;
+  }
 
   // Whichever section owns the viewport's middle. The explicit end case matters
   // because the colophon is taller than the remaining scroll — without it the
   // readout still claims "INDEX OF WORK" while you're looking at the footer.
   let current = 0;
-  sections.forEach((section, i) => {
-    if (section.offsetTop <= scrollY + viewportH * 0.5) current = i;
-  });
-  if (docMax > 0 && scrollY >= docMax - 4) current = sections.length - 1;
+  const mid = scrollY + cache.viewportH * 0.5;
+  for (let i = 0; i < cache.sectionTops.length; i++) {
+    if (cache.sectionTops[i] <= mid) current = i;
+  }
+  if (cache.docMax > 0 && scrollY >= cache.docMax - 4) current = cache.sectionTops.length - 1;
   const name = sectionNames[current] || '';
   if (statusSection.textContent !== name) statusSection.textContent = name;
 
   // ── the rail ──
-  if (!stacked()) {
-    const railTop = rail.offsetTop;
-    const railRange = rail.offsetHeight - viewportH;
-    const p = railRange > 0 ? Math.min(1, Math.max(0, (scrollY - railTop) / railRange)) : 0;
+  if (!cache.stacked) {
+    const p = cache.railRange > 0
+      ? Math.min(1, Math.max(0, (scrollY - cache.railTop) / cache.railRange))
+      : 0;
 
-    const targetX = lerp(geometry.start, geometry.end, p);
-    // Direct on the first frame, then eased — the carriage should feel like it
-    // has mass, but never drift far enough to desync from the scrollbar.
-    trackX = trackX === null ? targetX : lerp(trackX, targetX, reduceMotion ? 1 : 0.18);
-    if (Math.abs(targetX - trackX) < 0.05) trackX = targetX;
-    else needsFrame = true;
+    trackTarget = lerp(geometry.start, geometry.end, p);
+    // Exponential damping toward the target: the carriage keeps its sense of
+    // mass, but the amount of smoothing per second is constant regardless of
+    // how long the frame took.
+    const ease = reduceMotion ? 1 : 1 - Math.exp(-13 * delta);
+    trackX = trackX === null ? trackTarget : lerp(trackX, trackTarget, ease);
+    if (Math.abs(trackTarget - trackX) < 0.05) trackX = trackTarget;
 
     track.style.transform = `translate3d(${trackX.toFixed(2)}px, 0, 0) scale(${geometry.fit.toFixed(4)})`;
 
     // Emphasis + cursor tilt, per card, from the same measured centres.
-    const focus = window.innerWidth / 2;
     cards.forEach((card, i) => {
       const centre = geometry.centers[i] * geometry.fit + trackX;
-      // Falloff measured in card-widths, not viewport-widths, so a scaled-down
-      // row doesn't leave three cards all reading as "focused" at once.
-      const dist = Math.abs(centre - focus) / (card.offsetWidth * geometry.fit * 1.15);
+      const dist = Math.abs(centre - cache.focusX) / cache.falloff;
       const emph = Math.max(0, 1 - dist);
       card.style.setProperty('--emph', emph.toFixed(3));
 
@@ -329,10 +367,12 @@ function frame() {
 
 /* ══ EVENTS ═════════════════════════════════════════════════════════════ */
 
-const flag = () => { needsFrame = true; };
+// The loop samples window.scrollY itself rather than reacting to the event,
+// so a scroll event landing after that frame's rAF can't push the update a
+// frame late. flag() only exists to wake the loop for non-scroll changes.
+const flag = () => { pointer.dirty = true; };
 
-window.addEventListener('scroll', flag, { passive: true });
-window.addEventListener('resize', () => { measure(); trackX = null; flag(); });
+window.addEventListener('resize', () => { measure(); trackX = null; flag(); }, { passive: true });
 
 window.addEventListener(
   'pointermove',
@@ -340,11 +380,11 @@ window.addEventListener(
     pointer.x = event.clientX / window.innerWidth;
     pointer.y = event.clientY / window.innerHeight;
     pointer.active = true;
-    flag();
+    pointer.dirty = true;
   },
   { passive: true }
 );
-window.addEventListener('pointerleave', () => { pointer.active = false; flag(); });
+window.addEventListener('pointerleave', () => { pointer.active = false; pointer.dirty = true; });
 
 // Principle plates seat themselves once, then stop costing anything.
 const seatObserver = new IntersectionObserver(
@@ -362,7 +402,33 @@ const seatObserver = new IntersectionObserver(
 );
 document.querySelectorAll('.principle').forEach((el) => seatObserver.observe(el));
 
-// Fonts change card widths, so geometry has to be re-measured once they land.
+/* ══ READY ══════════════════════════════════════════════════════════════
+   The display face is a variable-width grotesque loaded over the network, and
+   it changes card widths — so the rail must be measured after it lands, and
+   the page must not be shown re-typesetting itself while we wait.
+
+   The floor keeps a warm cache from flashing the overlay for two frames; the
+   ceiling means a font CDN having a bad day costs a re-typeset, not a blank
+   page. Both fixed, so this feels the same on localhost and on a cold load. */
+const READY_FLOOR_MS = 260;
+const READY_CEILING_MS = 2200;
+const readyStart = performance.now();
+
 measure();
-if (document.fonts?.ready) document.fonts.ready.then(() => { measure(); trackX = null; flag(); });
+
+const fontsSettled = document.fonts?.ready
+  ? Promise.race([
+      document.fonts.ready,
+      new Promise((r) => setTimeout(r, READY_CEILING_MS)),
+    ])
+  : Promise.resolve();
+
+fontsSettled.then(() => {
+  measure();
+  trackX = null;
+  flag();
+  const wait = Math.max(0, READY_FLOOR_MS - (performance.now() - readyStart));
+  setTimeout(() => requestAnimationFrame(() => document.body.classList.add('ready')), wait);
+});
+
 requestAnimationFrame(frame);

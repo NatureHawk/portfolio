@@ -104,8 +104,78 @@ body.is-hovering .intro { transform: translateY(-50%) translateX(-12px); }
 .back-button { margin-top: 20px; border: 1px solid var(--world); padding: 11px 15px; background: transparent; color: var(--world); cursor: pointer; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
 .back-button:hover, .back-button:focus-visible { color: var(--ink); background: var(--world); }
 
-/* Hand-off flood for worlds that navigate to a page of their own: the monitor's
-   own colour swallows the viewport so the document swap lands behind it. */
+/* --- BOOT ------------------------------------------------------------------
+   The room is ~2,700 lines of geometry and a stack of procedurally drawn
+   canvases; it cannot appear instantly, and showing the HUD over an empty
+   canvas while it builds looked broken. So the wait is dressed as the thing
+   the room is about: a CRT warming up.
+
+   Every animation below is transform/opacity only. That matters — those run on
+   the compositor, so this keeps moving smoothly through the long synchronous
+   block that builds the scene, which a width or colour animation would not. */
+.boot-room {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  transition: opacity .5s ease, visibility .5s;
+}
+body.booted .boot-room { opacity: 0; visibility: hidden; }
+
+.boot-room-inner { display: grid; justify-items: center; gap: 14px; text-align: center; }
+.boot-brand { margin: 0; font-size: 10px; letter-spacing: .3em; color: var(--muted); }
+.boot-title {
+  margin: 0;
+  font: 400 clamp(2.6rem, 7vw, 5rem)/.9 var(--display);
+  letter-spacing: -.03em;
+  text-transform: uppercase;
+}
+/* The tube: a thin scan bar sweeping a dark groove. Indeterminate on purpose —
+   a percentage would be a lie, since the browser cannot report progress
+   through synchronous work. */
+.boot-tube {
+  position: relative;
+  width: min(240px, 52vw);
+  height: 3px;
+  margin-top: 6px;
+  overflow: hidden;
+  background: rgba(238, 225, 207, .12);
+}
+.boot-tube i {
+  position: absolute;
+  inset: 0;
+  width: 38%;
+  background: var(--code);
+  box-shadow: 0 0 12px var(--code);
+  transform: translateX(-110%);
+  animation: bootSweep 1.15s cubic-bezier(.6, 0, .35, 1) infinite;
+}
+@keyframes bootSweep {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(370%); }
+}
+.boot-status {
+  margin: 0;
+  font-size: 9.5px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  animation: bootPulse 1.8s ease-in-out infinite;
+}
+@keyframes bootPulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+
+/* HUD is held back until the room is actually behind it, then eased in. */
+body.booting .hud { opacity: 0; }
+.hud { transition: opacity .5s ease .15s; }
+body.booting .intro { transform: translateY(-50%) translateX(-18px); }
+
+/* Hand-off flood for worlds that navigate to a page of their own. Two stages:
+   the monitor's own colour blooms first, then blows out to the destination
+   page's background — so the document swap happens between two frames of the
+   same colour instead of cutting from a dark room to a white one. */
 .screen-flood {
   position: fixed;
   inset: 0;
@@ -114,9 +184,11 @@ body.is-hovering .intro { transform: translateY(-50%) translateX(-12px); }
   opacity: 0;
   transform: scale(1.06);
   pointer-events: none;
-  transition: opacity .42s cubic-bezier(.7, 0, .84, 0), transform .42s ease-out;
+  transition: opacity .3s cubic-bezier(.7, 0, .84, 0), transform .3s ease-out,
+    background-color .24s linear;
 }
 .screen-flood.active { opacity: 1; transform: scale(1); }
+.screen-flood.blown { background: var(--flood-end, #ecf0f3); }
 
 @media (max-width: 700px) {
   .intro { top: auto; bottom: 103px; left: 22px; transform: none; }

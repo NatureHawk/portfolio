@@ -8,8 +8,46 @@
     <title>Priyanshu Ghosh — The Late Night Desk</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css" />
+
+    <!-- MUST come before any modulepreload below and before the module script.
+         An import map registered after module loading has begun is ignored, and
+         `import ... from 'three'` then fails to resolve outright. Maps the bare
+         specifier so GLTFLoader's own `from 'three'` works with no bundler;
+         points at vendor/, not node_modules/, so the site runs from a clean
+         checkout and deploys as plain static files. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.min.js",
+          "three/addons/": "./vendor/three/addons/"
+        }
+      }
+    </script>
+
+    <!-- Without these the module graph is discovered one hop at a time: app.js
+         has to parse before the browser learns about three, which has to parse
+         before it learns about three.core. Three serial round trips before a
+         single line runs, which is most of the wait on a real connection.
+         Declared here, the whole graph is fetched in parallel. -->
+    <link rel="modulepreload" href="vendor/three/three.module.min.js" />
+    <link rel="modulepreload" href="vendor/three/three.core.min.js" />
+    <link rel="modulepreload" href="vendor/three/addons/loaders/GLTFLoader.js" />
+    <link rel="modulepreload" href="vendor/three/addons/utils/BufferGeometryUtils.js" />
+    <link rel="modulepreload" href="vendor/three/addons/utils/SkeletonUtils.js" />
   </head>
-  <body>
+  <body class="booting">
+    <!-- Painted before a byte of JavaScript runs, and animated entirely with
+         transform/opacity so the compositor keeps it moving even while the
+         main thread is blocked building the scene. -->
+    <div class="boot-room" aria-hidden="true">
+      <div class="boot-room-inner">
+        <p class="boot-brand">PRIYANSHU GHOSH</p>
+        <p class="boot-title">Late night desk</p>
+        <div class="boot-tube"><i></i></div>
+        <p class="boot-status">Warming up the tubes</p>
+      </div>
+    </div>
+
     <main class="app">
       <canvas id="scene" aria-label="A 3D lo-fi room with three interactive CRT monitors"></canvas>
 
@@ -63,18 +101,6 @@
       </section>
       <div class="screen-flood" aria-hidden="true"></div>
     </main>
-    <!-- Maps the bare specifier "three" so GLTFLoader's own `from 'three'`
-         resolves in the browser with no bundler. Points at vendor/, not
-         node_modules/, so the site runs from a clean checkout and deploys as
-         plain static files. Regenerate with `npm run vendor`. -->
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "./vendor/three/three.module.min.js",
-          "three/addons/": "./vendor/three/addons/"
-        }
-      }
-    </script>
     <script type="module" src="app.js"></script>
   </body>
 </html>

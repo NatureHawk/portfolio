@@ -119,14 +119,22 @@ em { font-style: normal; }
 
 /* ── ARRIVAL ─────────────────────────────────────────────────────────── */
 
+/* Picks up exactly where the room's flood left off — same colour, so the
+   document swap is invisible — and holds until the web fonts have loaded.
+   Without that hold you watch the whole page re-typeset a second after it
+   appears, which is the "takes a second to get the facing" problem. Cleared
+   from code.js, not on a timer. */
 .boot {
   position: fixed;
   inset: 0;
   z-index: 200;
   background: var(--surface);
   pointer-events: none;
-  animation: bootClear 0.62s var(--ease) 0.08s forwards;
+  opacity: 1;
+  transition: opacity 0.45s var(--ease);
 }
+body.ready .boot { opacity: 0; visibility: hidden; }
+
 .boot-scan {
   position: absolute;
   left: 12%;
@@ -135,10 +143,14 @@ em { font-style: normal; }
   height: 3px;
   border-radius: 2px;
   box-shadow: var(--press-sm);
-  animation: bootScan 0.55s var(--ease) forwards;
+  transform-origin: center;
+  animation: bootScan 1.1s var(--ease) infinite;
 }
-@keyframes bootClear { to { opacity: 0; visibility: hidden; } }
-@keyframes bootScan { to { transform: scaleX(0); opacity: 0; } }
+@keyframes bootScan {
+  0% { transform: scaleX(0.05); opacity: 0.35; }
+  50% { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(0.05); opacity: 0.35; }
+}
 
 /* ── CHASSIS ─────────────────────────────────────────────────────────── */
 /* Floating panels rather than edge-to-edge bars: a neumorphic element has to
@@ -234,13 +246,18 @@ em { font-style: normal; }
   border-radius: 999px;
   box-shadow: var(--press-sm);
 }
+/* Full width, scaled from the left. Animating `width` would re-lay-out the
+   status bar on every frame of every scroll; scaleX is composited. */
 .status-bar i {
   display: block;
   height: 100%;
-  width: 0;
+  width: 100%;
   border-radius: 999px;
   background: var(--ink);
   opacity: 0.5;
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
 }
 .status-pct { font-variant-numeric: tabular-nums; }
 
@@ -568,7 +585,10 @@ section { padding: 0 var(--pad); }
   transform: scale(calc(0.93 + 0.07 * var(--emph, 0)));
   opacity: calc(0.66 + 0.34 * var(--emph, 0));
   transform-origin: center 60%;
-  transition: opacity 0.2s linear;
+  /* No transition on opacity: --emph is rewritten every frame from the scroll
+     position, so a transition here restarts continuously and fights the value
+     it is trying to reach. Transform and opacity are both composited, so the
+     per-frame write is free. */
 }
 
 .card-face {
@@ -580,17 +600,28 @@ section { padding: 0 var(--pad); }
   padding: clamp(20px, 2.2vw, 30px);
   border-radius: var(--r-lg);
   background: var(--surface);
-  /* Elevation rises with focus, so the centre card is physically the closest
-     thing to you rather than just the brightest. */
-  box-shadow:
-    calc(7px + 6px * var(--emph, 0)) calc(7px + 6px * var(--emph, 0))
-      calc(15px + 13px * var(--emph, 0)) var(--shade),
-    calc(-7px - 6px * var(--emph, 0)) calc(-7px - 6px * var(--emph, 0))
-      calc(15px + 13px * var(--emph, 0)) var(--light);
+  box-shadow: var(--pop-md);
   transform: perspective(1200px)
     rotateX(calc(var(--tilt-x, 0) * 1deg))
     rotateY(calc(var(--tilt-y, 0) * 1deg));
   transform-style: preserve-3d;
+}
+
+/* Elevation rises with focus, so the centre card is physically the closest
+   thing to you. Done as a second shadow cross-faded by opacity rather than by
+   interpolating the shadow offsets directly: a box-shadow whose geometry
+   changes has to be re-rasterised every frame, on five large blurred cards,
+   and that was the single biggest source of scroll jitter. Opacity composites. */
+.card-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  box-shadow: var(--pop-lg);
+  opacity: var(--emph, 0);
+  will-change: opacity;
+  pointer-events: none;
 }
 
 /* The project's colour, inlaid into the surface rather than printed on it. */

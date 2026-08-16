@@ -82,9 +82,13 @@ Three.js world units, right-handed (+X right, +Y up, +Z toward camera).
 | **Hover `CODE`** | `(-2.20, 2.35, 6.40)` | `(-2.85, 2.05, -0.15)` | `6.2` |
 | **Hover `DESIGN`** | `(1.10, 2.40, 6.00)` | `(0.00, 2.05, -0.15)` | `6.2` |
 | **Hover `EXPLORE`** | `(2.20, 2.35, 6.40)` | `(2.85, 2.05, -0.15)` | `6.2` |
-| **Enter `CODE`/`DESIGN`/`EXPLORE`** | `(monitor.x, 2.05, 1.25)` | `(monitor.x, 2.05, -0.15)` | `3.1` |
+| **Enter `CODE`/`DESIGN`/`EXPLORE`** | `(monitor.x, 2.125, 2.55)` | `(monitor.x, 2.125, -0.15)` | `5.0` |
 
-`3.1` (entering) is deliberately the *slowest* of the three — it was previously `4.8`, which felt too fast/abrupt; the world-view page reveal delay was extended from `500ms` to `820ms` to match so the camera glide is mostly complete before the page cuts in, instead of being visibly cut off mid-motion.
+The enter pose was `(monitor.x, 2.05, 1.25)` at damp `3.1` and both numbers were wrong:
+
+- **`z: 1.25` was far too close.** That is 1.04 units from a 1.34-unit-tall screen at 40° FOV — the screen covered roughly 180% of the frame, so you arrived at a wall of colour with no bezel visible and no sense of *what* you had zoomed into. `2.55` fills ~78% of frame height, which keeps the monitor readable as a monitor. **`z` must stay below 2.65**: the character sits there, and a camera behind him frames the back of his head.
+- **`y` is now 2.125**, the screen mesh's true world centre (`group.y 2.05 + local 0.075`), so the screen is actually centred rather than sitting slightly high.
+- **Damp `3.1` was the slowest of the three states** on the theory that a slow push feels cinematic. It read as a stall — the camera was still crawling when the transition fired over it. `5.0` completes inside `ENTER_BLOOM_MS`. See §17 for the full entry sequence.
 
 ### Monitor Layout
 - `CODE`: `x: -2.85`, `ry: +0.18 rad`
@@ -421,3 +425,52 @@ cd /tmp/deploytest && npx -y serve -l 5199 .
 ```
 
 Both pages, both GLBs, and the full room → CODE → back round trip were confirmed against that copy with an empty console.
+
+---
+
+## 17. Load & Entry Choreography
+
+Three separate problems presented as one ("it takes five seconds and the transition looks bad"). They have different causes and different fixes.
+
+### The module waterfall (the actual load cost)
+
+`app.js` imports `three`, which imports `three.core`. The browser cannot know about a module until it has parsed the one that imports it, so the graph was discovered **one hop at a time** — three serial round trips before a single line of the scene ran. Locally that's invisible (14ms each); on a real connection it is most of the wait.
+
+`index.html` now declares the whole graph with `<link rel="modulepreload">`, and all six files start fetching in parallel at ~14ms instead of 40 → 90 → 138ms.
+
+**The import map must stay above those links.** An import map registered after module loading has begun is ignored entirely, and `import ... from 'three'` then fails to resolve — the page renders nothing. That is exactly what happened when the preload hints were first added above it, and it is silent apart from one console line. Import map first, then modulepreload, then the module script.
+
+GLB preload hints were tried and removed: `<link rel="preload" as="fetch">` did not match the request `GLTFLoader` actually makes, so the browser warned about an unused preload and downloaded each file twice.
+
+### The boot overlay (covering what can't be made instant)
+
+The room is thousands of lines of geometry plus a stack of procedurally drawn canvases. It cannot appear instantly, and the HUD appearing over a blank canvas while it built looked broken.
+
+`.boot-room` is in the HTML, so it paints before any JavaScript runs. **Every animation on it is transform/opacity only** — those run on the compositor, so it keeps moving smoothly straight through the long synchronous block that builds the scene. A width or colour animation would freeze solid at exactly the moment it needs to reassure.
+
+It clears when both GLBs have loaded (via a shared `LoadingManager`, whose `onError` also resolves — a missing asset should cost a prop, not the room) **and** a frame has rendered with them present, so the room never materialises the cat a beat after everything else. `BOOT_FLOOR_MS` stops a warm cache from flashing it for two frames; `BOOT_CEILING_MS` stops a dead asset from stranding it.
+
+### Entering CODE
+
+Three fixes to one sequence:
+
+- **The camera was far too close.** `enterCamera` sat 1.04 units from a 1.34-unit-tall screen at 40° FOV — the screen covered ~180% of the frame, so you arrived at a wall of green with no bezel in sight. Now `z: 2.55, y: 2.125` (the screen's true centre), which fills ~78% of frame height and keeps the monitor legible as a monitor. **2.65 is a hard ceiling**: the character sits there, and a camera behind it stares at the back of his head.
+- **The push read as a stall.** Entering used the *slowest* damp of the three (3.1) and was still crawling when the flood arrived. Now 5.0, which completes inside `ENTER_BLOOM_MS`.
+- **The cut was dark-room-to-white-page.** The flood is now two-stage: it blooms in the monitor's own colour, then blows out to the destination page's exact background (`WORLD_ROUTES[id].surface`) before navigating. `code.html`'s own `.boot` starts on that same value, so the document swap happens between two frames of identical colour.
+
+Timings are fixed offsets on purpose (560 / 820 / 1000ms). The sequence has to feel identical on localhost and on a cold connection, which is only possible if it does not depend on when the next document arrives — hence prefetching `code.html` and its assets at idle, so by the time anyone has read the intro copy the whole page is already cached.
+
+`code.html` holds its own overlay until `document.fonts.ready`. The display face is a variable-width grotesque loaded over the network and it changes card widths, so without that hold you watch the entire page re-typeset a second after it appears.
+
+### Scroll smoothness
+
+Reported as "micro jitters, but FPS is fine" — which is the precise symptom of **uneven frame times rather than dropped frames**. Four causes, all in code I had written:
+
+1. **Layout reads inside the frame loop.** `rail.offsetTop`, `document.documentElement.scrollHeight`, `section.offsetTop` ×5 and `card.offsetWidth` ×5 — thirteen forced synchronous layouts per frame, interleaved with style writes, so the browser flushed layout repeatedly per frame. Every one of these now lives in `measure()` and is cached in `cache`. **Nothing in the frame loop may read layout.**
+2. **`box-shadow` interpolated per frame** on five large blurred cards, which cannot be composited and forces a re-raster each time. Now a static base shadow plus a `::after` carrying the deep shadow, cross-faded with `opacity` — which composites.
+3. **`width` animated** on the status bar, a layout property. Now `transform: scaleX()`.
+4. **A fixed per-frame lerp factor**, which smooths by a different amount on every frame of differing duration — turning variable frame timing into visible wobble, the thing it was meant to hide. Now exponential damping against real delta time.
+
+Also removed: a CSS `transition` on `.card` opacity while JS rewrote that value every frame, so the transition restarted continuously and fought its own target.
+
+Measured after: **mean 16.68ms, standard deviation 0.96ms** across a 90-frame scroll sweep. Standard deviation is the number that matters here; average FPS was never the problem.
