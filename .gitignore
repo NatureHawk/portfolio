@@ -15,3 +15,6 @@ assets/sleeping-fat-cat-figurine-*/
 # Local screenshot scratch
 *.png
 !assets/**/*.png
+
+# Previous CODE design, kept locally as a reference. Not published.
+_backup/

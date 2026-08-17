@@ -2454,12 +2454,11 @@ const screenFlood = document.querySelector('.screen-flood');
 // stage of the ramp is drawn onto a transparent element and never seen. Bloom
 // at 440 + a 160ms fade lands it solid at ~600; the blow-out then has 80ms of
 // solid colour to start from.
-const ENTER_BLOOM_MS = 440;    // monitor colour swallows the frame
-const ENTER_BLOWOUT_MS = 680;  // …then over-exposes and settles
+// How long the camera gets to push into the monitor before the flood begins.
+const ENTER_BLOOM_MS = 440;
+// Duration of the colour ramp itself. The fade-in and hold that precede it are
+// defined at the call site, next to the loop that drives them.
 const BLOWOUT_MS = 200;
-// Safety net only. Navigation normally waits on the animation's own `finished`
-// promise, so it cannot be cut off mid-ramp the way a hand-set offset was.
-const ENTER_NAVIGATE_FALLBACK_MS = ENTER_BLOWOUT_MS + BLOWOUT_MS + 260;
 
 // Resolves any CSS colour — hex, rgb(), a var() lookup — to a literal rgb()
 // string, by letting the canvas 2D context do the parsing. The blow-out needs
@@ -2509,10 +2508,6 @@ function openWorld(id) {
 
   const route = WORLD_ROUTES[id];
   if (route) {
-    if (prefersReducedMotion) {
-      window.location.href = route.href;
-      return;
-    }
     // The bloom starts before the glide finishes so the two overlap instead of
     // queueing; the camera is still pushing in underneath as the screen takes
     // over the frame.
@@ -2533,40 +2528,99 @@ function openWorld(id) {
       window.location.href = route.href;
     };
 
-    window.setTimeout(() => {
-      if (screenFlood) {
-        screenFlood.style.backgroundColor = accent;
-        screenFlood.classList.add('active');
+    // Colour stops for the ramp. Sampled by hand below rather than handed to
+    // the browser, so nothing depends on how any particular engine interpolates
+    // colour or schedules animations.
+    const stops = [
+      [0.00, accent],
+      [0.45, hot],
+      [0.70, '#ffffff'],
+      [0.82, '#ffffff'],
+      [1.00, route.surface],
+    ];
+    const sampleRamp = (t) => {
+      for (let i = 1; i < stops.length; i++) {
+        if (t > stops[i][0] && i < stops.length - 1) continue;
+        const [a, from] = stops[i - 1];
+        const [b, to] = stops[i];
+        return mixColours(from, to, b === a ? 1 : (t - a) / (b - a));
       }
-    }, ENTER_BLOOM_MS);
+      return stops[stops.length - 1][1];
+    };
+
+    // Driven frame by frame in JS rather than by a CSS transition, a @keyframes
+    // rule or the Web Animations API. Every one of those has now failed here in
+    // a different way: custom properties inside keyframes silently voided the
+    // whole rule in Edge; an ease-out compressed the ramp out of sight; and the
+    // element's own opacity transition left the ramp painting onto something
+    // invisible. Writing both properties directly each frame removes all of it
+    // — there is nothing left to be unsupported, overridden or raced.
+    //
+    // Reduced motion gets a shortened version, NOT a hard cut. Nothing here
+    // moves; it is a colour fade, which is the transition that preference is
+    // meant to leave alone. Skipping it outright was what made Edge slam
+    // straight to a white page.
+    const scale = prefersReducedMotion ? 0.45 : 1;
+    const fadeMs = 170 * scale;
+    const holdMs = 90 * scale;
+    const rampMs = BLOWOUT_MS * scale;
+    const totalMs = fadeMs + holdMs + rampMs;
+
+    // The camera gets this long to push into the monitor before the screen
+    // starts taking over the frame; the two overlap rather than queueing.
+    const leadIn = ENTER_BLOOM_MS * scale;
+
+    if (!screenFlood) {
+      window.setTimeout(go, leadIn + totalMs);
+      return;
+    }
 
     window.setTimeout(() => {
-      if (!screenFlood?.animate) return;
-      // Easing is LINEAR on purpose. An ease-out here maps most of the colour
-      // ramp into the first few milliseconds: measured with a
-      // cubic-bezier(.33,0,.1,1) the flood hit pure white by 68ms and then
-      // spent 112ms travelling from rgb(255,255,255) to rgb(236,240,243),
-      // which is visually nothing. The result was green, four frames, white —
-      // a jump wearing an animation. Linear keeps each stage on screen for the
-      // share of the duration its offsets claim; the shaping lives in the
-      // per-keyframe easings instead.
-      const blowout = screenFlood.animate(
-        [
-          { backgroundColor: accent, offset: 0, easing: 'cubic-bezier(.5, 0, .8, .4)' },
-          { backgroundColor: hot, offset: 0.45, easing: 'cubic-bezier(.3, .5, .5, 1)' },
-          { backgroundColor: '#ffffff', offset: 0.70 },
-          { backgroundColor: '#ffffff', offset: 0.82 },
-          { backgroundColor: route.surface, offset: 1 },
-        ],
-        { duration: BLOWOUT_MS, easing: 'linear', fill: 'forwards' }
-      );
-      // Navigating off the animation's own completion, rather than a hand-set
-      // offset, is what guarantees the ramp is never cut short.
-      blowout.finished.then(go, go);
-    }, ENTER_BLOWOUT_MS);
+      // Inline styles beat the stylesheet, so the CSS transition cannot fight
+      // us for either property.
+      screenFlood.style.transition = 'none';
+      screenFlood.style.backgroundColor = accent;
+      screenFlood.style.opacity = '0';
 
-    // Fires only if the animation never resolves (or WAAPI is unavailable).
-    window.setTimeout(go, ENTER_NAVIGATE_FALLBACK_MS);
+      const startedAt = performance.now();
+      let ticker = 0;
+
+      // State is derived purely from elapsed time, so this is idempotent — it
+      // does not matter which clock calls it, or how often.
+      const paint = () => {
+        const ms = performance.now() - startedAt;
+
+        // Smoothstep in, so the flood arrives without a linear ramp's hard edge.
+        const f = Math.min(1, ms / fadeMs);
+        screenFlood.style.opacity = String(f * f * (3 - 2 * f));
+        screenFlood.style.transform = `scale(${(1.06 - 0.06 * f).toFixed(4)})`;
+
+        if (ms > fadeMs + holdMs) {
+          const r = Math.min(1, (ms - fadeMs - holdMs) / rampMs);
+          screenFlood.style.backgroundColor = sampleRamp(r);
+        }
+
+        if (ms >= totalMs) {
+          clearInterval(ticker);
+          go();
+          return false;
+        }
+        return true;
+      };
+
+      // Two clocks on purpose. rAF gives the smooth result when the compositor
+      // is running; the interval is a backstop for when it is not, which is a
+      // real state — throttled tabs, some power modes, and headless Chrome all
+      // stop serving frames while timers keep firing. Whichever ticks, the
+      // flood advances, and neither can leave it stranded part-way.
+      const raf = () => { if (paint()) requestAnimationFrame(raf); };
+      requestAnimationFrame(raf);
+      ticker = setInterval(paint, 16);
+    }, leadIn);
+
+    // rAF stops in a backgrounded tab, so the ramp would never finish there.
+    // This guarantees the navigation still happens.
+    window.setTimeout(go, leadIn + totalMs + 400);
     return;
   }
 
@@ -2585,7 +2639,16 @@ window.addEventListener('pageshow', (event) => {
   if (!event.persisted) return;
   entering = false;
   body.classList.remove('is-entering');
-  if (screenFlood) screenFlood.classList.remove('active', 'blown');
+  // The flood is driven by INLINE styles, and inline styles survive a bfcache
+  // restore and outrank the stylesheet — so clearing the class is not enough.
+  // Without this the room comes back underneath a solid opaque panel.
+  if (screenFlood) {
+    screenFlood.classList.remove('active', 'blown');
+    screenFlood.style.transition = '';
+    screenFlood.style.opacity = '';
+    screenFlood.style.transform = '';
+    screenFlood.style.backgroundColor = '';
+  }
   setHover(null);
   suppressHoverUntil = performance.now() + 300;
   camera.position.copy(homeCamera);

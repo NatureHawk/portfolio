@@ -1,54 +1,96 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   CODE — Priyanshu Ghosh
+   CODE1 — Priyanshu Ghosh
+   Iteration B of the CODE sheet. /code and code.css are untouched; nothing
+   here is shared with them, so this file can be pulled apart freely.
 
-   Material: neumorphism. Nothing here is a box drawn ON the page — every
-   element is the same continuous surface, pushed out of it or pressed into
-   it. That means no borders anywhere; form comes entirely from a pair of
-   opposed shadows, one dark down-right and one white up-left, as if a single
-   soft light sits at the top-left of the screen.
+   WHAT CHANGED FROM REV. A, AND WHY
 
-   Three primitives compose everything. Keep using them rather than inventing
-   a fourth, or the surface stops reading as one piece of material:
-     .raised   pushed out of the surface   (outer dark + outer light)
-     .sunken   pressed into the surface    (inner dark + inner light)
-     .groove   an engraved hairline        (1px dark over 1px white)
+   Same material — one continuous surface, form from a pair of opposed
+   shadows, no borders. That was right. Four things were not:
 
-   Controls are real controls: the philosophy switches throw, the selector
-   dial turns, buttons press in when clicked. Colour arrives only through
-   indicator lamps and accent inlays — the surface itself is never tinted.
+   1. Everything was a pill. A pill says "I am a control you can press."
+      Saying it about a technology name, a status, a spec value and a section
+      tag at once makes all four unreadable and the page reads as a UI kit.
+      Here the pill survives ONLY on things that behave: the mode switch, the
+      nav, the CTA. Information is set as type on a grid instead.
+   2. Radii were large enough that every element read as a soft blob. Halved,
+      so the surface reads as milled rather than moulded.
+   3. Two type sizes did all the work — giant display and 9px mono. Four
+      tiers now: DISPLAY, TITLE, TECH, MICRO, with a real body size in
+      between that is meant to be read rather than scanned.
+   4. Whitespace was accidental. The empty regions now carry the instrument
+      rail, the tally, the manifest and the build plate — all of which are
+      facts about the page, not decoration.
 
-   Accessibility note: neumorphism's weakness is that borderless low-contrast
-   controls disappear. Countered here by keeping ALL text at proper contrast
-   against the surface, and never relying on shadow alone to signal a control
-   that matters — see --accent-ink.
+   PRIMITIVES — keep using these rather than inventing a fifth, or the
+   surface stops reading as one piece of material:
+     .panel    a faceplate pushed out of the surface
+     .well     a recess milled into it (displays, readouts, sockets)
+     .hair     an engraved hairline (1px dark over 1px white)
+     .lamp     an indicator seated in a shallow socket
+
+   Accessibility: neumorphism's failure mode is that borderless low-contrast
+   controls vanish. Every text colour here clears 4.5:1 on the surface, and
+   no control is signalled by shadow alone — each carries a word.
    ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* The surface, and the two lights that shape it. */
+  /* The surface, and the single lamp at top-left that shapes everything. */
   --surface: #ecf0f3;
   --shade: #d1d9e6;
   --light: #ffffff;
+  /* Milled recesses read a touch darker than the plate they are cut into. */
+  --well: #e7ebf0;
 
+  /* Navy, kept from REV. A. --ink-strong is new: it gives display type
+     somewhere to go above body copy, which is most of the added hierarchy. */
+  --ink-strong: #1e2c42;
   --ink: #2e3f59;
-  --ink-soft: #5b6b82;
-  --ink-faint: #64738a;
+  --ink-soft: #4b5b73;
+  --ink-faint: #5c687a;
+  --hair-line: #cbd5e1;
+
+  /* The product's accent. One colour, used where something is live, selected
+     or measured — never as a surface tint and never as a gradient. */
+  --signal: #ff4a1c;
 
   --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
   --wide: "wdth" 118;
   --widest: "wdth" 125;
 
-  /* Elevation scale. Distance and blur stay in a 1:2 ratio at every step so
+  /* Elevation. Distance and blur stay in a 1:2 ratio at every step so
      everything reads as lit by the same lamp from the same height. */
+  --pop-xs: 2px 2px 4px var(--shade), -2px -2px 4px var(--light);
   --pop-sm: 4px 4px 8px var(--shade), -4px -4px 8px var(--light);
   --pop-md: 7px 7px 15px var(--shade), -7px -7px 15px var(--light);
   --pop-lg: 13px 13px 28px var(--shade), -13px -13px 28px var(--light);
+  --press-xs: inset 2px 2px 4px var(--shade), inset -2px -2px 4px var(--light);
   --press-sm: inset 3px 3px 6px var(--shade), inset -3px -3px 6px var(--light);
   --press-md: inset 6px 6px 12px var(--shade), inset -6px -6px 12px var(--light);
 
-  --r-lg: 30px;
-  --r-md: 20px;
-  --r-sm: 13px;
+  /* Halved from REV. A. Milled, not moulded. */
+  --r-lg: 18px;
+  --r-md: 12px;
+  --r-sm: 7px;
+  --r-xs: 4px;
+
+  /* ── TYPE SCALE ──────────────────────────────────────────────────────
+     Four tiers with clear air between them. The old sheet had two.        */
+  /* The vw term is not a taste decision. "THINGS" sets 4.83em wide, and the
+     title column is whatever is left after the gutters, the instrument rail
+     and the gap — about 0.70 of the viewport at every size the rail clamps
+     across. 0.70 / 4.83 = 13.8vw is therefore the widest the display face can
+     be set without running into the rail on a 1280 screen. The vh term is the
+     separate cap that keeps three lines at 0.8 leading off the scroll cue. */
+  --t-display: clamp(2.6rem, min(13.8vw, 23vh), 13rem);
+  --t-h2: clamp(1.9rem, 5.2vw, 4.2rem);   /* section headlines            */
+  --t-h3: clamp(1.55rem, 3.6vw, 2.9rem);  /* project names                */
+  --t-h4: clamp(1rem, 1.9vw, 1.5rem);     /* domain + principle statements */
+  --t-body: 13px;                          /* prose, meant to be read      */
+  --t-tech: 11.5px;                        /* specifications               */
+  --t-micro: 9.5px;                        /* labels                       */
+  --t-nano: 8.5px;                         /* markings                     */
 
   --pad: clamp(20px, 4.6vw, 76px);
   --bar: 44px;
@@ -62,68 +104,102 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
-  /* Deliberately flat. A pattern or grid here would break the illusion that
-     every element is extruded from an unbroken sheet. */
   background: var(--surface);
   color: var(--ink);
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--t-body);
   -webkit-font-smoothing: antialiased;
 }
 
 a { color: inherit; text-decoration: none; }
 em { font-style: normal; }
+dl, dd { margin: 0; }
 
 :focus-visible {
   outline: 2px solid var(--ink);
-  outline-offset: 4px;
-  border-radius: 6px;
+  outline-offset: 3px;
+  border-radius: var(--r-xs);
 }
 
 /* ── PRIMITIVES ──────────────────────────────────────────────────────── */
 
-.raised { background: var(--surface); box-shadow: var(--pop-md); }
-.sunken { background: var(--surface); box-shadow: var(--press-md); }
+.panel {
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--pop-md);
+  padding: clamp(18px, 2vw, 26px);
+}
+/* Rows inside carry their own padding and run to the engraved edge. */
+.panel--flush { padding: 0; overflow: hidden; }
+
+.well {
+  background: var(--well);
+  border-radius: var(--r-md);
+  box-shadow: var(--press-md);
+}
 
 /* Engraved rule: the dark hairline is the cut, the white below is the lip
    catching the light. Two 1px lines, no blur — crisp at any zoom. */
-.groove {
+.hair {
   height: 2px;
   background: linear-gradient(var(--shade) 0 1px, var(--light) 1px 2px);
   border-radius: 1px;
 }
 
-/* Indicator lamp. Sits in a shallow socket so it reads as seated hardware
-   rather than a coloured dot placed on top. */
+/* Indicator lamp, seated in a shallow socket so it reads as hardware rather
+   than a coloured dot placed on top. */
 .lamp {
   position: relative;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   flex: none;
   border-radius: 50%;
   background: var(--surface);
-  box-shadow: var(--press-sm);
+  box-shadow: var(--press-xs);
 }
 .lamp::after {
   content: "";
   position: absolute;
-  inset: 3px;
+  inset: 2.5px;
   border-radius: 50%;
   background: var(--shade);
   transition: background 0.45s var(--ease), box-shadow 0.45s var(--ease);
 }
 .lamp.lit::after {
   background: var(--lamp-color, var(--ink));
-  box-shadow: 0 0 7px var(--lamp-color, var(--ink));
+  box-shadow: 0 0 6px var(--lamp-color, var(--ink));
+}
+/* Amber, half-lit: something that exists but is not finished. */
+.lamp.pending::after {
+  background: var(--lamp-color, var(--ink));
+  opacity: 0.42;
+  box-shadow: none;
+}
+
+/* Reusable micro label. Every small marking on the sheet uses this. */
+.micro {
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* Prose. The one place on the sheet that is set to be read, not scanned. */
+.lede {
+  max-width: 44ch;
+  margin: 0;
+  font-size: var(--t-body);
+  line-height: 1.68;
+  color: var(--ink-soft);
 }
 
 /* ── ARRIVAL ─────────────────────────────────────────────────────────── */
 
 /* Picks up exactly where the room's flood left off — same colour, so the
-   document swap is invisible — and holds until the web fonts have loaded.
-   Without that hold you watch the whole page re-typeset a second after it
-   appears, which is the "takes a second to get the facing" problem. Cleared
-   from code.js, not on a timer. */
+   document swap is invisible — and holds until the web fonts have loaded,
+   so the page is never seen re-typesetting itself. Cleared from code.js,
+   not on a timer. */
 .boot {
   position: fixed;
   inset: 0;
@@ -152,6 +228,33 @@ body.ready .boot { opacity: 0; visibility: hidden; }
   100% { transform: scaleX(0.05); opacity: 0.35; }
 }
 
+/* ── LAYOUT GRID OVERLAY ─────────────────────────────────────────────── */
+/* Thrown by the GRID switch. Twelve columns inside the page gutter — the
+   grid this sheet is genuinely set on, not a decorative overlay. */
+
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  padding: 0 var(--pad);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s var(--ease);
+}
+body.grid-on .grid-overlay { opacity: 1; }
+.grid-overlay::before {
+  content: "";
+  display: block;
+  height: 100%;
+  background-image: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--signal) 26%, transparent) 0 1px,
+    transparent 1px
+  );
+  background-size: calc(100% / 12) 100%;
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--signal) 26%, transparent);
+}
+
 /* ── CHASSIS ─────────────────────────────────────────────────────────── */
 /* Floating panels rather than edge-to-edge bars: a neumorphic element has to
    sit within the surface with room for its shadow on every side. */
@@ -167,11 +270,11 @@ body.ready .boot { opacity: 0; visibility: hidden; }
   align-items: center;
   gap: 16px;
   height: var(--bar);
-  padding: 0 clamp(14px, 2.4vw, 26px);
+  padding: 0 clamp(12px, 2.2vw, 22px);
   border-radius: var(--r-md);
   background: var(--surface);
   box-shadow: var(--pop-md);
-  font-size: 9.5px;
+  font-size: var(--t-micro);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -185,33 +288,47 @@ body.ready .boot { opacity: 0; visibility: hidden; }
   transition: color 0.25s var(--ease);
 }
 .back:hover { color: var(--ink); }
+.back-label { white-space: nowrap; }
 .back-glyph {
   display: grid;
   place-items: center;
   width: 26px;
   height: 26px;
-  border-radius: 50%;
+  border-radius: var(--r-sm);
   background: var(--surface);
-  box-shadow: var(--pop-sm);
+  box-shadow: var(--pop-xs);
   font-size: 11px;
   transition: box-shadow 0.2s var(--ease), transform 0.25s var(--ease);
 }
 .back:hover .back-glyph { transform: translateX(-2px); }
-.back:active .back-glyph { box-shadow: var(--press-sm); transform: none; }
+.back:active .back-glyph { box-shadow: var(--press-xs); transform: none; }
 
-.ident { display: flex; gap: 14px; margin: 0; justify-self: center; }
-.ident-name { font-weight: 600; }
+.ident {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  justify-self: center;
+}
+.ident-name { font-weight: 600; letter-spacing: 0.16em; }
+.ident-div {
+  width: 2px;
+  height: 12px;
+  background: linear-gradient(90deg, var(--shade) 0 1px, var(--light) 1px 2px);
+}
 .ident-sheet { color: var(--ink-faint); }
 
-.chassis-nav { display: flex; gap: 8px; justify-self: end; }
+.chassis-nav { display: flex; align-items: center; gap: 4px; justify-self: end; }
+/* Nav items ARE controls, so they keep a pressable shape. */
 .chassis-nav a {
-  padding: 7px 12px;
-  border-radius: 999px;
+  padding: 8px 11px;
+  border-radius: var(--r-sm);
   color: var(--ink-soft);
   transition: box-shadow 0.22s var(--ease), color 0.22s var(--ease);
 }
-.chassis-nav a:hover { color: var(--ink); box-shadow: var(--pop-sm); }
-.chassis-nav a:active { box-shadow: var(--press-sm); }
+.chassis-nav a:hover { color: var(--ink); box-shadow: var(--pop-xs); }
+.chassis-nav a:active { box-shadow: var(--press-xs); }
+.chassis-nav-out { color: var(--ink-faint); }
 
 .chassis-bottom {
   position: fixed;
@@ -223,28 +340,36 @@ body.ready .boot { opacity: 0; visibility: hidden; }
   align-items: center;
   gap: 14px;
   height: 34px;
-  padding: 0 clamp(14px, 2.4vw, 26px);
+  padding: 0 clamp(12px, 2.2vw, 22px);
   border-radius: var(--r-sm);
   background: var(--surface);
   box-shadow: var(--pop-sm);
-  font-size: 9px;
+  font-size: var(--t-nano);
   letter-spacing: 0.16em;
   color: var(--ink-faint);
 }
 .status-lamp {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
+  flex: none;
   border-radius: 50%;
   background: #23c17e;
-  box-shadow: 0 0 7px #23c17e;
+  box-shadow: 0 0 6px #23c17e;
 }
-.status-section { color: var(--ink); min-width: 108px; }
-/* A groove with something running along it — the same cut as .groove, deeper. */
+.status-section { color: var(--ink); min-width: 112px; font-weight: 500; }
+.status-index {
+  padding: 3px 7px;
+  border-radius: var(--r-xs);
+  box-shadow: var(--press-xs);
+  font-variant-numeric: tabular-nums;
+}
+/* A groove with something running along it — the same cut as .hair, deeper. */
 .status-bar {
   flex: 1;
-  height: 7px;
+  height: 6px;
   border-radius: 999px;
-  box-shadow: var(--press-sm);
+  box-shadow: var(--press-xs);
+  overflow: hidden;
 }
 /* Full width, scaled from the left. Animating `width` would re-lay-out the
    status bar on every frame of every scroll; scaleX is composited. */
@@ -259,27 +384,86 @@ body.ready .boot { opacity: 0; visibility: hidden; }
   transform-origin: left center;
   will-change: transform;
 }
-.status-pct { font-variant-numeric: tabular-nums; }
+.status-pct { font-variant-numeric: tabular-nums; min-width: 30px; text-align: right; }
 
 /* ── SECTION FURNITURE ───────────────────────────────────────────────── */
 
 main { padding-top: var(--chrome); }
 section { padding: 0 var(--pad); }
 
-.sheet-rule {
+/* A section header is a numbered plate, a name, an engraved rule and a fact
+   about what follows. The number is the one solid navy block on the sheet —
+   flat colour, no gradient, doing the job a colour block should do. */
+.sheet-head {
   display: flex;
   align-items: center;
-  gap: 18px;
-  font-size: 9.5px;
-  letter-spacing: 0.2em;
-  color: var(--ink-faint);
-  text-transform: uppercase;
+  gap: clamp(10px, 1.4vw, 18px);
+  margin-bottom: clamp(26px, 4vh, 48px);
 }
-.sheet-rule b {
+.sheet-no {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: var(--r-xs);
+  background: var(--ink-strong);
+  color: var(--surface);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.sheet-label {
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.sheet-rule {
   flex: 1;
   height: 2px;
+  min-width: 20px;
   border-radius: 1px;
   background: linear-gradient(var(--shade) 0 1px, var(--light) 1px 2px);
+}
+.sheet-meta {
+  font-size: var(--t-nano);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+/* Section headline. One tier under the hero, one above the domain names. */
+.display-2 {
+  margin: 0;
+  font-family: var(--display);
+  font-variation-settings: var(--wide);
+  font-weight: 700;
+  font-size: var(--t-h2);
+  line-height: 0.92;
+  letter-spacing: -0.032em;
+  text-transform: uppercase;
+  color: var(--ink-strong);
+  text-shadow: 1.5px 1.5px 2.5px var(--shade), -1.5px -1.5px 2.5px var(--light);
+}
+.display-2 em { color: var(--signal); text-shadow: none; }
+
+/* Engraved measurement edge. Minor ticks every 12px, major every 60px —
+   layered gradients rather than 200 elements. */
+.rule-scale {
+  flex: 1;
+  min-width: 40px;
+  height: 12px;
+  background-image:
+    linear-gradient(90deg, var(--ink-faint) 0 1px, transparent 1px 60px),
+    linear-gradient(90deg, var(--hair-line) 0 1px, transparent 1px 12px);
+  background-size: 60px 10px, 12px 5px;
+  background-position: 0 100%, 0 100%;
+  background-repeat: repeat-x;
+  opacity: 0.75;
 }
 
 /* ── HERO ────────────────────────────────────────────────────────────── */
@@ -291,45 +475,86 @@ section { padding: 0 var(--pad); }
   display: grid;
   grid-template-rows: auto 1fr auto;
   align-content: space-between;
-  padding-top: clamp(20px, 5vh, 54px);
-  padding-bottom: clamp(28px, 5vh, 56px);
+  gap: clamp(20px, 4vh, 46px);
+  padding-top: clamp(18px, 4vh, 46px);
+  padding-bottom: clamp(22px, 4vh, 48px);
 }
 
-.hero-band {
+/* Title block. Four labelled fields, engraved apart — a drawing's header,
+   not a row of tags. */
+.hero-head {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--shade);
-  box-shadow: 0 1px 0 var(--light);
+  gap: clamp(16px, 3vw, 40px);
+  padding-bottom: 14px;
+  background-image: linear-gradient(var(--shade) 0 1px, var(--light) 1px 2px);
+  background-size: 100% 2px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
 }
 
-.hero-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 20px;
-  margin: 0;
-  font-size: 9.5px;
-  letter-spacing: 0.16em;
-  color: var(--ink-soft);
-  text-transform: uppercase;
+.ident-grid {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: clamp(14px, 2.6vw, 40px);
 }
-.hero-meta span:first-child { color: var(--ink); font-weight: 600; }
+.ident-grid > div {
+  display: grid;
+  gap: 5px;
+  padding-left: clamp(12px, 1.6vw, 20px);
+  /* Each field is cut off from the last by a hairline, like a stamped plate. */
+  border-left: 1px solid var(--hair-line);
+  box-shadow: -1px 0 0 var(--light);
+}
+.ident-grid > div:first-child { padding-left: 0; border-left: 0; box-shadow: none; }
+.ident-grid dt {
+  font-size: var(--t-nano);
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+.ident-grid dd {
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* The sheet stamp. Solid ink, reversed out — the second flat colour block. */
+.hero-plate {
+  flex: none;
+  padding: 9px 14px;
+  border-radius: var(--r-xs);
+  background: var(--ink-strong);
+  color: var(--surface);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  white-space: nowrap;
+}
+
+.hero-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(178px, 18vw, 236px);
+  align-items: center;
+  gap: clamp(20px, 3vw, 48px);
+}
 
 .hero-title {
   margin: 0;
-  align-self: center;
   font-family: var(--display);
   font-variation-settings: var(--widest);
   font-weight: 800;
   /* Width-driven, but capped against height too — three lines at 0.8 leading
      is 2.4em tall, so on a short window a purely vw-based size runs off the
-     bottom and takes the scroll cue with it. */
-  font-size: clamp(3rem, min(18.1vw, 25vh), 17rem);
+     bottom and takes the scroll cue with it. Slightly tighter than REV. A to
+     leave the instrument rail its column. */
+  font-size: var(--t-display);
   line-height: 0.8;
   letter-spacing: -0.045em;
   text-transform: uppercase;
+  color: var(--ink-strong);
   /* The single largest element on the page is also extruded — a whisper of
      white above and shade below, so the letterforms sit IN the surface. */
   text-shadow: 2px 2px 3px var(--shade), -2px -2px 3px var(--light);
@@ -337,41 +562,156 @@ section { padding: 0 var(--pad); }
 .hero-title .line { display: block; clip-path: inset(0 0 -0.18em 0); }
 .hero-title .line > span,
 .hero-title em { display: inline-block; }
-.hero-title em { color: var(--accent-hero, #ff4a1c); text-shadow: none; }
+.hero-title em { color: var(--signal); text-shadow: none; }
 
-.hero-tags {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 9px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* ── HERO INSTRUMENT RAIL ────────────────────────────────────────────── */
+
+.hero-rail {
+  display: grid;
+  gap: clamp(10px, 1.4vh, 16px);
+  align-content: center;
 }
-.hero-tags li {
-  padding: 9px 16px;
-  border-radius: 999px;
-  background: var(--surface);
-  box-shadow: var(--pop-sm);
-  font-size: 9px;
-  letter-spacing: 0.18em;
+.hero-rail .panel { padding: clamp(12px, 1.1vw, 16px); }
+
+.panel-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  font-size: var(--t-nano);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+  background-image: linear-gradient(var(--shade) 0 1px, var(--light) 1px 2px);
+  background-size: 100% 2px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+}
+.panel-label span {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* Category legend — indicators, not pills. */
+.legend { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.legend li {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--t-nano);
+  letter-spacing: 0.14em;
   color: var(--ink-soft);
 }
+.legend .lamp { width: 8px; height: 8px; }
+.legend b {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+.legend span { color: var(--ink); font-weight: 500; }
 
+/* Tally — counts, right-aligned, tabular. Facts, cheaply readable. */
+.tally { display: grid; gap: 6px; }
+.tally > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--t-nano);
+  letter-spacing: 0.14em;
+}
+.tally dt { color: var(--ink-faint); }
+.tally i {
+  flex: 1;
+  height: 1px;
+  border-bottom: 1px dotted var(--hair-line);
+  transform: translateY(-2px);
+}
+.tally dd {
+  font-family: var(--display);
+  font-variation-settings: var(--wide);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Two real switches. Each does what its label says. */
+.controls { display: grid; gap: 9px; }
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.toggle-body {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  flex: none;
+  border-radius: var(--r-xs);
+  box-shadow: var(--press-xs);
+}
+.toggle-body i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--surface);
+  box-shadow: var(--pop-xs);
+  transition: transform 0.3s var(--ease), background 0.3s var(--ease);
+}
+.toggle[aria-checked="true"] .toggle-body i {
+  transform: translateX(16px);
+  background: var(--signal);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--signal) 55%, transparent);
+}
+.toggle-text {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 1;
+  font-size: var(--t-nano);
+  letter-spacing: 0.16em;
+}
+.toggle-text b { font-weight: 500; color: var(--ink); }
+.toggle-text em { color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.toggle:hover .toggle-text b { color: var(--ink-strong); }
+
+/* ── HERO FOOT ───────────────────────────────────────────────────────── */
+
+.hero-foot {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(14px, 2.4vw, 30px);
+}
 .hero-scroll {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   margin: 0;
-  font-size: 9px;
+  flex: none;
+  font-size: var(--t-nano);
   letter-spacing: 0.2em;
   color: var(--ink-faint);
 }
 .hero-scroll-rule {
-  width: 40px;
+  width: 38px;
   height: 6px;
   border-radius: 999px;
-  box-shadow: var(--press-sm);
+  box-shadow: var(--press-xs);
   position: relative;
   overflow: hidden;
 }
@@ -379,157 +719,390 @@ section { padding: 0 var(--pad); }
   content: "";
   position: absolute;
   inset: 1px;
-  width: 12px;
+  width: 11px;
   border-radius: 999px;
-  background: var(--ink-faint);
-  opacity: 0.5;
+  background: var(--signal);
+  opacity: 0.6;
   animation: scrollHint 2.4s var(--ease) infinite;
 }
 @keyframes scrollHint {
   0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(24px); }
+  50% { transform: translateX(23px); }
+}
+.hero-coords {
+  display: flex;
+  gap: 7px;
+  margin: 0;
+  flex: none;
+  font-size: var(--t-nano);
+  letter-spacing: 0.18em;
+  color: var(--ink-faint);
 }
 
-/* ── BUILD PHILOSOPHY ────────────────────────────────────────────────── */
+/* ── 02 · BUILD PHILOSOPHY ───────────────────────────────────────────── */
 
-.philosophy { padding-top: clamp(80px, 14vh, 180px); padding-bottom: clamp(60px, 10vh, 140px); }
-
-.philosophy-title,
-.spec-title,
-.showcase-title {
-  margin: clamp(28px, 5vh, 60px) 0 clamp(32px, 6vh, 72px);
-  font-family: var(--display);
-  font-variation-settings: var(--wide);
-  font-weight: 700;
-  font-size: clamp(2.2rem, 7.4vw, 6.6rem);
-  line-height: 0.9;
-  letter-spacing: -0.03em;
-  text-transform: uppercase;
-  text-shadow: 2px 2px 3px var(--shade), -2px -2px 3px var(--light);
+.philosophy {
+  padding-top: clamp(70px, 12vh, 160px);
+  padding-bottom: clamp(50px, 8vh, 110px);
 }
-.philosophy-title em,
-.spec-title em,
-.showcase-title em { color: #ff4a1c; text-shadow: none; }
+.philosophy-top,
+.showcase-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  align-items: end;
+  gap: clamp(20px, 4vw, 60px);
+  margin-bottom: clamp(26px, 4vh, 48px);
+}
 
 .principles { margin: 0; padding: 0; list-style: none; }
 
+/* Engraved rows on one faceplate. The divider is the cut between them, so
+   four principles read as one component rather than four floating cards. */
 .principle {
-  position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, 26ch);
+  grid-template-columns: auto auto minmax(0, 1.05fr) minmax(0, 1.15fr) auto;
   align-items: center;
-  gap: clamp(18px, 2.6vw, 36px);
-  padding: clamp(20px, 2.6vw, 30px) clamp(22px, 2.8vw, 36px);
-  margin-bottom: clamp(16px, 2vw, 26px);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  box-shadow: var(--pop-md);
+  gap: clamp(14px, 2.2vw, 32px);
+  padding: clamp(18px, 2.2vw, 28px) clamp(18px, 2.2vw, 28px);
+  border-top: 1px solid var(--hair-line);
+  box-shadow: inset 0 1px 0 var(--light);
   opacity: 0;
-  transform: translateY(22px);
-  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+  transform: translateY(14px);
+  transition: opacity 0.55s var(--ease), transform 0.55s var(--ease);
 }
+.principle:first-child { border-top: 0; box-shadow: none; }
 .principle.seated { opacity: 1; transform: none; }
+body.no-motion .principle { opacity: 1; transform: none; }
 
-/* A real throw switch. Seats sunken and off; flips when the plate arrives. */
+.principle-no {
+  font-size: var(--t-nano);
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A real throw switch: seats off, flips when the row arrives. Squared off —
+   a rocker rather than a pill. */
 .switch {
   position: relative;
-  width: 52px;
-  height: 28px;
+  width: 40px;
+  height: 21px;
   flex: none;
-  border-radius: 999px;
-  box-shadow: var(--press-sm);
+  border-radius: var(--r-xs);
+  box-shadow: var(--press-xs);
 }
 .switch i {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+  top: 2.5px;
+  left: 2.5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
   background: var(--surface);
-  box-shadow: var(--pop-sm);
+  box-shadow: var(--pop-xs);
   transition: transform 0.42s var(--ease), background 0.42s var(--ease);
 }
 .principle.thrown .switch i {
-  transform: translateX(24px);
-  background: var(--switch-color, #ff4a1c);
-  box-shadow: 2px 2px 5px var(--shade), -2px -2px 5px var(--light),
-    0 0 10px color-mix(in srgb, var(--switch-color, #ff4a1c) 55%, transparent);
+  transform: translateX(19px);
+  background: var(--signal);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--signal) 55%, transparent);
 }
 
 .principle-statement {
   font-family: var(--display);
   font-variation-settings: var(--wide);
   font-weight: 700;
-  font-size: clamp(1.05rem, 2.85vw, 2.75rem);
-  line-height: 1;
-  letter-spacing: -0.025em;
+  font-size: var(--t-h4);
+  line-height: 1.08;
+  letter-spacing: -0.018em;
   text-transform: uppercase;
+  color: var(--ink-strong);
 }
 .principle-note {
   margin: 0;
-  font-size: 11.5px;
-  line-height: 1.6;
+  font-size: var(--t-tech);
+  line-height: 1.62;
   color: var(--ink-soft);
 }
 
-/* ── SPECIFICATION ───────────────────────────────────────────────────── */
-
-.spec { padding-top: clamp(60px, 10vh, 140px); padding-bottom: clamp(80px, 14vh, 180px); }
-
-.spec-table {
-  padding: clamp(10px, 1.6vw, 22px) clamp(16px, 2.4vw, 32px);
-  border-radius: var(--r-md);
-  background: var(--surface);
-  box-shadow: var(--pop-md);
+/* The proof. A principle with nothing built behind it is a preference. */
+.principle-proof {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  text-align: right;
+  white-space: nowrap;
+}
+.principle-proof b {
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--signal);
+  font-variant-numeric: tabular-nums;
+}
+.principle-proof span {
+  font-size: var(--t-nano);
+  letter-spacing: 0.16em;
+  color: var(--ink-faint);
 }
 
+/* ── 03 · SPECIFICATION ──────────────────────────────────────────────── */
+
+.spec {
+  padding-top: clamp(50px, 8vh, 110px);
+  padding-bottom: clamp(70px, 12vh, 160px);
+}
+.spec-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: clamp(20px, 4vw, 60px);
+  margin-bottom: clamp(24px, 3.5vh, 42px);
+}
+.spec-top .lede { margin-top: clamp(14px, 2vh, 22px); }
+
+/* Two-position slide switch. Genuinely a control, so it keeps a pill body —
+   this and the CTA are the only survivors of the pill purge. */
+.mode { display: grid; gap: 8px; justify-items: end; }
+.mode-label {
+  font-size: var(--t-nano);
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+.mode-switch {
+  position: relative;
+  display: flex;
+  padding: 4px;
+  border-radius: var(--r-sm);
+  box-shadow: var(--press-sm);
+}
+.mode-slide {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  border-radius: var(--r-xs);
+  background: var(--surface);
+  box-shadow: var(--pop-xs);
+  transition: transform 0.32s var(--ease);
+}
+.mode-switch[data-mode="project"] .mode-slide { transform: translateX(100%); }
+.mode-switch button {
+  position: relative;
+  z-index: 1;
+  min-width: 82px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: none;
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  transition: color 0.25s var(--ease);
+}
+.mode-switch button[aria-checked="true"] { color: var(--ink); font-weight: 600; }
+
+/* The spec sheet itself. Left gutter carries the index and the domain name;
+   the right side is a column grid of tools set as type. No pills. */
 .spec-row {
   display: grid;
-  grid-template-columns: minmax(0, 5.5fr) minmax(0, 4fr) minmax(0, 7fr);
-  align-items: center;
-  gap: clamp(16px, 3vw, 44px);
-  padding: clamp(16px, 2.2vw, 26px) 0;
-  border-bottom: 1px solid var(--shade);
-  box-shadow: 0 1px 0 var(--light);
+  grid-template-columns: auto minmax(0, 200px) minmax(0, 1.6fr) auto;
+  gap: clamp(14px, 2.4vw, 36px);
+  align-items: start;
+  padding: clamp(18px, 2.2vw, 28px) clamp(18px, 2.2vw, 28px);
+  border-top: 1px solid var(--hair-line);
+  box-shadow: inset 0 1px 0 var(--light);
 }
-.spec-row:last-child { border-bottom: 0; box-shadow: none; }
+.spec-row:first-child { border-top: 0; box-shadow: none; }
 
+.spec-no {
+  font-size: var(--t-nano);
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  padding-top: 5px;
+}
+.spec-id { display: grid; gap: 9px; }
 .spec-name {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   font-family: var(--display);
   font-variation-settings: var(--wide);
   font-weight: 700;
-  font-size: clamp(1.3rem, 3.4vw, 2.6rem);
+  font-size: var(--t-h4);
   line-height: 1;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.015em;
   text-transform: uppercase;
+  color: var(--ink-strong);
 }
-.spec-note { font-size: 11px; line-height: 1.55; color: var(--ink-soft); }
-.spec-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.spec-note {
+  margin: 0;
+  font-size: var(--t-tech);
+  line-height: 1.55;
+  color: var(--ink-soft);
+  max-width: 30ch;
+}
+
+/* Tools, in columns. A monospace grid reads faster than fourteen pills and
+   costs a fifth of the vertical space. */
+/* Three up, wrapping — not one row of however many there happen to be. A
+   fixed column count gives every domain the same block shape, so five rows of
+   different lengths still line up down the sheet, and the block sits beside
+   the note rather than stretching away from it. */
+.spec-items {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 620px;
+  gap: 8px clamp(12px, 1.6vw, 22px);
+  padding-top: 3px;
+}
 .spec-items span {
-  padding: 7px 12px;
-  border-radius: 999px;
-  box-shadow: var(--press-sm);
-  font-size: 9.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--t-tech);
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+/* A milled tick before each entry, instead of a container around it. */
+.spec-items span::before {
+  content: "";
+  width: 6px;
+  height: 2px;
+  flex: none;
+  border-radius: 1px;
+  background: linear-gradient(var(--shade) 0 1px, var(--light) 1px 2px);
+}
+
+/* Where the domain is actually used — derived from the project list, so it
+   cannot drift from the work below. */
+.spec-used {
+  display: grid;
+  gap: 5px;
+  justify-items: end;
+  text-align: right;
+  white-space: nowrap;
+  padding-top: 3px;
+}
+.spec-used-label {
+  font-size: var(--t-nano);
+  letter-spacing: 0.18em;
+  color: var(--ink-faint);
+}
+.spec-used-list {
+  display: flex;
+  gap: 6px;
+  font-size: var(--t-micro);
+  font-weight: 500;
   letter-spacing: 0.1em;
   color: var(--ink-soft);
+}
+.spec-used-list i { font-style: normal; color: var(--hair-line); }
+
+/* ── 04 · SHOWCASE ───────────────────────────────────────────────────── */
+
+.showcase { padding-left: 0; padding-right: 0; }
+.showcase-intro { padding: 0 var(--pad) clamp(26px, 5vh, 56px); }
+.showcase-top { align-items: end; }
+
+/* ── MANIFEST ────────────────────────────────────────────────────────── */
+/* The index of work, as an index. Also a selector: a row drives the rail. */
+
+.manifest { display: grid; }
+/* Every row is its own grid — it has to be, because a row is a button with a
+   background, a hover and a selected bar, and `display: contents` can't paint
+   any of those. The cost is that `auto` columns size per row instead of across
+   the table, so HAWKOS's longer status silently stole width from its
+   neighbours' columns and knocked that one row out of alignment. Hence a fixed
+   last column: it is the only one whose content length varies. */
+.manifest-head,
+.manifest-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1.15fr) minmax(0, 1.5fr) 92px 74px 132px;
+  align-items: center;
+  gap: clamp(10px, 1.6vw, 24px);
+  padding: 0 clamp(18px, 2.2vw, 28px);
+  text-align: left;
+}
+.manifest-head {
+  padding-top: 14px;
+  padding-bottom: 12px;
+  font-size: var(--t-nano);
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+.manifest-row {
+  position: relative;
+  width: 100%;
+  min-height: 56px;
+  border: 0;
+  border-top: 1px solid var(--hair-line);
+  box-shadow: inset 0 1px 0 var(--light);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.25s var(--ease);
+}
+.manifest-row:hover { background: color-mix(in srgb, var(--light) 55%, transparent); }
+/* Selected surface: a flat wash of the project's own colour and a solid bar
+   in the gutter. This is the accent doing what a product's accent does. */
+.manifest-row.live {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+.manifest-row.live::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -1px;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+}
+.manifest-no {
+  font-size: var(--t-micro);
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.manifest-row.live .manifest-no { color: var(--accent-ink); }
+.manifest-name {
+  font-family: var(--display);
+  font-variation-settings: var(--wide);
+  font-weight: 700;
+  font-size: clamp(0.95rem, 1.5vw, 1.2rem);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--ink-strong);
+}
+.manifest-kind,
+.manifest-code,
+.manifest-year {
+  font-size: var(--t-tech);
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
+}
+.manifest-code { letter-spacing: 0.1em; font-variant-numeric: tabular-nums; }
+.manifest-year { font-variant-numeric: tabular-nums; }
+.manifest-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: end;
+  font-size: var(--t-nano);
+  letter-spacing: 0.16em;
+  color: var(--ink-faint);
   white-space: nowrap;
 }
 
-/* ── SHOWCASE ────────────────────────────────────────────────────────── */
-
-.showcase { padding-left: 0; padding-right: 0; }
-.showcase-intro { padding: 0 var(--pad) clamp(30px, 6vh, 64px); }
-.showcase-note {
-  max-width: 46ch;
-  margin: -18px 0 0;
-  font-size: 11.5px;
-  line-height: 1.6;
-  color: var(--ink-soft);
-}
+/* ── RAIL ────────────────────────────────────────────────────────────── */
 
 .rail { position: relative; height: var(--rail-height, 440vh); }
 
@@ -540,7 +1113,7 @@ section { padding: 0 var(--pad); }
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: clamp(10px, 1.8vh, 22px);
+  gap: clamp(8px, 1.6vh, 20px);
   overflow: hidden;
 }
 
@@ -566,19 +1139,20 @@ section { padding: 0 var(--pad); }
   align-items: stretch;
   gap: var(--card-gap);
   /* Room for the shadows to fall without being clipped. */
-  padding-block: 18px;
+  padding-block: 16px;
   will-change: transform;
   /* Left-centre origin: scaling about the left edge keeps the horizontal maths
      to `screenX = trackX + centre * fit`, and about the vertical middle keeps
      the row centred in the viewport as it shrinks. */
   transform-origin: 0 50%;
 }
-.selector { flex: none; }
 
 /* ── PROJECT CARD ────────────────────────────────────────────────────── */
 
 .card {
-  --accent-ink: color-mix(in srgb, var(--accent) 50%, #2e3f59);
+  /* Accent mixed toward ink so it stays legible as text on the surface. The
+     raw accent is reserved for lamps, bars and the schematic. */
+  --accent-ink: color-mix(in srgb, var(--accent) 55%, #1e2c42);
   position: relative;
   flex: none;
   width: var(--card-w);
@@ -591,13 +1165,16 @@ section { padding: 0 var(--pad); }
      per-frame write is free. */
 }
 
+/* Hierarchy, top to bottom: identity strip, VISUAL, name, description, key
+   information, technology, action. The visual is the largest single element,
+   which is the point — a project is a thing you look at first. */
 .card-face {
   position: relative;
   display: grid;
-  grid-template-rows: auto auto 1fr auto auto;
-  gap: clamp(14px, 1.5vw, 20px);
+  grid-template-rows: auto auto auto auto 1fr auto;
+  gap: clamp(11px, 1.2vw, 16px);
   height: 100%;
-  padding: clamp(20px, 2.2vw, 30px);
+  padding: clamp(16px, 1.8vw, 24px);
   border-radius: var(--r-lg);
   background: var(--surface);
   box-shadow: var(--pop-md);
@@ -624,84 +1201,129 @@ section { padding: 0 var(--pad); }
   pointer-events: none;
 }
 
-/* The project's colour, inlaid into the surface rather than printed on it. */
-.card-face::before {
-  content: "";
-  position: absolute;
-  top: clamp(20px, 2.2vw, 30px);
-  left: clamp(20px, 2.2vw, 30px);
-  width: 46px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--accent);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
-}
-
-.card-head {
-  display: flex;
+/* Identity strip: number, code, engraved rule, status. A label above the
+   display, the way a device names its own screen. */
+.card-plate {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 16px;
-  font-size: 9px;
+  gap: 10px;
+  font-size: var(--t-nano);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-faint);
 }
-.card-index {
-  display: inline-flex;
-  align-items: center;
-  gap: 11px;
-  color: var(--ink);
-  font-weight: 600;
-}
-.card-index i {
+.card-no {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: var(--press-sm);
-  color: var(--accent-ink);
-  font-style: normal;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-xs);
+  background: var(--accent);
+  color: #fff;
   font-size: 10px;
   font-weight: 600;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
 }
-.card-state { display: inline-flex; align-items: center; gap: 9px; }
+/* Yellow is too light to reverse white out of; ink it instead. */
+.card--light-accent .card-no { color: var(--ink-strong); }
+.card-code { color: var(--ink); font-weight: 500; letter-spacing: 0.14em; }
+.card-plate-rule {
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(var(--shade) 0 1px, var(--light) 1px 2px);
+}
+.card-status { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
 
-.card-title { display: grid; gap: 6px; }
-.card-name {
-  margin: 0;
-  font-family: var(--display);
-  font-variation-settings: var(--widest);
-  font-weight: 800;
-  font-size: clamp(1.9rem, 4.4vw, 3.5rem);
-  line-height: 0.92;
-  letter-spacing: -0.035em;
-  text-transform: uppercase;
-  text-shadow: 1px 1px 2px var(--shade), -1px -1px 2px var(--light);
-}
-.card-kind {
-  margin: 0;
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--accent-ink);
-  font-weight: 600;
-}
+/* ── CARD DISPLAY WELL ───────────────────────────────────────────────── */
+/* A milled recess with a schematic seated in it. Fixed height rather than a
+   fixed aspect ratio, deliberately: an aspect ratio couples card height to
+   card width, and fitTrack() adjusts card width from card height — the two
+   chase each other and the fit never settles. A fixed height breaks the loop. */
 
-/* Preview sits in a milled recess. */
-.card-window {
+.card-display {
   position: relative;
+  margin: 0;
+  height: clamp(148px, 19vh, 246px);
+  padding: 14px;
+  border-radius: var(--r-md);
+  background: var(--well);
+  box-shadow: var(--press-md);
   overflow: hidden;
-  min-height: clamp(104px, 12.5vh, 160px);
+}
+
+/* Corner registration marks, drawn on the recess itself so the well always
+   reads as composed whatever is seated in it — schematic today, screenshot
+   tomorrow, with no change to the card. */
+.card-display::before,
+.card-display::after {
+  content: "";
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--hair-line);
+  pointer-events: none;
+  z-index: 2;
+}
+.card-display::before { top: 9px; left: 9px; border-right: 0; border-bottom: 0; }
+.card-display::after { bottom: 9px; right: 9px; border-left: 0; border-top: 0; }
+
+.card-display-art {
   display: grid;
   place-items: center;
-  border-radius: var(--r-md);
-  box-shadow: var(--press-md);
+  height: 100%;
+  transform: translate3d(calc(var(--shift-x, 0) * 1px), calc(var(--shift-y, 0) * 1px), 0);
 }
-.card-window img {
+.card-display-art svg { width: 100%; height: 100%; display: block; }
+
+/* One stroke vocabulary across all five schematics, so five different
+   subjects still read as one set of drawings. Weights are set here rather
+   than per-shape so the whole set retunes from one place — and so a drawing
+   can't quietly invent a heavier line than its neighbours. */
+.card-display-art :is(.fig-line, .fig-soft, .fig-accent) {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.card-display-art .fig-line { stroke: var(--ink-faint); }
+.card-display-art .fig-soft { stroke: var(--hair-line); }
+.card-display-art .fig-accent { stroke: var(--accent); }
+.card-display-art .fig-dash { stroke-dasharray: 5 4; }
+/* Solid fills are the only place the raw accent appears at size — flat, no
+   gradient, the way a product prints its accent onto a panel. */
+.card-display-art .fig-fill { fill: var(--accent); stroke: none; }
+.card-display-art .fig-fill-dot { fill: var(--accent); stroke: none; }
+/* Hazard marking, for the one project that is honestly unfinished. */
+.card-display-art .fig-hazard {
+  stroke: var(--accent);
+  stroke-width: 5;
+  stroke-dasharray: 5 5;
+  opacity: 0.5;
+  fill: none;
+}
+
+/* Honest labelling. These are diagrams, not screenshots, and they say so —
+   swapping in a real image removes them with the rest of the well's contents. */
+.card-display-tag,
+.card-display-note {
+  position: absolute;
+  z-index: 3;
+  font-size: var(--t-nano);
+  letter-spacing: 0.18em;
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+.card-display-tag { top: 12px; right: 14px; color: var(--accent-ink); font-weight: 600; }
+.card-display-note { bottom: 12px; left: 14px; }
+
+/* When a real preview lands, it fills the recess edge to edge. */
+.card-display.has-image { padding: 0; }
+.card-display.has-image .card-display-tag,
+.card-display.has-image .card-display-note { display: none; }
+.card-display img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -709,69 +1331,104 @@ section { padding: 0 var(--pad); }
   border-radius: var(--r-md);
   transform: translate3d(calc(var(--shift-x, 0) * 1px), calc(var(--shift-y, 0) * 1px), 0) scale(1.06);
 }
-.card-window-pending {
-  display: grid;
-  gap: 8px;
-  justify-items: center;
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  color: var(--ink-faint);
-  text-transform: uppercase;
-  transform: translate3d(calc(var(--shift-x, 0) * 1px), calc(var(--shift-y, 0) * 1px), 0);
-}
-.card-window-pending b {
+
+/* ── CARD TYPE ───────────────────────────────────────────────────────── */
+
+.card-id { display: grid; gap: 5px; }
+.card-name {
+  margin: 0;
   font-family: var(--display);
-  font-variation-settings: var(--wide);
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: var(--ink-faint);
-  opacity: 0.55;
+  font-variation-settings: var(--widest);
+  font-weight: 800;
+  font-size: var(--t-h3);
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  color: var(--ink-strong);
+  text-shadow: 1px 1px 2px var(--shade), -1px -1px 2px var(--light);
 }
-
-.card-blurb { margin: 0; font-size: 11.5px; line-height: 1.62; color: var(--ink-soft); }
-
-.card-specs { display: grid; gap: 0; }
-.card-specs div {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--shade);
-  box-shadow: 0 1px 0 var(--light);
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
+.card-kind {
+  margin: 0;
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
 }
-.card-specs div:last-child { border-bottom: 0; box-shadow: none; }
-.card-specs dt { color: var(--ink-faint); text-transform: uppercase; }
-.card-specs dd { margin: 0; color: var(--ink); text-align: right; }
-
-.card-foot { display: grid; gap: 14px; }
-.card-stack { display: flex; flex-wrap: wrap; gap: 7px; }
-.card-stack span {
-  padding: 6px 11px;
-  border-radius: 999px;
-  box-shadow: var(--press-sm);
-  font-size: 8.5px;
-  letter-spacing: 0.12em;
+.card-blurb {
+  margin: 0;
+  font-size: var(--t-tech);
+  line-height: 1.62;
   color: var(--ink-soft);
 }
 
-/* The one real button. Raised until pressed, then genuinely pushed in. */
+/* Key information as a leader table — the single most datasheet-like thing
+   on the page, and far quicker to read than a row of tags. */
+.card-specs { display: grid; align-content: start; gap: 0; }
+.card-specs > div {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 7px 0;
+  border-top: 1px solid var(--hair-line);
+  box-shadow: inset 0 1px 0 var(--light);
+  font-size: var(--t-nano);
+  letter-spacing: 0.1em;
+}
+.card-specs > div:first-child { border-top: 0; box-shadow: none; }
+.card-specs dt { flex: none; color: var(--ink-faint); text-transform: uppercase; }
+.card-specs i {
+  flex: 1;
+  height: 1px;
+  border-bottom: 1px dotted var(--hair-line);
+  transform: translateY(-2px);
+}
+.card-specs dd { flex: none; color: var(--ink); text-align: right; }
+
+.card-foot { display: grid; gap: 12px; }
+
+/* Technology, set as type. Was six pills; is now one readable line. */
+.card-stack {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 10px;
+  padding-top: 11px;
+  border-top: 1px solid var(--hair-line);
+  box-shadow: inset 0 1px 0 var(--light);
+}
+.card-stack-label {
+  font-size: var(--t-nano);
+  letter-spacing: 0.18em;
+  color: var(--ink-faint);
+}
+.card-stack-list {
+  font-size: var(--t-nano);
+  line-height: 1.7;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+/* Each entry is atomic. Without this the line wraps inside a name — "REACT"
+   on one line and "19" on the next — which reads as two technologies. */
+.card-stack-list span { white-space: nowrap; }
+.card-stack-list i { font-style: normal; color: var(--hair-line); padding: 0 4px; }
+
+/* The one real button on the card. Raised until pressed, then genuinely
+   pushed in. Squared off — a key, not a lozenge. */
 .card-cta {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  padding: 15px 20px;
+  padding: 13px 16px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--r-sm);
   background: var(--surface);
   box-shadow: var(--pop-sm);
   color: var(--accent-ink);
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--t-micro);
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -783,44 +1440,50 @@ section { padding: 0 var(--pad); }
 /* Nowhere to go yet: seated in its socket, so it reads as a control that
    exists but hasn't been wired — not a button that failed to work. */
 .card-cta[aria-disabled="true"] {
-  box-shadow: var(--press-sm);
+  box-shadow: var(--press-xs);
   cursor: default;
-  opacity: 0.85;
+  color: var(--ink-faint);
 }
-.card-cta[aria-disabled="true"]:hover { box-shadow: var(--press-sm); }
+.card-cta[aria-disabled="true"]:hover { box-shadow: var(--press-xs); }
 .card-cta small {
-  padding: 4px 10px;
-  border-radius: 999px;
-  box-shadow: var(--pop-sm);
-  font-size: 8.5px;
-  letter-spacing: 0.14em;
+  font-size: var(--t-nano);
+  font-weight: 500;
+  letter-spacing: 0.16em;
   color: var(--ink-faint);
 }
 
-/* Under construction: the inlay becomes hazard tape. */
-.card--wip .card-face::before {
-  width: 76px;
+/* Under construction. The strip becomes hazard tape and the display carries a
+   dashed frame — stated, not dramatised. */
+/* Loud enough to be unmissable, quiet enough not to be a claim. The status
+   text next to it is what actually says so. */
+.card--wip .card-plate-rule {
   background: repeating-linear-gradient(
     -45deg,
-    var(--accent) 0 6px,
-    var(--ink) 6px 12px
+    var(--accent) 0 4px,
+    transparent 4px 9px
   );
-  box-shadow: none;
+  height: 5px;
+  border-radius: 2px;
+  opacity: 0.42;
+}
+.card--wip .card-display {
+  box-shadow: var(--press-md), inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
-/* ── SELECTOR (dial + readout) ───────────────────────────────────────── */
+/* ── SELECTOR ────────────────────────────────────────────────────────── */
 
 .selector {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: clamp(18px, 2.4vw, 32px);
+  gap: clamp(16px, 2.2vw, 30px);
   margin: 0 var(--pad);
 }
 
 .dial {
   position: relative;
-  width: 84px;
-  height: 84px;
+  width: 76px;
+  height: 76px;
   flex: none;
   cursor: grab;
   /* The dial owns the gesture; without this a drag scrolls the page instead. */
@@ -828,7 +1491,7 @@ section { padding: 0 var(--pad); }
   border-radius: 50%;
 }
 .dial.turning { cursor: grabbing; }
-.dial:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; }
+.dial:focus-visible { outline: 2px solid var(--ink); outline-offset: 5px; }
 /* Grabbing it lifts the knob out of its socket, the way a real control gives
    under your fingers before it turns. */
 .dial.turning .dial-knob { box-shadow: var(--pop-md); }
@@ -839,18 +1502,18 @@ section { padding: 0 var(--pad); }
   left: 50%;
   top: 0;
   width: 2px;
-  height: 7px;
+  height: 6px;
   margin-left: -1px;
   border-radius: 1px;
   background: var(--shade);
-  transform-origin: 50% 42px;
+  transform-origin: 50% 38px;
 }
-.dial-ticks i.major { height: 11px; background: var(--ink-faint); }
+.dial-ticks i.major { height: 10px; background: var(--ink-faint); }
 
 /* Socket the knob turns in. */
 .dial-body {
   position: absolute;
-  inset: 14px;
+  inset: 13px;
   border-radius: 50%;
   box-shadow: var(--press-md);
   display: grid;
@@ -858,8 +1521,8 @@ section { padding: 0 var(--pad); }
 }
 .dial-knob {
   position: relative;
-  width: calc(100% - 10px);
-  height: calc(100% - 10px);
+  width: calc(100% - 9px);
+  height: calc(100% - 9px);
   border-radius: 50%;
   background: var(--surface);
   box-shadow: var(--pop-sm);
@@ -867,110 +1530,260 @@ section { padding: 0 var(--pad); }
 }
 .dial-notch {
   position: absolute;
-  top: 8px;
+  top: 7px;
   left: 50%;
-  width: 4px;
-  height: 13px;
-  margin-left: -2px;
+  width: 3px;
+  height: 12px;
+  margin-left: -1.5px;
   border-radius: 999px;
   background: var(--dial-color, var(--ink));
-  box-shadow: 0 0 8px var(--dial-color, var(--ink));
+  box-shadow: 0 0 7px var(--dial-color, var(--ink));
   transition: background 0.4s var(--ease), box-shadow 0.4s var(--ease);
 }
+/* Knurling. Two hairlines across the cap so the knob reads as something you
+   are meant to get a grip on. */
+.dial-grip {
+  position: absolute;
+  inset: 32% 22%;
+  border-radius: 1px;
+  background:
+    linear-gradient(var(--shade) 0 1px, var(--light) 1px 2px) 0 0 / 100% 2px no-repeat,
+    linear-gradient(var(--shade) 0 1px, var(--light) 1px 2px) 0 100% / 100% 2px no-repeat;
+  opacity: 0.8;
+}
 
-.readout {
+.readout { display: grid; gap: 9px; min-width: 0; flex: 1; }
+.readout-line {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  align-items: baseline;
+  gap: 12px;
   margin: 0;
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  color: var(--ink-faint);
-  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
 .readout-count {
-  padding: 8px 14px;
-  border-radius: 999px;
-  box-shadow: var(--press-sm);
+  flex: none;
+  padding: 6px 10px;
+  border-radius: var(--r-xs);
+  box-shadow: var(--press-xs);
+  font-size: var(--t-micro);
+  letter-spacing: 0.12em;
+  color: var(--ink-faint);
 }
 .readout-count span:first-child { color: var(--ink); font-weight: 600; }
-.readout i { font-style: normal; padding: 0 3px; }
-.readout b {
-  color: var(--ink);
+.readout-count i { font-style: normal; padding: 0 3px; }
+.readout-line b {
+  flex: none;
+  color: var(--ink-strong);
   font-family: var(--display);
   font-variation-settings: var(--wide);
-  font-size: 15px;
+  font-size: clamp(15px, 1.5vw, 19px);
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+.readout-kind {
+  font-size: var(--t-nano);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Detent ladder. Five positions, drawn — the dial's travel made legible, and
+   clickable, because a detent you can see should be a detent you can pick. */
+.ladder { display: flex; gap: 5px; }
+.ladder button {
+  flex: 1;
+  height: 8px;
+  min-width: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: none;
+  box-shadow: var(--press-xs);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.ladder button::after {
+  content: "";
+  position: absolute;
+  inset: 1.5px;
+  border-radius: 1px;
+  background: var(--ladder-color, var(--ink));
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+}
+.ladder button.live::after { opacity: 1; }
+.ladder button:hover::after { opacity: 0.35; }
+.ladder button.live:hover::after { opacity: 1; }
+
+.selector-hint {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  margin: 0;
+  flex: none;
+  font-size: var(--t-nano);
+  letter-spacing: 0.18em;
+  color: var(--ink-faint);
+}
+.selector-hint i {
+  width: 26px;
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(var(--shade) 0 1px, var(--light) 1px 2px);
 }
 
 /* ── COLOPHON ────────────────────────────────────────────────────────── */
 
 .colophon {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  gap: clamp(24px, 4vw, 60px);
-  margin: clamp(40px, 7vh, 90px) var(--pad) calc(var(--chrome) + 20px);
-  padding: clamp(50px, 9vh, 110px) clamp(28px, 4vw, 64px);
+  gap: clamp(24px, 4vw, 64px);
+  margin: clamp(36px, 6vh, 80px) var(--pad) calc(var(--chrome) + 18px);
+  padding: clamp(40px, 7vh, 90px) clamp(24px, 3.4vw, 56px);
   border-radius: var(--r-lg);
   background: var(--surface);
   box-shadow: var(--pop-lg);
 }
+.colophon-main { display: grid; gap: clamp(16px, 2.4vh, 26px); }
 .colophon-mark {
-  grid-row: span 2;
   margin: 0;
   font-family: var(--display);
   font-variation-settings: var(--widest);
   font-weight: 800;
-  font-size: clamp(2.4rem, 9vw, 8rem);
+  font-size: clamp(2.2rem, 8.4vw, 7.4rem);
   line-height: 0.82;
   letter-spacing: -0.04em;
+  color: var(--ink-strong);
   text-shadow: 2px 2px 3px var(--shade), -2px -2px 3px var(--light);
 }
-.colophon-mark em { color: #ff4a1c; text-shadow: none; }
-.colophon-links { display: flex; gap: 10px; font-size: 10px; letter-spacing: 0.16em; }
-.colophon-links a {
-  padding: 10px 16px;
-  border-radius: 999px;
+.colophon-mark em { color: var(--signal); text-shadow: none; }
+.colophon-note {
+  max-width: 34ch;
+  margin: 0;
+  font-size: var(--t-tech);
+  line-height: 1.62;
   color: var(--ink-soft);
-  box-shadow: var(--pop-sm);
+}
+
+.colophon-side { display: grid; gap: clamp(18px, 2.6vh, 28px); justify-items: stretch; }
+.colophon-links { display: grid; gap: 7px; min-width: clamp(190px, 20vw, 240px); }
+.colophon-links a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+  box-shadow: var(--pop-xs);
+  font-size: var(--t-micro);
+  letter-spacing: 0.16em;
   transition: box-shadow 0.2s var(--ease), color 0.2s var(--ease);
 }
-.colophon-links a:hover { color: var(--ink); box-shadow: var(--pop-md); }
-.colophon-links a:active { box-shadow: var(--press-sm); }
-.colophon-meta {
-  display: flex;
-  gap: 16px;
-  margin: 0;
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  color: var(--ink-faint);
-  text-transform: uppercase;
+.colophon-links a b { font-weight: 500; }
+.colophon-links a i { font-style: normal; color: var(--ink-faint); }
+.colophon-links a:hover { color: var(--ink); box-shadow: var(--pop-sm); }
+.colophon-links a:hover i { color: var(--signal); }
+.colophon-links a:active { box-shadow: var(--press-xs); }
+
+/* The plate on the back of the device — facts about the page itself, printed
+   where nobody looks until they want them. */
+.build-plate {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border-radius: var(--r-sm);
+  box-shadow: var(--press-sm);
 }
+.build-plate > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--t-nano);
+  letter-spacing: 0.12em;
+}
+.build-plate dt { flex: none; color: var(--ink-faint); }
+.build-plate i {
+  flex: 1;
+  height: 1px;
+  border-bottom: 1px dotted var(--hair-line);
+  transform: translateY(-2px);
+}
+.build-plate dd { flex: none; color: var(--ink); }
 
 /* ── NARROW SCREENS ──────────────────────────────────────────────────── */
 
+@media (max-width: 1180px) {
+  .manifest-head,
+  .manifest-row { grid-template-columns: 34px minmax(0, 1fr) 88px 70px 132px; }
+  .manifest-kind, .manifest-col-kind { display: none; }
+}
+
+@media (max-width: 1000px) {
+  .hero-body { grid-template-columns: 1fr; align-items: start; }
+  .hero-rail {
+    grid-template-columns: repeat(auto-fit, minmax(184px, 1fr));
+    align-content: start;
+  }
+  .hero-title { font-size: clamp(2.6rem, 15.5vw, 9rem); }
+}
+
 @media (max-width: 900px) {
-  .hero-band { flex-direction: column; align-items: flex-start; }
-  .hero-tags { justify-content: flex-start; }
-  .principle { grid-template-columns: auto 1fr; }
-  .principle-note { grid-column: 2; }
-  .spec-row { grid-template-columns: 1fr; gap: 14px; }
-  .spec-items { justify-content: flex-start; }
+  .hero-head { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .ident-grid { grid-template-columns: repeat(2, auto); gap: 12px 20px; }
+  .philosophy-top,
+  .showcase-top,
+  .spec-top { grid-template-columns: 1fr; align-items: start; }
+  .mode { justify-items: start; }
+  .principle {
+    grid-template-columns: auto auto minmax(0, 1fr);
+    row-gap: 12px;
+  }
+  .principle-note { grid-column: 3; }
+  .principle-proof { grid-column: 3; justify-items: start; text-align: left; }
+  .spec-row { grid-template-columns: auto minmax(0, 1fr); }
+  .spec-items { grid-column: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; }
+  .spec-used { grid-column: 2; justify-items: start; text-align: left; }
   .ident, .chassis-nav a:not(:last-child) { display: none; }
+  .colophon { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 760px) {
+  .manifest-head { display: none; }
+  .manifest-row {
+    grid-template-columns: 34px minmax(0, 1fr) 118px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .manifest-code, .manifest-year { display: none; }
   .rail { height: auto !important; }
   .rail-stage { position: static; height: auto; overflow: visible; }
   .track { flex-direction: column; transform: none !important; padding: 0 var(--pad); }
   .card { width: 100%; transform: none !important; opacity: 1 !important; }
   .card-face { transform: none !important; }
   .selector { display: none; }
-  .colophon { grid-template-columns: 1fr; }
+  .status-index { display: none; }
 }
+
+@media (max-width: 520px) {
+  /* The glyph alone still reads as "back", and it keeps the chassis bar to
+     one line — which is the whole point of a fixed-height chassis. */
+  .back-label { display: none; }
+}
+
+/* ── MOTION ──────────────────────────────────────────────────────────── */
+/* The MOTION switch and the OS setting land in the same place, so there is
+   one code path rather than two that can disagree. */
+
+body.no-motion .boot-scan,
+body.no-motion .hero-scroll-rule::after { animation: none; }
+body.no-motion * { transition-duration: 0.001ms !important; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
