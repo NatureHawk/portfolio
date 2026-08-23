@@ -360,6 +360,194 @@ export function waves() {
   return WAVES;
 }
 
+/* ══ THE FABRIC SHADER ══════════════════════════════════════════════════════
+   The ground is cloth, and this is what makes it cloth rather than a green
+   polygon with lines drawn on it.
+
+   WHY A SHADER AND NOT A TEXTURE, in one number. The land is a sphere of
+   radius 10, so it is about 63 units around. A canvas tiled `repeat: 18` — the
+   old value — puts one tile every 3.5 world units, and a destination camera
+   sees roughly five units across. That is a weave with about one and a half
+   threads on screen: the stitches came out metres apart and read exactly like
+   what they were, a pattern stretched over a polygon. Tiling hard enough to
+   read as fabric up close (repeat ≈ 300) then moirés into grey noise from
+   orbit, and drags the equirectangular UV's pole pinch and seam into view.
+
+   So the weave is computed in WORLD SPACE instead, from the fragment's own
+   position. There is no UV, so there is no seam and no pole; thread density is
+   the same everywhere by construction; and the frequency can be chosen for the
+   close camera without the far view paying for it, because the fine terms fade
+   out on their own (see `lod` below).
+
+   TRIPLANAR, AND THE WEAVE DIRECTION IS THE POINT. Sampling on all three world
+   axes and blending by the normal means the thread direction turns as the
+   surface turns — a hillside and the flat below it are woven at different
+   angles. On a real object that would be wrong. On this one it is the whole
+   look: the reference is a model assembled from separate panels of cloth, and
+   panels do not share a grain.
+
+   Cost is a handful of sin/fract per fragment and no loops or texture fetches. */
+const FABRIC_PARS = /* glsl */`
+  varying vec3 vFabWorld;
+  varying vec3 vFabNormalW;
+  uniform float uFabThread;   // threads per world unit
+  uniform float uFabSeam;     // threads between stitched seams
+  uniform float uFabRelief;   // how far the weave bends the normal
+  uniform float uFabDye;      // how far the dye wanders off the vertex colour
+
+  float fabHash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+  float fabNoise(vec2 p) {
+    vec2 i = floor(p), f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(fabHash(i), fabHash(i + vec2(1.0, 0.0)), f.x),
+               mix(fabHash(i + vec2(0.0, 1.0)), fabHash(i + vec2(1.0, 1.0)), f.x), f.y);
+  }
+
+  /* One plane's worth of cloth: .x is surface height, .y is how much of this
+     fragment is stitch rather than cloth.
+
+     THE TWO COME BACK SEPARATELY because they are not the same kind of thing.
+     Height only ever bends the light; the stitch also has its own colour — it
+     is a different thread from the panel it is holding down — and a seam that
+     is merely raised reads as a crease rather than as sewing. */
+  vec2 fabPlane(vec2 uv, float lod) {
+    vec2 t = uv * uFabThread;
+    float warp = abs(sin(t.x * 3.14159));
+    float weft = abs(sin(t.y * 3.14159));
+    float over = mod(floor(t.x) + floor(t.y), 2.0);
+    float h = mix(warp, weft, over) * 0.55;
+
+    // Slubs: the thick and thin places in a hand-spun yarn.
+    h += (fabNoise(t * 0.35) - 0.5) * 0.30;
+    // Fibre fuzz, the finest term and the first to go at distance.
+    h += (fabNoise(t * 3.1) - 0.5) * 0.22 * lod;
+
+    /* THE SEAMS. A running stitch along a coarse grid — dashed, because a
+       continuous line is a pipe and a dashed one is thread. The dash phase is
+       offset by the perpendicular cell so neighbouring runs do not start
+       together and betray the grid underneath them. */
+    vec2 s = t / uFabSeam;
+    vec2 cell = floor(s);
+    vec2 d = abs(fract(s) - 0.5);
+    float dashX = step(0.38, fract(t.y * 0.42 + cell.x * 0.37));
+    float dashY = step(0.38, fract(t.x * 0.42 + cell.y * 0.61));
+    /* THE LINE HAS TO BE THREAD-WIDTH, and that is measured in threads, not in
+       seam cells: at a seam every 26 threads a line 0.045 of a cell across is
+       more than a thread thick and comes out as chalk. A couple of thread
+       widths is what sewing looks like. */
+    float wide = 2.2 / uFabSeam;
+    float seam = smoothstep(wide, wide * 0.25, d.x) * dashX
+               + smoothstep(wide, wide * 0.25, d.y) * dashY;
+    seam = clamp(seam, 0.0, 1.0);
+    h += seam * 0.45;
+    return vec2(h, seam);
+  }
+
+  /* The full triplanar cloth at a world point. */
+  vec2 fabHeight(vec3 p, vec3 n, float lod) {
+    vec3 w = pow(abs(n), vec3(4.0));
+    w /= max(w.x + w.y + w.z, 1e-4);
+    return fabPlane(p.yz, lod) * w.x
+         + fabPlane(p.zx, lod) * w.y
+         + fabPlane(p.xy, lod) * w.z;
+  }
+`;
+
+const FABRIC_VERT = /* glsl */`
+  vFabWorld = (modelMatrix * vec4(position, 1.0)).xyz;
+  vFabNormalW = normalize(mat3(modelMatrix) * normal);
+`;
+
+const FABRIC_FRAG = /* glsl */`
+  {
+    /* DETAIL FADE. fwidth() is how much the world position changes across one
+       pixel, so it is exactly the footprint the weave has to survive. Once a
+       thread is thinner than a pixel, keeping it produces shimmer rather than
+       cloth, so the fine terms are faded out and the surface returns to plain
+       shading — which is what the distant planet wants anyway. */
+    float foot = length(fwidth(vFabWorld)) * uFabThread;
+    float lod = clamp(1.0 - foot * 0.9, 0.0, 1.0);
+
+    if (lod > 0.001) {
+      vec3 nW = normalize(vFabNormalW);
+      vec2 cloth = fabHeight(vFabWorld, nW, lod);
+      float h = cloth.x;
+      float seam = cloth.y * lod;
+
+      /* THE NORMAL, TAKEN FROM THE HEIGHT'S OWN SLOPE. Screen-space
+         derivatives give the gradient for free and need no tangent frame,
+         which this geometry does not have — the land has no UVs worth
+         speaking of and no tangents at all. */
+      vec3 dpx = dFdx(vFabWorld);
+      vec3 dpy = dFdy(vFabWorld);
+      float dhx = dFdx(h);
+      float dhy = dFdy(h);
+      vec3 bump = cross(dpy, normal) * dhx + cross(normal, dpx) * dhy;
+      float bl = length(bump);
+      if (bl > 1e-6) {
+        normal = normalize(normal + (bump / bl) * uFabRelief * lod);
+      }
+
+      /* THE DYE. Cloth is never one colour: a low-frequency wander plus the
+         weave's own shading, both kept small so the terrain painting in the
+         vertex colours still decides what this ground IS. */
+      float dye = fabNoise(vFabWorld.xz * 0.8) * 0.6
+                + fabNoise(vFabWorld.yx * 1.7) * 0.4;
+      float shade = 1.0 + (h - 0.5) * 0.16 * lod;
+      diffuseColor.rgb *= shade * (1.0 + (dye - 0.5) * uFabDye);
+
+      /* THE THREAD'S OWN COLOUR. Warm and pale, lifted towards the cream the
+         reference sews everything with, and blended in by how much stitch is
+         actually here. This is what turns a raised crease into sewing. */
+      vec3 thread = vec3(0.86, 0.80, 0.66);
+      diffuseColor.rgb = mix(diffuseColor.rgb,
+                             diffuseColor.rgb * 0.72 + thread * 0.30,
+                             seam * 0.34);
+
+      // Roughness follows the weave, so the crowns of the threads catch a
+      // fraction more light than the troughs between them.
+      roughnessFactor = clamp(roughnessFactor - (h - 0.5) * 0.10 * lod, 0.55, 1.0);
+    }
+  }
+`;
+
+/* Turn any MeshStandardMaterial into cloth. Returns the same material. */
+export function makeFabric(mat, {
+  thread = 26,    // threads per world unit
+  seam = 30,      // threads between stitched seams
+  relief = 0.55,  // how far the weave bends the normal
+  dye = 0.10,     // how far the dye wanders
+  key = 'fabric',
+} = {}) {
+  const u = {
+    uFabThread: { value: thread },
+    uFabSeam: { value: seam },
+    uFabRelief: { value: relief },
+    uFabDye: { value: dye },
+  };
+  mat.userData.fabric = u;
+
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, u);
+
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\n varying vec3 vFabWorld;\n varying vec3 vFabNormalW;`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>\n${FABRIC_VERT}`);
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\n${FABRIC_PARS}`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${FABRIC_FRAG}`);
+  };
+
+  /* Without this every fabric material shares three's default cache key and
+     the first compiled variant is silently reused for all of them. */
+  mat.customProgramCacheKey = () => key;
+  mat.needsUpdate = true;
+  return mat;
+}
+
 /* ══ MATERIALS ═════════════════════════════════════════════════════════════
    Five of them, and every object in the world is made of one. They are cached
    by their arguments: a scene with four hundred trees in it should have ONE

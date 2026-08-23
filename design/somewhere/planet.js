@@ -25,7 +25,7 @@
 
 import * as THREE from 'three';
 import { PAL, WORLD, R, DESTINATIONS } from './content.js';
-import { felt, water, waves, onSphere, groundWeave, groundTint } from './craft.js';
+import { felt, water, waves, onSphere, makeFabric } from './craft.js';
 
 /* ══ NOISE ═════════════════════════════════════════════════════════════════
    A small 3D value noise, hashed rather than table-driven so there is nothing
@@ -735,28 +735,35 @@ export function buildLand(detail = 40) {
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-  // The material multiplies by the vertex colour, so the base has to be white.
-  const mat = felt(0xffffff, { bump: 0.05, repeat: 26, rough: 1 }).clone();
-  mat.vertexColors = true;
+  /* THE GROUND IS CLOTH, and it is woven in the shader rather than wrapped in
+     a texture. See `makeFabric` in craft.js for why: at this radius no tiling
+     of a canvas can be both dense enough to read as fabric from a destination
+     and quiet enough not to moiré from orbit.
 
-  /* THE GROUND'S OWN DETAIL PASS. Swapped in after cloning, so the shared
-     `felt` material every prop still uses is untouched — only the land gets
-     the closer-range stitching, dye variation and embroidered flecks.
-     `groundTint` multiplies over the vertex colour exactly like a second,
-     finer coat of paint; `groundWeave` replaces the shared bump outright
-     rather than combining with it, because two independent bump maps at
-     different frequencies fight each other under a low sun rather than
-     adding up into more relief. */
-  const tint = groundTint().clone();
-  tint.repeat.set(18, 18);
-  tint.needsUpdate = true;
-  mat.map = tint;
+     SMOOTH-SHADED, unlike everything else in the world. Every prop here is
+     flat-shaded on purpose — facets are the form on a hand-cut object — but
+     the land is a hundred thousand triangles pretending to be a continuous
+     sheet, and faceting it just reads as low-poly ground. The relief now comes
+     from the weave, which is finer than any triangle and does not care how the
+     mesh was subdivided.
 
-  const gw = groundWeave().clone();
-  gw.repeat.set(26, 26);
-  gw.needsUpdate = true;
-  mat.bumpMap = gw;
-  mat.bumpScale = 0.075;
+     The material multiplies by the vertex colour, so the base has to be white:
+     `colorAt` above has already painted grass, sand, rock and snow into the
+     vertices, and the fabric only decides what the surface is MADE of. */
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    vertexColors: true,
+    roughness: 0.97,
+    metalness: 0,
+    flatShading: false,
+  });
+  /* THREAD COUNT IS SET AGAINST THE CLOSE CAMERA, not the planet view. A
+     destination frames roughly eight world units across a 1440px viewport, so
+     70 threads per unit puts a thread at about 2.5 screen pixels — fine enough
+     to read as cloth rather than as knitting, coarse enough to survive the
+     detail fade. At the first value tried, 24, a thread was seven pixels wide
+     and the ground came out looking like a scarf. */
+  makeFabric(mat, { thread: 44, seam: 15, relief: 0.60, dye: 0.12, key: 'fabric-land' });
 
   const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true;
