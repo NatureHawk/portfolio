@@ -8,7 +8,8 @@
     "vendor": "node scripts/vendor-three.mjs",
     "vendor:anime": "node scripts/vendor-anime.mjs",
     "vendor:unlazy": "node scripts/vendor-unlazy.mjs",
-    "images": "node scripts/encode-images.mjs"
+    "images": "node scripts/encode-images.mjs",
+    "check:glsl": "node scripts/check-glsl.mjs design/somewhere/craft.js"
   },
   "keywords": [
     "three.js",

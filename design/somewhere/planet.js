@@ -25,7 +25,7 @@
 
 import * as THREE from 'three';
 import { PAL, WORLD, R, DESTINATIONS } from './content.js';
-import { felt, water, waves, onSphere, makeFabric } from './craft.js';
+import { felt, water, onSphere, makeFabric, makeSea } from './craft.js';
 
 /* ══ NOISE ═════════════════════════════════════════════════════════════════
    A small 3D value noise, hashed rather than table-driven so there is nothing
@@ -818,22 +818,39 @@ export function buildSea() {
   const mid = new THREE.Color(PAL.sea);
   const c = new THREE.Color();
 
+  /* HOW DEEP IS IT HERE. Baked per vertex, and the reason the sea can have a
+     shoreline at all: a sphere of water has no idea where the land is, so for
+     every vertex we ask `heightAt` how high the ground is directly beneath and
+     store the gap. The shader turns that into foam in the shallows and darker
+     blue offshore — shoaling without a texture, a lookup or a second pass.
+
+     Cheap enough to be uninteresting: about six thousand vertices against a
+     height function the terrain already calls a hundred thousand times. */
+  const depths = new Float32Array(pos.count);
+
   for (let i = 0; i < pos.count; i++) {
     d.fromBufferAttribute(pos, i).normalize();
     const near = clamp01((d.dot(CAP_AXIS) + 0.35) / 1.2);
     c.copy(deep).lerp(mid, near * 0.85);
     colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+    depths[i] = Math.max(0, WORLD.ocean - heightAt(d));
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.setAttribute('aSeaDepth', new THREE.BufferAttribute(depths, 1));
 
-  const mat = water(0xffffff, { rough: 0.36 }).clone();
-  mat.vertexColors = true;
-  // The embroidered arcs. Multiplied over the vertex colour, so the water keeps
-  // its depth gradient and the stitching rides on top of it.
-  const wv = waves().clone();
-  wv.repeat.set(7, 4);
-  wv.needsUpdate = true;
-  mat.map = wv;
+  /* Smooth-shaded, like the land and for the same reason: the relief is the
+     stitching, which is finer than any triangle here. */
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    vertexColors: true,
+    roughness: 0.42,
+    metalness: 0.04,
+    flatShading: false,
+  });
+  /* `wave` is the number of wave ROWS from pole to pole. Half the sphere's
+     circumference is about 30 units, so 80 rows puts a wave every 0.38 units —
+     visible as swell at a destination, and fading to an even sheen from orbit. */
+  makeSea(mat, { thread: 22, wave: 80 });
 
   const surf = new THREE.Mesh(geo, mat);
   surf.receiveShadow = true;

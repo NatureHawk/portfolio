@@ -548,6 +548,175 @@ export function makeFabric(mat, {
   return mat;
 }
 
+/* ══ THE SEA ════════════════════════════════════════════════════════════════
+   Water in this world is dyed cloth with waves embroidered onto it, and it is
+   built the same way the ground is and for the same arithmetic reason. The old
+   canvas was tiled `repeat: (7, 4)` on a shell 60 units around, which is one
+   wave tile every EIGHT AND A HALF UNITS — a handful of enormous curves
+   sweeping across the whole ocean rather than stitching.
+
+   WHAT THE SEA KNOWS THAT THE GROUND DOES NOT. Foam belongs at the shoreline,
+   and a sphere of water has no idea where the land is. So `buildSea` bakes the
+   answer into the mesh: for every sea vertex it asks `heightAt` how high the
+   ground is directly below, and stores the depth as an attribute. The shader
+   then gets shoaling for free — foam where it is shallow, darker blue where it
+   is deep — without a texture, a lookup or a second pass. */
+const SEA_PARS = /* glsl */`
+  varying vec3 vSeaWorld;
+  varying vec3 vSeaNormalW;
+  varying vec2 vSeaUv;
+  varying float vSeaDepth;
+  uniform float uSeaTime;
+  uniform float uSeaThread;
+  uniform float uSeaWave;
+
+  float seaHash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+  float seaNoise(vec2 p) {
+    vec2 i = floor(p), f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(seaHash(i), seaHash(i + vec2(1.0, 0.0)), f.x),
+               mix(seaHash(i + vec2(0.0, 1.0)), seaHash(i + vec2(1.0, 1.0)), f.x), f.y);
+  }
+
+  /* THE EMBROIDERED SWELL. Dashed lines, bent into waves by a sine on the
+     cross axis — which is what the reference's stitching actually is, a
+     running stitch following the shape of a wave rather than a drawn curve.
+     Two runs at different frequencies and speeds, so the surface never
+     resolves into one marching pattern.
+
+     floor(y) seeds the dash phase per row, so consecutive rows do not start
+     their dashes together and give the grid away. */
+  float seaStitch(vec2 t, float rows, float speed, float amp) {
+    // t.x is longitude in radians, t.y is 0..1 pole to pole.
+    float y = t.y * rows
+            + sin(t.x * 5.0 + uSeaTime * speed) * amp * rows
+            + sin(t.x * 11.0 - uSeaTime * speed * 0.6) * amp * rows * 0.4;
+    /* line runs 0..0.5 across a row, so the falloff width is a FRACTION OF THE
+       ROW SPACING. At 0.20 the thread covered nearly half the gap between
+       waves and the sea came out banded in white. */
+    float line = abs(fract(y) - 0.5);
+    float dash = step(0.34, fract(t.x * 26.0 + floor(y) * 0.41));
+    return smoothstep(0.085, 0.02, line) * dash;
+  }
+
+  /* THE CLOTH UNDER THE STITCHING. Triplanar in world space, because a plain
+     weave is isotropic — it has no direction to get wrong, so blending three
+     planes costs nothing in coherence and buys uniform thread density. */
+  float seaClothPlane(vec2 uv) {
+    vec2 w = uv * uSeaThread;
+    float warp = abs(sin(w.x * 3.14159));
+    float weft = abs(sin(w.y * 3.14159));
+    float over = mod(floor(w.x) + floor(w.y), 2.0);
+    return mix(warp, weft, over) * 0.5 + (seaNoise(w * 0.4) - 0.5) * 0.3;
+  }
+
+  float seaCloth(vec3 p, vec3 n) {
+    vec3 bw = pow(abs(n), vec3(4.0));
+    bw /= max(bw.x + bw.y + bw.z, 1e-4);
+    return seaClothPlane(p.yz) * bw.x
+         + seaClothPlane(p.zx) * bw.y
+         + seaClothPlane(p.xy) * bw.z;
+  }
+
+  /* THE SWELL AND THE FOAM, IN THE SPHERE'S OWN COORDINATES.
+
+     These two do NOT get the triplanar treatment, and that is the whole
+     difference between water and denim. A wave has a direction: rows have to
+     run in coherent bands the way the reference stitches them. Blending three
+     world planes across a sphere gives every fragment a slightly different
+     idea of which way is along the row, and the result was a field of diagonal
+     scratches that read as rain on glass.
+
+     The sea is a UV sphere, so it already has the right coordinate: v runs
+     pole to pole and u around, and rows of constant v are latitude bands. The
+     pole pinch that costs is invisible here — the land cap covers one pole and
+     the other is the underside of the world. */
+  vec3 seaSwell(vec2 uv, float lod, float shallow) {
+    // Rows over the whole sphere rather than per world unit, so the pattern is
+    // stated in the same terms the geometry is.
+    vec2 t = vec2(uv.x * 3.14159, uv.y);
+
+    float stitch = seaStitch(t, uSeaWave, 0.55, 0.020)
+                 + seaStitch(t, uSeaWave * 1.9, -0.34, 0.013) * 0.55;
+    stitch = clamp(stitch, 0.0, 1.0) * lod;
+
+    /* THE FOAM. French-knot puffs, not a white band: a blobby noise threshold
+       that only appears where the water is shallow, drifting slowly so the
+       surf is never still. A hard band at the shoreline reads as a decal;
+       clustered knots read as the felt stuffing the reference uses. */
+    vec2 f = uv * vec2(90.0, 45.0);
+    float fn = seaNoise(f + vec2(uSeaTime * 0.10, -uSeaTime * 0.06));
+    float fn2 = seaNoise(f * 2.4 - vec2(uSeaTime * 0.14, uSeaTime * 0.08));
+    float foam = smoothstep(0.58, 0.90, fn * 0.62 + fn2 * 0.38 + shallow * 0.52);
+    return vec3(0.0, stitch, foam * shallow);
+  }
+`;
+
+const SEA_FRAG = /* glsl */`
+  {
+    // The swell is stated per sphere rather than per unit, so the footprint is
+    // measured against the UV the rows actually live in.
+    float foot = length(fwidth(vSeaUv)) * uSeaWave;
+    float lod = clamp(1.0 - foot * 1.6, 0.0, 1.0);
+
+    /* 1 in the shallows, 0 in open water, in world units. Kept NARROW: at the
+       first value tried (0.34) the band was wide enough to ring the whole
+       island in white and read as surf rather than as a shoreline. */
+    float shallow = smoothstep(0.16, 0.015, vSeaDepth);
+
+    vec3 nW = normalize(vSeaNormalW);
+    vec3 sea = seaSwell(vSeaUv, lod, shallow);
+    sea.x = seaCloth(vSeaWorld, nW);
+
+    if (lod > 0.001) {
+      float h = sea.x * 0.55 + sea.y * 0.9 + sea.z * 0.7;
+      vec3 dpx = dFdx(vSeaWorld);
+      vec3 dpy = dFdy(vSeaWorld);
+      vec3 bump = cross(dpy, normal) * dFdx(h) + cross(normal, dpx) * dFdy(h);
+      float bl = length(bump);
+      if (bl > 1e-6) normal = normalize(normal + (bump / bl) * 0.5 * lod);
+    }
+
+    /* DEPTH AS COLOUR. The vertex colours already carry the broad ocean
+       gradient; this is the local part — the water lightens as it shoals, the
+       way it does over a sandbar, which is most of what makes a coastline
+       legible from above. */
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.45 + vec3(0.02, 0.06, 0.06), shallow * 0.5);
+    diffuseColor.rgb *= 1.0 + (sea.x - 0.5) * 0.07 * lod;
+
+    // The stitched swell, then the foam on top of it.
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.78, 0.89, 0.95), sea.y * 0.32);
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.95, 0.97, 0.96), clamp(sea.z, 0.0, 1.0) * 0.72);
+
+    // Foam is felt, not water: it kills the highlight where it sits.
+    roughnessFactor = mix(roughnessFactor, 0.95, clamp(sea.z, 0.0, 1.0));
+  }
+`;
+
+export function makeSea(mat, { thread = 34, wave = 7.0, key = 'fabric-sea' } = {}) {
+  const u = {
+    uSeaTime: { value: 0 },
+    uSeaThread: { value: thread },
+    uSeaWave: { value: wave },
+  };
+  mat.userData.sea = u;
+
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, u);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\n varying vec3 vSeaWorld;\n varying vec3 vSeaNormalW;\n varying vec2 vSeaUv;\n varying float vSeaDepth;\n attribute float aSeaDepth;`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>\n vSeaWorld = (modelMatrix * vec4(position, 1.0)).xyz;\n vSeaNormalW = normalize(mat3(modelMatrix) * normal);\n vSeaUv = uv;\n vSeaDepth = aSeaDepth;`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\n${SEA_PARS}`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${SEA_FRAG}`);
+  };
+  mat.customProgramCacheKey = () => key;
+  mat.needsUpdate = true;
+  return mat;
+}
+
 /* ══ MATERIALS ═════════════════════════════════════════════════════════════
    Five of them, and every object in the world is made of one. They are cached
    by their arguments: a scene with four hundred trees in it should have ONE

@@ -146,13 +146,14 @@ export function createLife(world, { reduced = false } = {}) {
      vertex work — the ocean is 12,000 vertices and re-uploading them every
      frame to make a ripple would be the most expensive thing in the world. */
   const seaSurface = sea?.getObjectByName('sea-surface');
-  const seaMap = seaSurface?.material?.map;
+  /* The sea's own clock. The swell is stitched procedurally now rather than
+     printed on a texture, so it advances by feeding the shader a time rather
+     than by sliding a UV offset — which also means the waves bend and travel
+     instead of the whole pattern marching sideways as one sheet. */
+  const seaTime = seaSurface?.material?.userData?.sea?.uSeaTime;
 
   function updateWater() {
-    if (seaMap) {
-      seaMap.offset.x = (t.water * 0.0045) % 1;
-      seaMap.offset.y = Math.sin(t.water * 0.13) * 0.006;
-    }
+    if (seaTime) seaTime.value = t.water;
     if (seaSurface) {
       const breath = 1 + Math.sin(t.water * 0.5) * 0.0016;
       seaSurface.scale.setScalar(breath);
