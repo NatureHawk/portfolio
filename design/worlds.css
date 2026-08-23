@@ -1,0 +1,660 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE FOUR WORLDS — the shell, the corners and the portal.
+
+   This is the only stylesheet shared by all four sites, and it is deliberately
+   thin. It styles the thing BETWEEN the worlds — the controls in the corners,
+   the layer that crosses the screen, and the frame a world that is not built
+   yet stands in. Each world's own material stays in its own place: HUM's is
+   design.css, and 02–04 carry their palettes as three custom properties set by
+   their modules.
+
+   THE STACK, top to bottom. Every layer in the page is listed so a new one has
+   somewhere obvious to go:
+
+     90  the arrival curtain (design.css)
+     86  the corner controls        — above the portal, on purpose: the corner
+                                      you pressed stays lit while it pours
+     84  the portal
+     50  the visitor's cursor (design.css)
+     40  HUM's nav / 38 its strip
+      3  a world that is not HUM
+      2  HUM itself
+      0  the paper substrate
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --corner-size: 54px;
+  --corner-gut: 13px;
+  --corner-panel: 168px;
+}
+
+/* ── THE WORLDS ─────────────────────────────────────────────────────────────
+   HUM is the document itself, wrapped rather than rebuilt: the header, the
+   eight sections and the strip are exactly where they were. The wrapper exists
+   so all of it can leave at once.
+
+   It is hidden with the `hidden` attribute and not with opacity, which is what
+   makes leaving free: with the document collapsed every IntersectionObserver in
+   the page reports off-screen, so the meters, the scrubbers and the cursor
+   loops all stop by themselves. A world you are not in costs nothing. */
+#world-01 { position: relative; z-index: 2; }
+#world-01[hidden] { display: none !important; }
+
+#worlds { position: relative; z-index: 3; }
+
+/* ── THE CORNER CONTROLS ────────────────────────────────────────────────────
+   Four numbers and four hairlines. Everything they do is driven by one custom
+   property, `--near`, written by nav.js from the distance between the pointer
+   and the corner — so the response is continuous rather than a state that
+   switches at a boundary, and the whole navigation costs four style writes a
+   frame while a hand is near one of them and nothing at all otherwise.
+
+   Nothing here transitions on `--near`. The value arrives already damped (it is
+   read off the shared smoothed pointer in motion.js) and a transition on top of
+   a per-frame write is just lag. Transitions are for the things that change on
+   a class: the panel opening, the whole set waking up. */
+.corners {
+  position: fixed;
+  inset: 0;
+  z-index: 86;
+  pointer-events: none;
+  --corner-ink: var(--ink, #15150f);
+  --corner-accent: var(--accent, #cbf03c);
+  --corner-paper: var(--paper, #f1eee5);
+  opacity: 0;
+  transition: opacity 0.7s var(--ease-rise, ease);
+}
+.corners.is-awake { opacity: 1; }
+
+.corner {
+  --near: 0;
+  position: absolute;
+  width: var(--corner-size);
+  height: var(--corner-size);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  display: grid;
+  pointer-events: auto;
+  cursor: pointer;
+  color: var(--corner-ink);
+  font: 500 var(--t-nano, 0.5625rem) / 1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.2em;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.28s var(--ease-soft, ease);
+}
+.corner:focus { outline: none; }
+.corner:focus-visible .corner-no { outline: 1px solid currentColor; outline-offset: 4px; }
+
+.corner--tl { top: var(--corner-gut); left: var(--corner-gut); place-items: start start; }
+.corner--tr { top: var(--corner-gut); right: var(--corner-gut); place-items: start end; }
+.corner--bl { bottom: var(--corner-gut); left: var(--corner-gut); place-items: end start; }
+.corner--br { bottom: var(--corner-gut); right: var(--corner-gut); place-items: end end; }
+
+/* The mark in the very corner of the screen. It grows out of the corner itself,
+   which is why the origin is set per position — a bracket that expanded from
+   its own middle would read as a box appearing rather than as an edge being
+   drawn. */
+.corner-tick {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  opacity: calc(0.2 + var(--near) * 0.8);
+  transform: scale(calc(0.5 + var(--near) * 0.5));
+}
+.corner--tl .corner-tick { top: 0; left: 0; border-top: 1px solid; border-left: 1px solid; transform-origin: 0 0; }
+.corner--tr .corner-tick { top: 0; right: 0; border-top: 1px solid; border-right: 1px solid; transform-origin: 100% 0; }
+.corner--bl .corner-tick { bottom: 0; left: 0; border-bottom: 1px solid; border-left: 1px solid; transform-origin: 0 100%; }
+.corner--br .corner-tick { bottom: 0; right: 0; border-bottom: 1px solid; border-right: 1px solid; transform-origin: 100% 100%; }
+
+.corner-no {
+  position: relative;
+  padding: 3px 4px;
+  opacity: calc(0.36 + var(--near) * 0.64);
+  transform: scale(calc(1 + var(--near) * 0.08));
+}
+
+/* The panel. It opens DOWNWARD from a top corner and UPWARD from a bottom one,
+   so it never grows along the edge the page's own chrome runs down — and it
+   never takes pointer events, so an expanded corner cannot swallow a click
+   meant for the button underneath it. The corner square stays the only target. */
+.corner-panel {
+  position: absolute;
+  width: var(--corner-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 11px 11px;
+  border-radius: 2px;
+  /* A wash of the world's own ground, not a card. Without it the panel sets
+     type directly over whatever the page has in that corner and both become
+     unreadable; with a border it would read as a button, which is the one thing
+     this navigation is not. */
+  background: color-mix(in srgb, var(--corner-paper) 86%, transparent);
+  backdrop-filter: saturate(140%) blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s var(--ease-soft, ease), transform 0.42s var(--ease-rise, ease);
+}
+.corner--tl .corner-panel, .corner--tr .corner-panel { top: calc(100% - 4px); transform: translateY(-7px); }
+.corner--bl .corner-panel, .corner--br .corner-panel { bottom: calc(100% - 4px); transform: translateY(7px); flex-direction: column-reverse; }
+.corner--tl .corner-panel, .corner--bl .corner-panel { left: 4px; align-items: flex-start; text-align: left; }
+.corner--tr .corner-panel, .corner--br .corner-panel { right: 4px; align-items: flex-end; text-align: right; }
+.corner.is-near .corner-panel { opacity: 1; transform: translateY(0); }
+
+.corner-rule {
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.24;
+  transform: scaleX(var(--near));
+  margin-bottom: 5px;
+}
+.corner--tl .corner-rule, .corner--bl .corner-rule { transform-origin: left center; }
+.corner--tr .corner-rule, .corner--br .corner-rule { transform-origin: right center; }
+.corner--bl .corner-rule, .corner--br .corner-rule { margin: 5px 0 0; }
+
+.corner-go {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--corner-accent);
+  font-size: var(--t-nano, 0.5625rem);
+  letter-spacing: 0.24em;
+}
+/* The arrow sits on the side the corner is on, so it always points out of the
+   panel and into the doorway rather than back across it. */
+.corner--tl .corner-go, .corner--bl .corner-go { flex-direction: row-reverse; }
+.corner-go i { font-style: normal; transform: translate(calc(var(--near) * 3px), 0); }
+
+.corner-name {
+  font-family: var(--display, sans-serif);
+  font-size: 1.02rem;
+  font-weight: 640;
+  font-variation-settings: "wdth" 88, "opsz" 24;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+.corner-kicker { opacity: 0.5; letter-spacing: 0.14em; white-space: nowrap; }
+
+/* Where you already are. Still in the tab order, still says so, no longer
+   offers to take you anywhere. */
+.corner[data-current="true"] { pointer-events: none; cursor: default; }
+.corner[data-current="true"] .corner-no { opacity: 0.28; transform: none; }
+.corner[data-current="true"] .corner-tick { opacity: 0.14; transform: scale(0.5); }
+.corner[data-current="true"] .corner-panel { display: none; }
+
+/* Mid-crossing the corners keep their marks and drop everything else. The panel
+   is a wash of the world you are leaving, and it has no business floating over
+   the portal of the one you are entering. */
+body.is-crossing .corner-panel,
+body.is-crossing .corner.is-near .corner-panel { opacity: 0; transition-duration: 0.14s; }
+
+/* And during the one-time hint on arrival, for the same reason. */
+.corners.is-hinting .corner-panel,
+.corners.is-hinting .corner.is-near .corner-panel { opacity: 0; }
+
+/* HUM's chrome runs the full width of the screen at both ends, so it is given
+   the corners' gutters back rather than being allowed to sit under them. */
+body .top { padding-left: calc(var(--pad) + 46px); padding-right: calc(var(--pad) + 46px); }
+body .strip { padding-left: calc(var(--pad) + 46px); padding-right: calc(var(--pad) + 46px); }
+
+/* ── THE PORTAL ─────────────────────────────────────────────────────────────
+   A square, rotated 45°, centred exactly on a corner. Scaled from 0 it sweeps
+   one straight edge across the viewport; scaled to 0 from the opposite corner
+   it takes that edge away again in the same direction. See portal.js for the
+   arithmetic behind `--pl`.
+
+   `contain: strict` matters here: without it the browser treats a layer holding
+   an element several times the size of the screen as something that might
+   affect the rest of the page. */
+.portal {
+  position: fixed;
+  inset: 0;
+  z-index: 84;
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+  contain: strict;
+  --pl: 3000px;
+}
+.portal.is-open { visibility: visible; }
+
+.portal-sheet {
+  position: absolute;
+  left: var(--px);
+  top: var(--py);
+  width: var(--pl);
+  height: var(--pl);
+  margin-left: calc(var(--pl) / -2);
+  margin-top: calc(var(--pl) / -2);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* The letterform KILN's portal is built out of. Anchored by the two edges that
+   meet at its corner rather than by a translate, because anime owns the
+   transform on this element and a layout offset must not be written into it. */
+.portal-word {
+  position: absolute;
+  font-family: var(--display, sans-serif);
+  font-weight: 800;
+  font-size: 11vmin;
+  font-variation-settings: "wdth" 84, "opsz" 96;
+  line-height: 0.74;
+  letter-spacing: -0.05em;
+  white-space: nowrap;
+  will-change: transform;
+}
+.portal-word[data-corner="tl"] { top: 0; left: 0; transform-origin: 0 0; }
+.portal-word[data-corner="tr"] { top: 0; right: 0; transform-origin: 100% 0; }
+.portal-word[data-corner="bl"] { bottom: 0; left: 0; transform-origin: 0 100%; }
+.portal-word[data-corner="br"] { bottom: 0; right: 0; transform-origin: 100% 100%; }
+
+/* ── A WORLD THAT IS NOT BUILT YET ──────────────────────────────────────────
+   The frame worlds 02, 03 and 04 stand in until they have sites of their own.
+   It is a whole screen with its own ground, its own palette and its own type —
+   not a notice — because the four-corner mechanic is only worth anything if
+   what is behind each corner reads as somewhere else.
+
+   `visibility: hidden` and not `display: none`: a world is mounted the moment a
+   pointer comes near its corner and has to be fully laid out by the time the
+   portal covers the screen. Hidden this way it is measured, styled and ready,
+   and it paints nothing. */
+.wframe {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
+  /* Three of these sit mounted at all times. Containment tells the browser that
+     nothing inside one can affect anything outside it, so a reflow anywhere on
+     the page does not have to consider three screens' worth of hidden layout.
+     Not `content-visibility`, which would skip the layout altogether and hand
+     the cost back at the exact moment it must not be paid — the frame the world
+     is revealed in. */
+  contain: layout paint;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: clamp(20px, 4vh, 44px);
+  padding: clamp(20px, 3.4vw, 46px) calc(clamp(20px, 3.4vw, 46px) + 46px);
+  background: var(--w-paper);
+  color: var(--w-ink);
+  font-family: var(--sans, sans-serif);
+  font-size: var(--t-body, 0.9rem);
+}
+.wframe[data-state="live"] { visibility: visible; pointer-events: auto; }
+
+/* WILL-CHANGE IS RENTED, NOT OWNED.
+   Three worlds sit mounted and hidden so that entering one is instant. Left
+   with a standing `will-change: transform`, each of their full-screen layers is
+   a screen-sized texture the compositor holds on the GPU for as long as the tab
+   is open — three worlds' worth of them, for motion that happens twice a
+   minute. On a laptop with shared graphics memory that is not free, and it is
+   paid by every visitor including the ones who never touch a corner.
+
+   So the promotion is scoped to the crossing itself. `is-crossing` goes on the
+   body for the ~640ms a portal is open and comes off again after, which is
+   exactly the window in which any of this moves. The layer is created a frame
+   before it is needed rather than held forever, and the transition measured the
+   same either way. */
+body.is-crossing .wframe-ground,
+body.is-crossing .wframe-art,
+body.is-crossing .wframe-title,
+body.is-crossing .wframe-bar,
+body.is-crossing .wframe-foot,
+body.is-crossing .art-glyph { will-change: transform; }
+.wframe:focus { outline: none; }
+
+/* The ground is the layer that grows out of the corner on arrival. It carries
+   the texture; the flat colour underneath it belongs to .wframe, so there is
+   never an edge to see while it moves. */
+.wframe-ground {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* A wash from the doorway, over the same dot field HUM stands on — the one
+     material all four worlds share, in each one's own ink. It is deliberately
+     coarse: a 1px-in-3px scanline is the kind of pattern that moirés the moment
+     a display is not at a whole-number pixel ratio. */
+  background:
+    radial-gradient(130% 95% at var(--w-origin, 50% 0%), color-mix(in srgb, var(--w-accent) 15%, transparent), transparent 64%),
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--w-ink) 13%, transparent) 1px, transparent 0);
+  background-size: auto, 26px 26px;
+  opacity: 0.92;
+}
+
+.wframe-art { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+
+.wframe-bar, .wframe-foot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font: 500 var(--t-nano, 0.5625rem) / 1 var(--mono, monospace);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.wframe-id { display: flex; align-items: baseline; gap: 10px; margin: 0; }
+.wframe-id b { font-weight: 500; color: var(--w-accent); }
+.wframe-id span { opacity: 0.55; }
+
+.wframe-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid color-mix(in srgb, var(--w-ink) 26%, transparent);
+  border-radius: 2px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  transition: border-color 0.3s var(--ease-soft, ease), background-color 0.3s var(--ease-soft, ease);
+}
+.wframe-home:hover { border-color: var(--w-accent); background: color-mix(in srgb, var(--w-accent) 12%, transparent); }
+.wframe-home i { font-style: normal; }
+
+/* The measure is set for the sentence under the name, not for the name — the
+   display line is sized off the viewport and is allowed to run past this box. */
+.wframe-mid { position: relative; align-self: center; max-width: min(46ch, 88%); }
+.wframe-kicker { margin: 0 0 14px; font: 500 var(--t-nano, 0.5625rem) / 1 var(--mono, monospace); letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.6; }
+.wframe-title {
+  margin: 0;
+  font-family: var(--display, sans-serif);
+  font-size: clamp(3.2rem, 13vw, 11rem);
+  font-weight: 680;
+  font-variation-settings: "wdth" 86, "opsz" 96;
+  line-height: 0.82;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+}
+.wframe-line { max-width: 46ch; margin: clamp(16px, 2.6vh, 28px) 0 0; font-size: var(--t-lede, 1.05rem); line-height: 1.45; opacity: 0.72; }
+
+.wframe-state { display: flex; align-items: center; gap: 9px; margin: 0; }
+.wframe-state i { width: 6px; height: 6px; border-radius: 50%; background: var(--w-accent); opacity: 0.25; }
+.wframe-hint { margin: 0; opacity: 0.42; }
+
+/* ── EACH WORLD'S ONE PIECE OF FURNITURE ────────────────────────────────────
+   Not decoration for its own sake: each is the shape its site will be built
+   around, drawn in CSS so there is no request behind any of it. */
+.art-signal {
+  position: absolute;
+  top: 22vh;
+  right: clamp(24px, 6vw, 92px);
+  width: min(34vw, 420px);
+  display: grid;
+  gap: clamp(7px, 1.1vh, 13px);
+  justify-items: end;
+}
+.art-signal i { display: block; width: var(--w); height: 2px; background: var(--w-ink); opacity: 0.3; transform-origin: right center; }
+.art-signal i:nth-child(3n) { background: var(--w-accent); opacity: 0.85; }
+
+.art-glyph {
+  position: absolute;
+  left: -3vw;
+  bottom: -14vh;
+  font-family: var(--display, sans-serif);
+  font-size: 78vh;
+  font-weight: 800;
+  font-variation-settings: "wdth" 78, "opsz" 96;
+  line-height: 0.7;
+  color: color-mix(in srgb, var(--w-accent) 26%, transparent);
+}
+
+.art-drift { position: absolute; inset: 0; }
+.art-drift i {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: calc(var(--s) * 3px);
+  height: calc(var(--s) * 3px);
+  border-radius: 50%;
+  background: var(--w-accent);
+  opacity: 0.5;
+}
+.art-drift i:nth-child(4n) { background: var(--w-ink); opacity: 0.3; }
+
+/* ── ANNOUNCEMENT ───────────────────────────────────────────────────────────
+   Nothing about a portal is legible to a screen reader, so the shell says which
+   world you are in out loud, politely, at the moment the swap happens. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── MOBILE ─────────────────────────────────────────────────────────────────
+   Smaller corners and smaller gutters, and the chrome gets most of its width
+   back — at 360px every pixel the navigation takes is one the page's own nav
+   does not have. */
+@media (max-width: 760px) {
+  :root { --corner-size: 38px; --corner-gut: 7px; --corner-panel: 104px; }
+  body .top { padding-left: calc(var(--pad) + 30px); padding-right: calc(var(--pad) + 42px); }
+  body .strip { padding-left: calc(var(--pad) + 30px); padding-right: calc(var(--pad) + 30px); }
+
+  .corner-name { font-size: 0.86rem; }
+  .corner-tick { width: 15px; height: 15px; }
+
+  .wframe { padding: clamp(16px, 4vw, 30px) calc(clamp(16px, 4vw, 30px) + 30px); gap: 20px; }
+  .wframe-mid { max-width: none; }
+  .wframe-line { font-size: 0.95rem; }
+  .wframe-hint { display: none; }
+  .art-signal { top: auto; bottom: 16vh; right: 4vw; width: 56vw; }
+  .art-glyph { font-size: 52vh; bottom: -10vh; }
+}
+
+/* ── TOUCH ──────────────────────────────────────────────────────────────────
+   Nothing to be near, so proximity never fires and `--near` stays at zero. The
+   corners give up the panel and keep the name — the mechanic has to be legible
+   without a hover to discover it with.
+
+   Placed AFTER the mobile block on purpose: on a phone both apply, and the type
+   sizes here are the ones that should win. */
+@media (hover: none) {
+  .corner-panel { opacity: 1; transform: none; padding: 6px 8px; background: none; backdrop-filter: none; }
+  .corner-go, .corner-kicker, .corner-rule { display: none; }
+  .corner-name { font-family: var(--mono, monospace); font-size: var(--t-nano, 0.5625rem); font-weight: 500; letter-spacing: 0.18em; opacity: 0.4; }
+  .corner[data-current="true"] .corner-panel { display: none; }
+
+  /* Permanently visible means permanently in somebody's way unless it is placed
+     out of the chrome's band — there is no hover here to take it away again.
+     The top pair drops clear of the header; the bottom pair already clears the
+     status strip. */
+  .corner--tl .corner-panel, .corner--tr .corner-panel { top: calc(var(--nav, 56px) - var(--corner-gut) + 10px); }
+}
+
+/* ── REDUCED MOTION ─────────────────────────────────────────────────────────
+   The JS half is handled properly: shell.js does not run a transition at all —
+   it swaps the worlds and lands every element of the destination in its final
+   state, so nothing is skipped and nothing is missing. This is the CSS half.
+   The corners still respond, because a control that does not respond is a
+   control you cannot tell is a control; they simply stop moving to do it. */
+@media (prefers-reduced-motion: reduce) {
+  .corner-no, .corner-tick { transform: none; }
+  .corner-go i { transform: none; }
+  .corner-panel { transition-duration: 0.16s; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE BOOT CURTAIN, PER WORLD
+
+   `.arrive` itself belongs to design.css — it is HUM's panel and HUM's
+   entrance choreography drives it. What is here is the part that is NOT HUM's:
+   the three other worlds this page can legitimately open on.
+
+   WHY THIS EXISTS. A world is an address. `/design?w=03` can be linked,
+   bookmarked, shared and refreshed, and every one of those arrivals used to be
+   covered by a cream panel reading HUM / OPENING THE CANVAS which then cut to
+   a black fashion editorial — the curtain announcing a world the visitor was
+   not going to. The panel now wears whichever world it is covering.
+
+   HOW IT IS SCOPED. `data-boot` is written by the inline script in the head, so
+   it is on the root element before the body exists and none of this is a
+   repaint of something already seen. It is deliberately a SEPARATE attribute
+   from `body[data-world]`: `data-world` is live and changes on every crossing,
+   `data-boot` records where this page load started and never changes again.
+   Using one for both would make the curtain follow later corner crossings —
+   restyling a panel that left the screen a minute ago.
+
+   Each block sets only what differs from design.css's default (which is 01's).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Show the mark and note belonging to the world being opened, and only those.
+   One rule, four selectors: the survivor keeps whatever `display` its own class
+   gives it, so nothing here has to know that the mark is a flex row. */
+html[data-boot="01"] .arrive [data-boot-w]:not([data-boot-w="01"]),
+html[data-boot="02"] .arrive [data-boot-w]:not([data-boot-w="02"]),
+html[data-boot="03"] .arrive [data-boot-w]:not([data-boot-w="03"]),
+html[data-boot="04"] .arrive [data-boot-w]:not([data-boot-w="04"]) { display: none; }
+
+/* The `/01` in BRUSH's mark. Set in the accent so the curtain carries the same
+   two-part lockup the world's own rail does. */
+.arrive-mark b { font-weight: 400; font-size: 0.42em; letter-spacing: 0.06em; align-self: center; }
+
+/* THE GROUND UNDER THE CURTAIN TOO, not just the curtain. The panel lifts out
+   of the top of the frame, and for the last 200ms of that lift the body behind
+   it is visible — cream, if this is not corrected, behind a black world that
+   has not painted yet. */
+html[data-boot="02"] body { background: #000000; }
+html[data-boot="03"] body { background: #08080a; }
+html[data-boot="04"] body { background: #070d14; }
+
+html[data-boot="02"] .arrive,
+html[data-boot="03"] .arrive,
+html[data-boot="04"] .arrive {
+  /* Archivo for both built worlds — it is BRUSH's display face and NEW FORMS'
+     both, already requested by the document, so the curtain adds no font. Its
+     width axis is set narrow here for the same reason both worlds set it
+     narrow: a compressed grotesque is what a product title and a fashion
+     masthead have in common. */
+  font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  font-variation-settings: "wdth" 78;
+}
+
+html[data-boot="02"] .arrive { background: #000000; color: #eceae4; }
+html[data-boot="02"] .arrive-mark i { background: #ff6b21; }
+html[data-boot="02"] .arrive-mark b { color: #ff6b21; }
+html[data-boot="02"] .arrive-rule { background: rgba(236, 234, 228, 0.16); }
+html[data-boot="02"] .arrive-rule i { background: #eceae4; }
+html[data-boot="02"] .arrive-note { color: rgba(236, 234, 228, 0.5); }
+
+html[data-boot="03"] .arrive { background: #08080a; color: #ece7dd; }
+html[data-boot="03"] .arrive-mark i { background: #df3d1d; border-radius: 0; }
+html[data-boot="03"] .arrive-rule { background: rgba(236, 231, 221, 0.16); }
+html[data-boot="03"] .arrive-rule i { background: #ece7dd; }
+html[data-boot="03"] .arrive-note { color: rgba(236, 231, 221, 0.5); }
+
+html[data-boot="04"] .arrive { background: #070d14; color: #dfe9f2; }
+html[data-boot="04"] .arrive-mark i { background: #57e0d0; }
+html[data-boot="04"] .arrive-rule { background: rgba(223, 233, 242, 0.16); }
+html[data-boot="04"] .arrive-rule i { background: #dfe9f2; }
+html[data-boot="04"] .arrive-note { color: rgba(223, 233, 242, 0.5); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BACK TO THE ROOM
+
+   Document-level chrome, not world-level: it lives outside `#worlds` so it
+   survives every crossing, and it is the only way out of worlds 02–04, which
+   had none. HUM keeps its own in its top bar — that link is part of HUM's
+   chrome and reads as HUM's — so this one steps aside there rather than
+   doubling it.
+
+   WHERE IT SITS, AND WHY IT MOVES. There is no single free spot across four
+   worlds: BRUSH owns the top centre with its act readout, and NEW FORMS owns
+   the bottom centre with its ticker below 1181px. So the default is the top
+   centre (free in NEW FORMS, DRIFT and the corner system, which only ever
+   occupies 54px squares in the four corners), and BRUSH moves it to the bottom
+   centre, where its only chrome is a one-pixel rule.
+
+   It takes its colours from the shell's own variables — `wear()` writes
+   `--world-ink` and `--world-accent` on the root element at the instant the
+   ground changes, under the portal — so it is never seen changing and never
+   needs to know which world is live.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.room-back {
+  position: fixed;
+  top: var(--corner-gut);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 86;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  font: 500 9.5px/1 "DM Mono", ui-monospace, Consolas, monospace;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--world-ink, #15150f);
+  /* A hairline plate rather than naked type: this sits on whatever photograph
+     the world happens to have under it, and every world here is full-bleed
+     imagery at some point. `color-mix` against the world's own paper keeps it
+     the same object on cream and on black. */
+  background: color-mix(in srgb, var(--world-paper, #f1eee5) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--world-ink, #15150f) 22%, transparent);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.room-back i { font-style: normal; color: var(--world-accent, #cbf03c); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.room-back:hover i { transform: translateX(-3px); }
+.room-back:hover { border-color: color-mix(in srgb, var(--world-ink, #15150f) 48%, transparent); }
+.room-back:focus-visible { outline: 2px solid var(--world-accent, #cbf03c); outline-offset: 3px; }
+
+/* Live only once the curtain is off — the same moment the corners wake. */
+body:not(.is-arriving) .room-back { opacity: 1; pointer-events: auto; }
+
+/* HUM already has one, in its own chrome. */
+body[data-world="01"] .room-back { opacity: 0; pointer-events: none; }
+
+/* BRUSH owns the top centre (its act readout), so this goes to the foot, where
+   the world's only chrome is a one-pixel progress rule. */
+body[data-world="02"] .room-back {
+  top: auto;
+  bottom: calc(var(--corner-gut) + 6px);
+}
+
+/* Mid-crossing the control would be a fixed element sitting on top of the
+   portal while the screen is being wiped. It goes with everything else. */
+body.is-crossing .room-back { opacity: 0; pointer-events: none; }
+
+@media (max-width: 640px) {
+  .room-back span { display: none; }
+  .room-back { padding: 8px 10px; gap: 0; }
+}
+
+/* ── LAZY PLATES ────────────────────────────────────────────────────────────
+   An image handed to unlazy has a 1×1 transparent placeholder in `src` until
+   the real file is decoded (see design/lazy.js), so without this it would snap
+   from nothing to a full photograph mid-scroll. It fades instead — 480ms, on
+   opacity alone so it composites.
+
+   `.is-loaded` is set from unlazy's own `onImageLoad`, and also from a
+   capturing `load` listener on the world root: an image restored from the
+   HTTP cache can finish before the callback is attached, and a plate that
+   stayed at opacity 0 because it loaded too FAST would be a genuinely
+   confusing bug to find. */
+.is-lazy { opacity: 0; transition: opacity 0.48s cubic-bezier(0.4, 0, 0.2, 1); }
+.is-lazy.is-loaded { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .is-lazy { transition-duration: 0.01ms; }
+}

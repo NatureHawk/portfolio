@@ -229,30 +229,56 @@ body.ready .boot { opacity: 0; visibility: hidden; }
 }
 
 /* ── LAYOUT GRID OVERLAY ─────────────────────────────────────────────── */
-/* Thrown by the GRID switch. Twelve columns inside the page gutter — the
-   grid this sheet is genuinely set on, not a decorative overlay. */
+/* Thrown by the GRID switch. Twelve columns inside the page gutter and a row
+   rhythm across them — the grid this sheet is genuinely set on.
+
+   TWO THINGS MAKE IT A GRID RATHER THAN A NUISANCE, and it was both of them
+   that were wrong:
+
+   IT GOES UNDERNEATH. At z-index 90 it was above every panel and straight
+   across the headline, so the sheet read as though it had been ruled over in
+   pen. A layout grid is the thing the page is set ON — it belongs behind the
+   page, showing only in the space between elements, and being occluded by a
+   card is the correct behaviour rather than a bug. `-1` puts it above the
+   body's own background and below everything in flow.
+
+   IT IS DRAWN IN INK, NOT IN SIGNAL. The lines were the accent orange at 26%,
+   which on this pale surface is a saturated pink — the loudest colour on a
+   sheet whose whole argument is restraint, spent on scaffolding. Ink at a
+   tenth reads as a drafting underlay, which is what it is. The accent is
+   reserved for the two lines that mean something: the outer margins. */
 
 .grid-overlay {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: -1;
   padding: 0 var(--pad);
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.35s var(--ease);
+  transition: opacity 0.4s var(--ease);
 }
 body.grid-on .grid-overlay { opacity: 1; }
+
 .grid-overlay::before {
   content: "";
   display: block;
   height: 100%;
-  background-image: linear-gradient(
-    to right,
-    color-mix(in srgb, var(--signal) 26%, transparent) 0 1px,
-    transparent 1px
-  );
-  background-size: calc(100% / 12) 100%;
-  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--signal) 26%, transparent);
+  /* The row is a round number rather than a fraction of the viewport: a grid
+     whose horizontals move when the window is resized is not a grid. */
+  --g-col: color-mix(in srgb, var(--ink) 10%, transparent);
+  --g-row: color-mix(in srgb, var(--ink) 6%, transparent);
+  --g-edge: color-mix(in srgb, var(--signal) 22%, transparent);
+  background-image:
+    linear-gradient(to right, var(--g-col) 0 1px, transparent 1px),
+    linear-gradient(to bottom, var(--g-row) 0 1px, transparent 1px);
+  background-size:
+    calc(100% / 12) 100%,
+    100% 72px;
+  /* The two margins, in signal — the only lines here that are a decision
+     rather than a subdivision. */
+  box-shadow:
+    inset 1px 0 0 var(--g-edge),
+    inset -1px 0 0 var(--g-edge);
 }
 
 /* ── CHASSIS ─────────────────────────────────────────────────────────── */

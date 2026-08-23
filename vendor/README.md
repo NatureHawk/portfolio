@@ -23,18 +23,30 @@ addons/loaders/GLTFLoader.js     loads assets/cat.glb and fairy_lights.glb
 └── addons/utils/SkeletonUtils.js         …and this
 ```
 
+```
+anime/anime.esm.min.js           the animation engine behind /design
+```
+
 Nothing else from three is reachable from `app.js`, so nothing else is copied.
 The two `build/` files are the **minified** ones (750 KB, ~190 KB over the wire
 after compression); the addons ship unminified from three and are left that way.
 
+anime.js is the **bundled** ESM build, not `dist/modules/**`. The modules tree
+is ~90 files of relative imports, which with no bundler is ~90 round trips
+before a line runs; the bundle is one 118 KB file (~40 KB compressed). Only
+`/design` loads it — `index.html` and `/code` never touch it.
+
 ## Updating
 
 ```bash
-npm install three@latest   # or a pinned version
-npm run vendor             # re-copies the five files above
+npm install three@latest      # or a pinned version
+npm run vendor                # re-copies the five three files above
+
+npm install animejs@latest --save-dev
+npm run vendor:anime          # re-copies the anime bundle
 ```
 
-`three` stays in `devDependencies` for exactly this. If a future version of
+`three` and `animejs` stay in `devDependencies` for exactly this. If a future version of
 `GLTFLoader.js` picks up a new relative import, the copy will 404 in the
 browser — check its `import` statements against the list above when bumping.
 

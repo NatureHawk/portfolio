@@ -1,11 +1,14 @@
 {
   "name": "portfolio",
   "version": "1.0.0",
-  "description": "The Late Night Desk — a real-time 3D portfolio room built with vanilla JS and Three.js, no framework and no bundler.",
+  "description": "The Late Night Desk \u2014 a real-time 3D portfolio room built with vanilla JS and Three.js, no framework and no bundler.",
   "main": "app.js",
   "scripts": {
     "start": "npx -y serve -l 5173 .",
-    "vendor": "node scripts/vendor-three.mjs"
+    "vendor": "node scripts/vendor-three.mjs",
+    "vendor:anime": "node scripts/vendor-anime.mjs",
+    "vendor:unlazy": "node scripts/vendor-unlazy.mjs",
+    "images": "node scripts/encode-images.mjs"
   },
   "keywords": [
     "three.js",
@@ -18,7 +21,10 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "three": "^0.185.1"
+    "animejs": "^4.5.0",
+    "sharp": "^0.35.3",
+    "three": "^0.185.1",
+    "unlazy": "^2.0.1"
   },
   "dependencies": {
     "@vercel/speed-insights": "^2.0.0"

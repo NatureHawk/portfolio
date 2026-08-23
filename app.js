@@ -2443,7 +2443,10 @@ function setHover(target) {
 // monitor's own colour, then blows out to that exact value before the
 // navigation fires — so the document swap happens between two frames of the
 // same colour instead of cutting from a dark room to a white page.
-const WORLD_ROUTES = { code: { href: 'code.html', surface: '#ecf0f3' } };
+const WORLD_ROUTES = {
+  code: { href: 'code.html', surface: '#ecf0f3' },
+  design: { href: 'design.html', surface: '#f1eee5' },
+};
 const screenFlood = document.querySelector('.screen-flood');
 
 // Entry choreography. Fixed offsets, deliberately: the camera push has to feel
@@ -2930,17 +2933,25 @@ Promise.race([
   }, wait);
 });
 
-// The CODE page is a separate document, so entering it is a real navigation.
-// Warmed at idle rather than on hover: by the time anyone has read the intro
-// copy and moved to a monitor, the whole page is already in the HTTP cache, so
-// the hand-off costs the same on a cold connection as it does on localhost.
-const warmCodePage = () => {
-  for (const href of ['code.html', 'code.css', 'code.js', 'projects.js']) {
+// The CODE and DESIGN pages are separate documents, so entering one is a real
+// navigation. Warmed at idle rather than on hover: by the time anyone has read
+// the intro copy and moved to a monitor, both pages are already in the HTTP
+// cache, so the hand-off costs the same on a cold connection as on localhost.
+// Only the documents and their own code are listed — the fonts and the anime
+// bundle that /design pulls in are its business, and prefetching another page's
+// whole dependency graph from the room is how an idle warm-up turns into a
+// second page load nobody asked for.
+const WARM = [
+  'code.html', 'code.css', 'code.js', 'projects.js',
+  'design.html', 'design.css', 'design.js',
+];
+const warmWorldPages = () => {
+  for (const href of WARM) {
     const link = document.createElement('link');
     link.rel = 'prefetch';
     link.href = href;
     document.head.appendChild(link);
   }
 };
-if ('requestIdleCallback' in window) requestIdleCallback(warmCodePage, { timeout: 3000 });
-else window.setTimeout(warmCodePage, 2000);
+if ('requestIdleCallback' in window) requestIdleCallback(warmWorldPages, { timeout: 3000 });
+else window.setTimeout(warmWorldPages, 2000);

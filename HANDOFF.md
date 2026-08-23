@@ -516,3 +516,66 @@ Drag it and the rail follows; arrow keys step card to card; Home/End jump to the
 The important design decision: **it does not move the track.** It converts the knob's angle into a scroll position and moves the *page*. Scroll stays the single source of truth for where the rail is, so dragging, scrolling and the keyboard can never disagree — and the existing easing, emphasis and readout logic all keep working untouched.
 
 Two details that matter in the implementation: the angle delta is normalised to the shortest way round (or dragging across the ±180° seam flings the rail to the far end), and the drag anchor is re-set on every move so clamping at either end doesn't accumulate a debt you have to unwind before the knob responds again.
+
+---
+
+## 18. NEW FORMS (world 03 of /design)
+
+**NEW FORMS, Issue 03** — nine photographs in five acts — is not a room monitor. It is the third of the four sites reachable from `/design`'s corners (`design/worlds/world03.js`, bottom-left), mounted the same way BRUSH is: built the moment a hand moves towards its corner, torn down never, `hidden` (not opacity) when it isn't the live world so every scrubber and observer inside it reports off-screen and costs nothing.
+
+It was first built by mistake as a standalone page wired to the room's `03 EXPLORE` monitor — EXPLORE and DESIGN are separate parts of the portfolio, and this is DESIGN's third website. That version is kept at `_backup/website3-standalone/` purely as the source this one was ported from (the crop positions, the solved type caps and the measured contrast values below are all still correct and still in use); it is not published, not linked, not loaded. The paragraph below describing "the room's conventions" is what that first pass shared with `code.html` — a standalone page's conventions. The current version instead shares `/design`'s own conventions: one shared clock and scroll value from `motion.js`, the `enter`/`exit`/`show`/`hide`/`settle` lifecycle every world in the shell implements (see §17's equivalent in `design/worlds/shell.js`), and a `MOTION` switch fed by the same flag as the OS setting. It shares no visual token with any other world.
+
+The measurements and decisions below were solved once, against the source photographs, and carried over unchanged into the current `design/forms/` implementation even though several mechanism names changed on the way (see the note after each): the crops, the solved-for type caps and the running-margin width are all still exactly as measured.
+
+### The constraint that shaped it
+
+All nine source frames are **2752 × 1536**. Identical ratios mean variety cannot come from the pictures — nine landscape plates in a row is nine of the same gesture — so it comes from the **frame**: a pinned screen of architecture, then a full-width *uncropped* object bleeding off one edge, then an 82vh detail, then a 118vh peak with the headline set into the wall beside the figure, then a room that opens from its own centre line.
+
+Every crop is authored against where the subject actually stands in that photograph, recorded as `--pos` on the plate. Nothing is centred by default.
+
+### Type is solved, not chosen
+
+Two headlines share a frame with a body, and both are sized by solving for the void the photographer left rather than by picking a number.
+
+- **`--t-mega` (NEW / FORMS)** is capped at 21vw. "FORMS" at `wdth 62` measures 2.42em; the model's shoulder lands at 0.62 of the drawn frame. 24vw overlapped her by 24px. 21vw clears by 96px at 1440×900.
+- **`--t-big` (THE BODY / BECOMES / ARCHI- / TECTURE.)** is capped at `min(7.6vw, 10.5vh)`. The void it sets into is the bare wall left of the subject, whose width is decided by the crop, and the crop is **height-driven** — so a vw-only cap overruns the wall by 39px on short landscape laptops. Measured clearances: 43px at 1280×800, 34px at 1181×760, 26px at 1440×700.
+- **The break.** "ARCHITECTURE." is thirteen characters and there is no viewport where it fits beside her at a size worth setting. Broken it becomes two eight-character lines. Below 900px the plate stacks, the type has the whole measure, and the two halves close up and the hyphen is hidden — a break that is not doing work reads as a mistake.
+
+### Three tones for the fixed layer, not one
+
+The obvious bug, and the one worth remembering: **the ground a section is set on is not what the fixed chrome is sitting on.** THE OBJECT is a dark act; if the rail simply inherited "dark" from the page average, an act set on bone right next to it would leave chalk type on white paper — invisible.
+
+*(In the first-pass standalone page this was solved per-region with three scanned attributes, `data-chrome`/`data-index`/`data-foot`, because the chrome there had three independent fixed marks scattered around the viewport. The current implementation's rail, mark and ticker are one fixed cluster, so it collapses to one question: `initRail()` in `design/forms/site.js` resolves `data-g` — authored once per `<section>`, never scroll-computed — through a `tones` lookup keyed `bone`/`void`/`char`, and repaints `--r-ink`/`--r-faint`/`--r-red`/`--r-ground` on the rail whenever an `inView` observer says a new act has reached the middle of the screen. Same fix, simpler because the chrome itself is simpler.)*
+
+### The running margin
+
+The rail (the index down the left, at mid-height) collides with any set text that is also left-aligned and vertically centred — and three compositions were exactly that. Rather than nudge each one, the whole issue carries `--f-pad` (`--f-gut` on narrow screens, `--f-gut + --f-rail` from 1181px up), a reserved margin the way a bound edition reserves its spine. **132px is measured**: the widest index entry sets 109px, and the margin has to clear it rather than meet it — see `--f-rail` in `forms.css`. Section names are abbreviated in the rail for the same reason a running head is — "AFTER DARK" cost 60px of every headline on the page and ran under one of them (`short: 'DARK'` in `content.js`'s `ACTS`).
+
+Full-bleed plates ignore `--f-pad`, which is what keeps them full-bleed. The coda is the one block that does not take it: it is centred (`.fcoda`), and centring inside an asymmetric measure would put it right of true middle if it inherited the pad — which is why it deliberately doesn't.
+
+### How much anything moves, and why it is this little
+
+The pass that made this world move overcorrected, and the correction is worth stating as a rule because it is easy to undo by accident. **Photography is primary, typography secondary, motion tertiary.** Concretely, and these are the numbers to check a change against:
+
+| | |
+|---|---|
+| No scrub changes a scale by more than | **8%** (the object breathes 3.5%) |
+| No pin is longer than | **180vh** (was up to 320vh) |
+| Differential parallax on a plain reveal | **3.5%** of the plate's height (was 6%) |
+| The one deliberate exception | `.fp--motion` — 10% travel, because that photograph is *already* movement and the frame is agreeing with it rather than adding to it |
+
+Nothing is ever laid out at a size it is not meant to be seen at. That last one is the rule THE OBJECT broke: it was laid out at full size and scaled from **0.42**, pinned across three screens, so the act's gesture was the growing rather than the object, and the reader spent three screens of scroll on an image that was already legible at the top of the first. It is now stated at full width immediately, both its plates run as a **sequence** (object → materials caption → detail → detail caption) with a measured gap between them, and neither picture is ever inside the other.
+
+THE OBJECT is also the one act whose plates do **not** bleed to the left edge. Both its photographs are lit warm concrete — bright — while its ground is charcoal, so the rail beside them is set in chalk; run them full-bleed and the index is pale type on a pale photograph. They keep the running margin and bleed off the right instead, which incidentally gives the act a composition of its own rather than a third full-bleed rectangle in a row.
+
+### Motion
+
+Two reveals, and which one a plate gets is a composition decision, driven by `initReveals()` in `site.js` rather than a per-plate class: every `.fp` not already owned by a `.fp-pin` gets a scroll-linked `--open` (the mask that opens the frame) and a small differential `--dy` on its `.fp-shift` — `.fp-frame { clip-path: inset(calc((1 - var(--open, 1)) * 100%) 0 0 0) }` is the curtain, opened across the first third of the crossing and then held. Set type gets the second reveal instead (`initType()`): each `.fln > span` rises out of its own overflow-hidden mask once, the moment its block's `IntersectionObserver` fires — a display line cannot un-arrive, so unlike the plates this one is not scroll-linked.
+
+Parallax travel on a plain reveal is small — `--dy` moves at most a few percent of the plate's own height across the crossing. `.fp-shift`'s `inset: -12% 0` is the headroom that travel draws from so no edge is ever exposed — except `.fp--object`, which gets `inset: 0` (via the `.fp--set` exception), because headroom there would make the shift layer narrower in ratio than its frame and `cover` would crop the sides off the one plate in the issue whose whole point is that nothing has been taken off it; it grows by a pure `transform: scale()` on the whole `.fp--object` element instead (`--ow`, driven by `initObject()`'s scrubber).
+
+`prefers-reduced-motion` (or the page's own `MOTION` toggle — both land on the same `data-motion="off"` attribute, one code path) must leave every plate open and every line down; a plate still waiting for its `IntersectionObserver` to fire would otherwise stay clipped shut forever. That is why the CSS for `[data-motion="off"]` forces `clip-path: none` and `transform: none` directly, rather than relying on the JS to re-open things it never wired up in reduced mode.
+
+### Loading
+
+Eight of nine plates are `loading="lazy"`; the hero is `fetchpriority="high"`. All nine carry intrinsic `width="2752" height="1536"`, so nothing shifts as they arrive. This world is also, like BRUSH, built only the moment a hand moves towards its corner — so a visitor who reads HUM and leaves pays zero bytes for any of it, and none of its nine photographs are in the room's own idle warm-up list (`app.js`'s `WARM` array prefetches `design.html`/`.css`/`.js` themselves, not the pages' own images — prefetching another page's whole dependency graph from the room is exactly the "idle warm-up turns into a second page load" case that list guards against).

@@ -1,0 +1,1000 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEW FORMS — world 03's own material.
+
+   design.css is HUM's, brush.css is BRUSH's, worlds.css is what sits BETWEEN
+   the worlds. This file is the third site and nothing else: no rule in here
+   applies outside `.fw`, except the four on `body[data-world="03"]` that take
+   the substrate away, and those are scoped to the world being live.
+
+   WHAT THIS IS. A fashion house presented as an editorial. The architecture is
+   the world, the clothing is the protagonist, the engineered object is the
+   technology and the nightlife is the culture — in that order, and the page has
+   to make you feel that hierarchy without saying it.
+
+   THE GROUND IS THE ARGUMENT
+   The first pass of this site was set on bone — and bone is the colour of the
+   concrete in the photographs, so the page itself read as architecture. Four of
+   its six grounds were cream, the largest thing on it was 122vh of empty
+   building, and the clothes got one screen. It read as an architecture museum
+   with some fashion in it.
+
+   So the ground now runs BLACK → CHARCOAL → BONE → BLACK → BONE, and bone
+   survives in exactly one act — THE BODY — where it is doing a job no other
+   colour can: those garments were shot against a lit ivory wall, so a bone
+   ground puts black clothing on white paper at maximum contrast, which is what
+   a fashion plate is. Everywhere else the ground is the dark the photographs
+   were lit against. Cream is an editorial surface here, not a default.
+
+   HOW MUCH THINGS MOVE, AND WHY IT IS THIS LITTLE
+   The first pass felt static because every plate was a fixed height that never
+   changed size and never moved against the page. The pass that fixed it
+   overcorrected: plates grew from a third of their size, sentences flew 78vh
+   across frames, and the act you noticed was the animation. Both failures are
+   the same mistake in opposite directions — treating motion as the thing the
+   page is doing rather than as the thing that makes what it is doing legible.
+
+   The hierarchy this file now holds to, in this order:
+
+     PHOTOGRAPHY   primary — plates are stated at the size they mean
+     TYPOGRAPHY    secondary — set into the picture, moving a little against it
+     MOTION        tertiary — 3-8% of anything, and never the subject
+
+   Concretely: no scrub in this world changes a scale by more than 8%, no pin
+   is longer than 180vh, and nothing is ever laid out at a size it is not meant
+   to be seen at. The devices are unchanged — they are just quieter:
+
+     .fp-pin      a plate that holds the screen while its picture settles
+     --z --dx --dy --open   scroll-written, transform-only, never layout
+
+   THE STACK inside this world (the world itself is z-index 3 in worlds.css):
+     40  the rail — the index and the issue mark
+      6  type that sits on a picture
+      2  the page
+      0  the ground and its grain
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.fw {
+  /* ── GROUND ──────────────────────────────────────────────────────────────
+     Three, and they are sampled off the photographs rather than chosen.
+     --f-void is the unlit backstage in 3-Musician, --f-char the shadow side of
+     the hall in 3-Final, --f-bone the lit wall in 3-main_fashion. */
+  --f-void: #08080a;
+  --f-char: #101013;
+  --f-bone: #e7e1d5;
+
+  /* Ink, per ground. Every value clears 4.5:1 on the ground it is used on —
+     checked, not asserted; three of these were solved for rather than picked. */
+  --f-chalk: #ece7dd;
+  --f-chalk-soft: #9a9488;
+  --f-chalk-faint: #7e786c;
+  --f-ink: #191713;
+  --f-ink-soft: #4e483d;
+  --f-ink-faint: #6b6355;
+
+  /* The one accent, and it is not a decision — it is the red cord on the cuff
+     in 3-Hero, the knurled knob in 3-Object, the buckle in 3-main_fashion and
+     the neon tube in 3-NightLife. Two values because it is set on both grounds
+     and one red cannot clear 4.5:1 against bone AND against void: the direction
+     it has to move is opposite in each. They read as the same red. */
+  --f-red-void: #df3d1d;
+  --f-red-bone: #ba3318;
+
+  /* Resolved per act by .fs[data-g]. Pinned on the section rather than
+     inherited from a scroll-driven attribute on the root, because an act that
+     is half on screen during a ground change still has to be legible. */
+  --g-paper: var(--f-void);
+  --g-ink: var(--f-chalk);
+  --g-soft: var(--f-chalk-soft);
+  --g-faint: var(--f-chalk-faint);
+  --g-red: var(--f-red-void);
+  --g-line: rgba(236, 231, 221, 0.16);
+
+  /* ── TYPE ────────────────────────────────────────────────────────────────
+     Archivo and DM Mono — both already requested by design.html, so this world
+     adds no font weight to the page. Archivo is variable on width and that axis
+     is the whole typographic idea: display at wdth 62, a compressed grotesque
+     the way a fashion title page is set, against metadata at wdth 118. One
+     family doing two jobs. No serif, deliberately — a serif is what makes an
+     editorial page read as a template of an editorial page. */
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "DM Mono", ui-monospace, Consolas, monospace;
+  --w-press: "wdth" 62;
+  --w-open: "wdth" 118;
+
+  /* ── SCALE ───────────────────────────────────────────────────────────────
+     The two headlines that share a frame with a body are SOLVED, not picked.
+     --t-mega: "FORMS" at wdth 62 measures 2.42em and the model's shoulder lands
+     at 0.62 of the drawn frame; 21vw is the largest that still clears her (96px
+     at 1440×900). 24vw overlapped her by 24px.
+     --t-big: the void it sets into is the wall left of the crouching figure,
+     whose width is decided by the crop, and the crop is HEIGHT-driven — so the
+     cap is keyed to height as well as width or it overruns on short laptops. */
+  --t-mega: clamp(4.2rem, 21vw, 384px);
+  --t-huge: clamp(2.8rem, 13vw, 13rem);
+  --t-big: clamp(2.1rem, min(7.6vw, 10.5vh), 9rem);
+  --t-mid: clamp(1.5rem, 4.4vw, 3.6rem);
+  --t-say: clamp(0.95rem, 1.5vw, 1.3rem);
+  --t-tech: 11px;
+  --t-micro: 9.5px;
+  --t-nano: 8.5px;
+
+  --f-gut: clamp(18px, 4.4vw, 76px);
+  /* THE RUNNING MARGIN. The rail is fixed down the left at mid-height, so any
+     set text that is also left and also vertically centred collides with it.
+     Rather than nudge each composition, the issue carries a reserved margin the
+     way a bound edition reserves its spine. 132px is measured: the widest index
+     entry sets 109px and the margin has to clear it, not meet it. */
+  --f-rail: 0px;
+  --f-pad: calc(var(--f-gut) + var(--f-rail));
+
+  position: relative;
+  z-index: 3;
+  background: var(--f-void);
+  color: var(--f-chalk);
+  font-family: var(--f-mono);
+  font-size: var(--t-tech);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (min-width: 1181px) { .fw { --f-rail: 132px; } }
+
+/* The substrate under HUM has no business showing through a world set on
+   black. Scoped to this world being live. */
+body[data-world="03"] { background: var(--f-void, #08080a); }
+body[data-world="03"]::before { opacity: 0; }
+body[data-world="03"] :focus-visible { outline-color: #df3d1d; }
+body[data-world="03"] ::selection { background: #df3d1d; color: #08080a; }
+
+.fw *, .fw *::before, .fw *::after { box-sizing: border-box; }
+.fw img { display: block; max-width: 100%; }
+.fw a { color: inherit; text-decoration: none; }
+/* `:where()` CONTRIBUTES NO SPECIFICITY, AND THAT IS THE ENTIRE POINT. Written
+   as `.fw p { padding: 0 }` this reset scores (0,1,1) — an element on top of a
+   class — which quietly beats every single-class component rule in this file.
+   Six blocks were losing their padding to it and reading as flush-left text on
+   a full-bleed photograph: the object's specs and both its captions, the body
+   label, and AFTER DARK's headline and caption. Inside `:where()` the reset
+   scores (0,1,0), so any component class later in the file simply wins. */
+.fw :where(p, h1, h2, figure, dl, dd, ol, ul) { margin: 0; padding: 0; }
+.fw :where(ol, ul) { list-style: none; }
+.fw em, .fw b, .fw i { font-style: normal; font-weight: inherit; }
+
+.fw :focus-visible { outline: 2px solid var(--g-red); outline-offset: 4px; }
+
+/* ── GROUND + ATMOSPHERE ────────────────────────────────────────────────────
+   A single fixed layer behind the whole world carrying two things a flat void
+   lacks: a wash centred on the corner the visitor came through, and grain.
+
+   THE GRAIN IS STATIC AND IT IS ONE ELEMENT. An animated grain is a full-screen
+   repaint every frame for an effect nobody can name; this is one SVG turbulence
+   tile at 3.5%, painted once, and it does the job the effect is actually for —
+   stopping large flat blacks from banding on an 8-bit panel. */
+.fw-ground {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      120% 90% at var(--w-origin, 0% 100%),
+      rgba(223, 61, 29, 0.09) 0%,
+      rgba(223, 61, 29, 0) 46%
+    ),
+    var(--f-void);
+}
+.fw-grain {
+  position: fixed;
+  inset: -50%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: var(--grain);
+  background-size: 168px 168px;
+}
+/* The grain belongs to the dark. On bone it would read as a dirty screen. */
+.fw-grain { transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1); }
+.fw[data-lit="bone"] .fw-grain { opacity: 0.014; }
+
+.fw-page { position: relative; z-index: 2; }
+
+/* ══ THE RAIL ═══════════════════════════════════════════════════════════════
+   The issue mark, the index, and a progress hairline. It is the only fixed
+   chrome this world owns — moving between WORLDS is the corner system's job,
+   and this is only about where you are inside this one. */
+
+.fw-rail {
+  position: fixed;
+  left: var(--f-gut);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;
+  display: none;
+  color: var(--r-ink, var(--f-chalk));
+  transition: color 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (min-width: 1181px) { .fw-rail { display: block; } }
+
+.fw-rail ol { display: grid; gap: 15px; }
+.fw-rail a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--f-mono);
+  font-size: var(--t-nano);
+  letter-spacing: 0.2em;
+  color: var(--r-faint, var(--f-chalk-faint));
+  transition: color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fw-rail a::before {
+  content: "";
+  width: 14px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.45;
+  transition: width 0.55s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s;
+}
+.fw-rail a span {
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fw-rail li.live a { color: var(--r-ink, var(--f-chalk)); }
+.fw-rail li.live a::before { width: 30px; opacity: 1; background: var(--r-red, var(--f-red-void)); }
+.fw-rail li.live a span { opacity: 1; transform: translateX(0); }
+
+/* Hidden over the masthead — nothing competes with the title page. Visibility
+   as well as opacity: a link inside an opacity:0 element is still in the tab
+   order, so without it the first stops on the page are focus rings on nothing. */
+.fw-rail {
+  opacity: 0;
+  visibility: hidden;
+  transition: color 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s,
+    visibility 0s linear 0.6s;
+}
+.fw[data-past-hero="1"] .fw-rail {
+  opacity: 1;
+  visibility: visible;
+  transition: color 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s,
+    visibility 0s linear 0s;
+}
+
+/* The mark, bottom-left, under the index. */
+.fw-mark {
+  position: fixed;
+  left: var(--f-gut);
+  bottom: clamp(16px, 3vh, 30px);
+  z-index: 40;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--f-display);
+  font-variation-settings: var(--w-open);
+  font-size: var(--t-nano);
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  color: var(--r-ink, var(--f-chalk));
+  opacity: 0;
+  transition: color 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s;
+}
+@media (min-width: 1181px) { .fw-mark { display: flex; } }
+.fw[data-past-hero="1"] .fw-mark { opacity: 1; }
+.fw-mark i { width: 4px; height: 4px; background: var(--r-red, var(--f-red-void)); }
+
+/* Below 1181 the rail becomes one line at the foot of the screen. */
+.fw-ticker {
+  position: fixed;
+  left: var(--f-gut);
+  right: var(--f-gut);
+  bottom: 12px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--f-mono);
+  font-size: var(--t-nano);
+  letter-spacing: 0.2em;
+  color: var(--r-faint, var(--f-chalk-faint));
+  opacity: 0;
+  transition: color 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s;
+}
+@media (min-width: 1181px) { .fw-ticker { display: none; } }
+.fw[data-past-hero="1"] .fw-ticker { opacity: 1; }
+.fw-ticker b { font-weight: 400; color: var(--r-red, var(--f-red-void)); }
+.fw-ticker em { color: var(--r-ink, var(--f-chalk)); }
+.fw-ticker span { flex: 1; height: 1px; background: var(--g-line); position: relative; }
+.fw-ticker span i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--prog, 0) * 100%);
+  background: var(--r-ink, var(--f-chalk));
+}
+/* The ticker sits on photographs, so it carries the same falloff the rail does
+   not need — the rail is naked type in a reserved margin, this is not. */
+.fw-ticker::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--f-gut) * -1);
+  right: calc(var(--f-gut) * -1);
+  bottom: -12px;
+  height: 340%;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--r-ground, var(--f-void)) 82%, transparent) 0%,
+    color-mix(in srgb, var(--r-ground, var(--f-void)) 38%, transparent) 48%,
+    transparent 100%
+  );
+}
+
+/* ══ ACTS ═══════════════════════════════════════════════════════════════════
+   Each act pins the ground it is set on, so an act half on screen during a
+   change is still legible. `data-g` is authored, never scroll-driven. */
+
+.fs { position: relative; background: var(--g-paper); color: var(--g-ink); }
+
+.fs[data-g="void"] {
+  --g-paper: var(--f-void); --g-ink: var(--f-chalk);
+  --g-soft: var(--f-chalk-soft); --g-faint: var(--f-chalk-faint);
+  --g-red: var(--f-red-void); --g-line: rgba(236, 231, 221, 0.16);
+}
+.fs[data-g="char"] {
+  --g-paper: var(--f-char); --g-ink: var(--f-chalk);
+  --g-soft: var(--f-chalk-soft); --g-faint: var(--f-chalk-faint);
+  --g-red: var(--f-red-void); --g-line: rgba(236, 231, 221, 0.16);
+}
+.fs[data-g="bone"] {
+  --g-paper: var(--f-bone); --g-ink: var(--f-ink);
+  --g-soft: var(--f-ink-soft); --g-faint: var(--f-ink-faint);
+  --g-red: var(--f-red-bone); --g-line: rgba(25, 23, 19, 0.2);
+}
+/* The masthead and the hero plate own their own black regardless. */
+.fs--hero { --g-paper: var(--f-void); background: transparent; }
+
+/* ── SHARED MARKS ───────────────────────────────────────────────────────── */
+
+.fw .fcap, .fw .fmark {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.16em;
+  line-height: 1.5;
+  color: var(--g-faint);
+  text-transform: uppercase;
+}
+.fw .fcap, .fw .fmark { display: flex; gap: 1.4em; flex-wrap: wrap; }
+.fw .fcap > i:first-child, .fw .fmark > i:first-child { color: var(--g-red); }
+
+/* A line of display type that rises out of its own mask. site.js wraps the
+   inner span; with motion off the text simply sits where it belongs. */
+.fw .fln { display: block; overflow: hidden; }
+.fw .fln > span { display: block; will-change: transform; }
+
+.fw .fsr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ── THE ACT RULE ───────────────────────────────────────────────────────── */
+
+.fs-head {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: baseline;
+  gap: clamp(14px, 2.4vw, 34px);
+  padding: clamp(74px, 14vh, 170px) var(--f-gut) clamp(26px, 4.5vh, 50px);
+  padding-left: var(--f-pad);
+  position: relative;
+  z-index: 6;
+}
+.fs-no { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: 0.2em; color: var(--g-red); }
+.fs-name {
+  font-family: var(--f-display);
+  font-variation-settings: var(--w-press);
+  font-weight: 500;
+  font-size: var(--t-mid);
+  line-height: 1;
+  color: var(--g-ink);
+}
+.fs-rule { height: 1px; background: var(--g-line); transform: translateY(-0.35em); transform-origin: left; }
+.fs-meta { color: var(--g-faint); }
+
+/* ══ THE PLATE ══════════════════════════════════════════════════════════════
+   Three nested elements, each with one job, so the reveal and the scroll work
+   never write the same property:
+
+     .fp          position in the page
+     .fp-frame    the crop, and the mask that opens it
+     .fp-shift    written by the scroll: --dx --dy --z
+     img          scaled once by its reveal, and never again
+
+   What is NOT here: background, border, radius, shadow. A photograph is not
+   content that goes inside a component. */
+
+.fp { position: relative; }
+.fp-frame { position: relative; overflow: hidden; background: var(--g-paper); }
+.fp-shift {
+  position: absolute;
+  inset: -12% 0;
+  transform: translate3d(var(--dx, 0px), var(--dy, 0px), 0) scale(var(--z, 1));
+  will-change: transform;
+}
+.fp-shift img { width: 100%; height: 100%; object-fit: cover; object-position: var(--pos, 50% 50%); }
+
+/* Plates that carry their own intrinsic ratio need no headroom. */
+.fp--set .fp-shift { inset: 0; }
+
+/* THE REVEAL. Scroll-linked rather than one-shot: `--open` is written by the
+   scrubber, so scrubbing back closes the plate again and the picture is a thing
+   the scroll is doing rather than a thing that happened once. */
+.fp-frame { clip-path: inset(calc((1 - var(--open, 1)) * 100%) 0 0 0); }
+.fw[data-motion="off"] .fp-frame { clip-path: none; }
+
+/* ── PINNED ─────────────────────────────────────────────────────────────────
+   A plate that holds the screen while its picture resolves. The tall element is
+   the scroll length; the stage inside it is what stays.
+
+   STICKY DIES INSIDE ANY ANCESTOR CARRYING A TRANSFORM, so nothing in site.js
+   ever animates .fw, .fw-page or a .fs — the arrival moves the ground layer and
+   each section's own children, never a wrapper. Break that rule and every
+   pinned moment on this page silently stops pinning. */
+.fp-pin { position: relative; }
+.fp-pin-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+/* THE FIGURE HAS TO FILL THE STAGE, NOT JUST ITS FRAME. `.fp-frame` is
+   absolute, so if the `.fp` around it is left in normal flow it collapses to
+   zero height — and an absolute frame anchored to a zero-height parent draws
+   nothing at all. That is exactly what happened: the pinned architecture plate
+   rendered as an empty black screen with the type crossing it.
+
+   Every pinned plate fills its stage. There used to be one exception — THE
+   OBJECT, which sat centred in its stage and was grown by a transform — and
+   removing that behaviour removed the exception with it. */
+.fp-pin-stage > .fp { position: absolute; inset: 0; }
+.fp-pin-stage .fp-frame { position: absolute; inset: 0; }
+
+/* Type that sits on a picture. */
+.fp-note {
+  position: absolute;
+  left: var(--f-gut);
+  bottom: clamp(16px, 3vh, 32px);
+  z-index: 6;
+}
+
+/* ══ 00 · MASTHEAD ══════════════════════════════════════════════════════════
+   Kept. It was the strongest thing on the first pass and the brief is to make
+   it live, not to redraw it: same photograph, same crop, same two words. What
+   is new is that it now moves — the picture drifts against the pointer, and the
+   whole composition is handed forward on the scroll rather than cut away from.
+   See initHero and initHandoff in site.js. */
+
+.fs--hero { min-height: 100vh; min-height: 100svh; }
+.fs--hero .fp--hero, .fs--hero .fp--hero .fp-frame { position: absolute; inset: 0; }
+.fp--hero { --pos: 58% 50%; }
+/* Two transforms, two sources: --px/--py is the pointer, --cy/--cs the scroll.
+   Composed here so neither has to know about the other. */
+.fp--hero .fp-shift {
+  inset: -6% -4%;
+  transform: translate3d(var(--px, 0px), calc(var(--py, 0px) + var(--cy, 0px)), 0)
+    scale(calc(var(--z, 1) * var(--cs, 1)));
+}
+
+.fs--hero .fh-type {
+  position: relative;
+  z-index: 6;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: clamp(58px, 9vh, 96px) var(--f-gut) clamp(26px, 5vh, 58px);
+  transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0);
+  opacity: var(--op, 1);
+}
+
+/* The scrim. Not a treatment: the title sets in the left third and the
+   underpass behind it runs from black to lit concrete across exactly that span,
+   and the standfirst and cue sit on the lit ledge along the bottom. */
+.fh-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(100deg, rgba(8, 7, 6, 0.66) 0%, rgba(8, 7, 6, 0.4) 28%, rgba(8, 7, 6, 0) 56%),
+    linear-gradient(to top, rgba(8, 7, 6, 0.58) 0%, rgba(8, 7, 6, 0) 20%);
+}
+
+.fh-stamp { align-self: start; color: var(--f-chalk-soft); flex-direction: column; gap: 0.5em; }
+.fh-stamp i:first-child { color: var(--f-red-void); }
+
+.fh-title {
+  align-self: end;
+  font-family: var(--f-display);
+  font-variation-settings: var(--w-press);
+  font-weight: 600;
+  font-size: var(--t-mega);
+  line-height: 0.79;
+  letter-spacing: -0.012em;
+  color: var(--f-chalk);
+  margin-bottom: 0.1em;
+}
+.fh-sub {
+  font-family: var(--f-display);
+  font-variation-settings: var(--w-open);
+  font-size: var(--t-say);
+  letter-spacing: 0.34em;
+  color: var(--f-chalk-soft);
+  padding-bottom: clamp(20px, 4vh, 44px);
+}
+.fh-edge {
+  position: absolute;
+  right: var(--f-gut);
+  top: 50%;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  letter-spacing: 0.34em;
+  color: var(--f-chalk-soft);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+}
+.fh-cue {
+  position: absolute;
+  right: var(--f-gut);
+  bottom: clamp(26px, 5vh, 58px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--f-mono);
+  font-size: var(--t-nano);
+  letter-spacing: 0.28em;
+  color: var(--f-chalk-soft);
+}
+/* Driven by the handoff scrubber, so the cue shortens as you act on it. */
+.fh-cue i { display: block; width: 54px; height: 1px; background: currentColor; transform: scaleX(var(--cue, 1)); transform-origin: right; }
+
+/* ══ 01 · THE SPACE ═════════════════════════════════════════════════════════
+   The architecture, made imposing rather than exhibited. The plate holds the
+   screen for two and a half of them while the picture resolves out of an
+   oversized crop, and the sentence crosses it in the opposite direction — so
+   the type and the world move against each other instead of sitting still on
+   top of one another. */
+
+.sp-pin { height: 180vh; }
+.fp--space { --pos: 50% 44%; }
+.sp-cross {
+  position: absolute;
+  left: var(--f-pad);
+  right: var(--f-gut);
+  top: 50%;
+  z-index: 6;
+  transform: translate3d(0, calc(-50% + var(--ty, 0px)), 0);
+  font-family: var(--f-display);
+  font-variation-settings: var(--w-press);
+  font-weight: 500;
+  font-size: var(--t-huge);
+  line-height: 0.86;
+  letter-spacing: -0.008em;
+  color: var(--f-chalk);
+  pointer-events: none;
+}
+/* NO BLEND MODE, AND THAT IS THE SECOND ATTEMPT. `difference` was the obvious
+   choice — it guarantees contrast on any photograph — but this photograph is
+   warm sand, and chalk differenced against warm sand is a cold BLUE. It read as
+   a colour this issue does not own, fighting the concrete and the vermilion at
+   the same time. Guaranteed contrast is not worth a hue that belongs to another
+   palette.
+
+   So the type is simply chalk, and the band it crosses is darkened under it
+   instead — which is what a title card over footage has always done. */
+.sp-floor {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 8, 10, 0) 12%,
+    rgba(8, 8, 10, 0.72) 42%,
+    rgba(8, 8, 10, 0.72) 58%,
+    rgba(8, 8, 10, 0) 88%
+  );
+  opacity: var(--floor, 0);
+}
+
+/* The second beat: the same hall the issue closes on, cropped to its dark side.
+   A narrow strip, because the act has already had a whole screen. */
+.sp-strip { position: relative; padding-bottom: clamp(80px, 14vh, 180px); }
+.fp--vault { --pos: 14% 58%; }
+.fp--vault .fp-frame { height: clamp(320px, 52vh, 620px); }
+.sp-say {
+  display: grid;
+  gap: clamp(20px, 3vh, 40px);
+  justify-items: end;
+  text-align: right;
+  padding: clamp(34px, 6vh, 76px) var(--f-gut) 0;
+}
+.sp-say .fsay {
+  font-family: var(--f-display);
+  font-variation-settings: var(--w-press);
+  font-weight: 500;
+  font-size: clamp(1.6rem, 5vw, 4.4rem);
+  line-height: 0.9;
+  color: var(--g-ink);
+  max-width: 18ch;
+}
+
+/* ══ 02 · THE OBJECT ════════════════════════════════════════════════════════
+   Charcoal, not cream. The object is a black machined thing lit on a warm wall,
+   so on a dark ground the photograph becomes a lit slab and the object reads as
+   something made by the same house as the clothes — which is the whole point of
+   the act. On bone it read as a museum specimen in a vitrine.
+
+   TWO PLATES IN SEQUENCE — and the sequence is the composition.
+
+   WHAT THIS REPLACED. A 300vh pin in which the plate was laid out at its final
+   size and scaled from 0.42 up to 1 as you scrolled. It was defensible on its
+   own terms (a pure composited transform that never exceeds native size, so
+   never a stretched raster) and it was the wrong idea: the object spent most
+   of the act as a small picture in a large dark room, and the act's gesture
+   was the growing rather than the object. An editorial states a plate at the
+   size it means it. This one is stated at full width immediately and only
+   breathes 3.5% across its whole crossing.
+
+   Both plates run edge to edge and neither is ever inside the other. What
+   separates them is a caption and a measured gap — which is what separates two
+   plates in a printed issue, and is the reason this reads as a sequence rather
+   than as one image opening out of another. */
+
+/* THE ONE ACT WHOSE PLATES DO NOT BLEED LEFT, and the reason is the tone
+   system rather than the layout. Both photographs here are lit warm concrete —
+   bright — while the act's ground is charcoal, so the rail beside them is set
+   in chalk. Run these to the left edge and the index becomes pale type on a
+   pale photograph, which is precisely what `data-g` exists to prevent. They
+   keep the issue's running margin and bleed off the RIGHT instead: still the
+   largest thing on the screen, and the asymmetry gives the act a composition
+   of its own rather than a third full-bleed rectangle in a row. */
+.fp--object, .fp--detail { margin-left: var(--f-pad); }
+
+.fp--object { --pos: 50% 50%; }
+/* Ratio-matched to the source, so this is the one photograph in the issue that
+   is not cropped at all — and no headroom on the shift layer, or `cover` would
+   crop the sides off the only plate whose point is that nothing was taken.
+   That is also why its scrub is scale-only: see initObject in site.js. */
+.fp--object .fp-frame { aspect-ratio: 2752 / 1536; }
+.fp--object .fp-shift { inset: 0; }
+
+/* The detail. Its own plate with its own caption, cropped to the seam — tall
+   enough to be a plate rather than a strip, and right-weighted so it does not
+   simply repeat the object's centred composition directly underneath it. */
+.fp--detail { --pos: 54% 50%; }
+.fp--detail .fp-frame { height: clamp(400px, 82vh, 900px); }
+
+/* The technical block, above the plate it describes. It used to be set against
+   the picture and faded in and out on an arc as the object grew; there is no
+   growth to narrate any more, so it is simply a standing head — and a mark
+   that stays put is the one the eye stops treating as an animation. */
+.ob-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.4em;
+  padding: 0 var(--f-gut) clamp(20px, 3.4vh, 40px) var(--f-pad);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.16em;
+  line-height: 1.5;
+  color: var(--g-faint);
+  text-transform: uppercase;
+}
+.ob-specs i:first-child { color: var(--g-red); }
+
+.ob-cap { padding: clamp(20px, 3.4vh, 40px) var(--f-gut) clamp(60px, 11vh, 130px) var(--f-pad); }
+.ob-cap--last { padding-bottom: clamp(80px, 14vh, 170px); }
+
+/* ══ 03 · THE BODY ══════════════════════════════════════════════════════════
+   The peak, and the one act set on bone — those garments were shot on a lit
+   ivory wall, so bone puts black clothing on white paper, which is what a
+   fashion plate is.
+
+   Two plates: a full-bleed peak with the headline set into the wall beside the
+   figure, and the movement frame. The close crop that used to slide over the
+   peak now opens THE OBJECT's second half — it was doing the same job twice,
+   and an act reads better with two plates that mean different things than with
+   three where one is a reprise. */
+
+.fp--peak { --pos: 6% 50%; }
+.fp--peak .fp-frame { height: 118vh; }
+/* The headline sets INSIDE the photograph, on the bare wall nothing is standing
+   on. `--pos: 6%` is what makes it hold: cropping from the left edge rather
+   than the middle walks the figure right, and the wall she leaves is what the
+   four lines are measured against. Type inside the picture, never across the
+   body in it. */
+.fb-title {
+  position: absolute;
+  left: var(--f-pad);
+  top: 50%;
+  z-index: 6;
+  transform: translate3d(0, calc(-50% + var(--ty, 0px)), 0);
+  font-family: var(--f-display);
+  font-variation-settings: var(--w-press);
+  font-weight: 600;
+  font-size: var(--t-big);
+  line-height: 0.85;
+  letter-spacing: -0.01em;
+  color: var(--f-ink);
+}
+
+.bd-label {
+  display: flex;
+  gap: 1.4em;
+  padding: clamp(24px, 4vh, 48px) var(--f-gut) clamp(60px, 11vh, 140px) var(--f-pad);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.16em;
+  color: var(--g-faint);
+  text-transform: uppercase;
+}
+.bd-label i:first-child { color: var(--g-red); }
+
+/* THE MOVEMENT FRAME. Pinned, and the composition changes under you: the
+   picture travels sideways across its own oversized crop while it scales down,
+   so the frame is re-composing rather than parallaxing. This is the only plate
+   in the issue that is aligned to nothing. */
+.mo-pin { height: 220vh; }
+.fp--motion { --pos: 50% 46%; }
+.fp--motion .fp-shift { inset: -10% -22%; }
+.mo-word {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: clamp(24px, 6vh, 70px);
+  z-index: 6;
+  text-align: center;
+  font-family: var(--f-display);
+  font-variation-settings: var(--w-press);
+  font-weight: 600;
+  font-size: clamp(3rem, 17vw, 15rem);
+  line-height: 0.82;
+  letter-spacing: -0.015em;
+  /* Near-black, and no blend mode — for the same reason THE SPACE lost its:
+     this frame is a bright ivory room, and any blend against it returns a hue
+     from somebody else's palette. The word is set in the issue's own ink and
+     the floor it crosses is lifted under it. */
+  color: var(--f-ink);
+  transform: translate3d(var(--wx, 0px), 0, 0);
+  pointer-events: none;
+}
+/* The lift. The bottom of this frame is already lit floor, so this is almost
+   invisible — it exists for the fraction of the travel where a black ribbon
+   sweeps under the word. */
+.mo-lift {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 46%;
+  z-index: 5;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(231, 225, 213, 0.62) 0%, rgba(231, 225, 213, 0) 100%);
+}
+
+/* ══ 04 · AFTER DARK ════════════════════════════════════════════════════════
+   The darkest point of the issue and the most atmospheric. Entering it should
+   feel like entering another environment, so the act above it is pulled over
+   its top edge and the ground underneath is true black.
+
+   The backstage frame is unlit down its left side, so it is MASKED into the
+   page's own black rather than cut against it. There is no edge to find — which
+   is the difference between a photograph in a page and one on it. */
+
+.nk { position: relative; display: grid; grid-template-columns: repeat(12, 1fr); align-items: center; }
+.fp--musician { grid-column: 5 / 13; grid-row: 1; --pos: 62% 38%; }
+.fp--musician .fp-frame {
+  height: 104vh;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 16%, #000 38%);
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.55) 16%, #000 38%);
+}
+.nk-type {
+  grid-column: 1 / 8;
+  grid-row: 1;
+  z-index: 6;
+  padding-left: var(--f-pad);
+  transform: translate3d(0, var(--ty, 0px), 0);
+  font-family: var(--f-display);
+  font-variation-settings: var(--w-press);
+  font-weight: 600;
+  font-size: var(--t-huge);
+  line-height: 0.84;
+  letter-spacing: -0.01em;
+  color: var(--f-chalk);
+}
+.nk-cap { grid-column: 1 / 8; grid-row: 1; align-self: end; z-index: 6; padding: 0 0 clamp(40px, 8vh, 90px) var(--f-pad); }
+
+/* THE ROOM. Pinned and immersive: the crop opens outward as you scroll, so the
+   frame is walking into the room rather than showing you a picture of it. */
+.nl-pin { height: 190vh; }
+.fp--night { --pos: 48% 50%; }
+.nl-heat {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(58% 44% at 50% 22%, rgba(223, 61, 29, 0.2) 0%, rgba(223, 61, 29, 0) 70%);
+  opacity: var(--heat, 0);
+  mix-blend-mode: screen;
+}
+.nl-time {
+  position: absolute;
+  right: var(--f-gut);
+  bottom: clamp(16px, 3vh, 32px);
+  z-index: 6;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.2em;
+  color: var(--f-chalk-soft);
+}
+
+/* ══ 05 · THE RETURN ════════════════════════════════════════════════════════
+   Back toward the architectural world, and back to the hall the issue already
+   passed through in 01 — the same photograph read the other way: 01 took its
+   dark side in a narrow strip, this takes it wide and lit, with the one figure
+   in it. The rhyme is the ending.
+
+   The plate arrives through an aperture that opens from the centre line, which
+   is the only reveal in the issue that is not a curtain — the issue has come
+   full circle and should not arrive the way it started. */
+
+.rt-pin { height: 165vh; }
+.fp--return { --pos: 56% 62%; }
+.fp--return .fp-frame { clip-path: inset(calc((1 - var(--open, 1)) * 50%) 0); }
+
+.fcoda {
+  display: grid;
+  justify-items: center;
+  padding: clamp(110px, 24vh, 300px) var(--f-gut) clamp(110px, 22vh, 280px);
+}
+.fcoda p {
+  font-family: var(--f-display);
+  font-variation-settings: var(--w-press);
+  font-weight: 500;
+  font-size: var(--t-huge);
+  line-height: 0.86;
+  color: var(--g-ink);
+  text-align: center;
+  transform: translate3d(0, var(--ty, 0px), 0);
+}
+
+/* ══ COLOPHON ═══════════════════════════════════════════════════════════════ */
+
+.fs-end {
+  --g-paper: var(--f-bone); --g-ink: var(--f-ink);
+  --g-soft: var(--f-ink-soft); --g-faint: var(--f-ink-faint);
+  --g-red: var(--f-red-bone); --g-line: rgba(25, 23, 19, 0.2);
+  background: var(--g-paper);
+  color: var(--g-ink);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: clamp(40px, 7vw, 110px);
+  padding: clamp(46px, 8vh, 100px) 0 clamp(60px, 11vh, 120px);
+  margin: 0 var(--f-gut) 0 var(--f-pad);
+  border-top: 1px solid var(--g-line);
+}
+.end-mark { display: grid; gap: 0.16em; font-family: var(--f-display); font-variation-settings: var(--w-press); font-weight: 600; line-height: 0.82; }
+.end-mark b { font-size: clamp(2.2rem, 6.4vw, 6rem); color: var(--g-red); font-weight: 600; }
+.end-mark em { font-size: clamp(2.2rem, 6.4vw, 6rem); }
+.end-side { display: grid; gap: clamp(22px, 3.4vh, 40px); justify-items: end; }
+.end-plate { display: grid; gap: 0.75em; text-align: right; font-size: var(--t-nano); letter-spacing: 0.16em; color: var(--g-faint); }
+.end-plate div { display: flex; gap: 1.4em; justify-content: flex-end; }
+.end-plate dd { color: var(--g-soft); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   Not a shrink. Every composition here is a photograph and the void beside it,
+   and below ~900px there is no void beside anything — so the compositions are
+   rebuilt: type that sat in a margin moves above or below the plate it belongs
+   to, and the plates re-crop toward their subjects rather than getting smaller.
+   The pinned moments keep their pins; a shorter scroll length is all they need.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  .fw {
+    --t-mega: clamp(3.6rem, 27vw, 11rem);
+    --t-huge: clamp(2.4rem, 15vw, 6rem);
+    --t-big: clamp(2.2rem, 14vw, 5.5rem);
+  }
+
+  /* The masthead crop turns portrait: the figure fills the frame and there is
+     no void beside her, so the marks go above and below and the falloff runs
+     down the plate rather than across it. */
+  .fp--hero { --pos: 71% 46%; }
+  .fh-scrim {
+    background:
+      linear-gradient(to bottom, rgba(8,7,6,0.72) 0%, rgba(8,7,6,0) 28%),
+      linear-gradient(to top, rgba(8,7,6,0.8) 0%, rgba(8,7,6,0.34) 26%, rgba(8,7,6,0) 46%);
+  }
+  .fh-sub { color: var(--f-chalk); }
+  .fh-edge, .fh-cue { display: none; }
+
+  .sp-pin { height: 150vh; }
+  .sp-cross { font-size: clamp(2.2rem, 13vw, 5rem); }
+  .fp--vault .fp-frame { height: clamp(260px, 42vh, 420px); }
+  .sp-say { justify-items: start; text-align: left; }
+
+  /* Both object plates already run the full width, so all that changes is the
+     detail's height — an 82vh crop on a phone is most of the screen for a
+     picture that is a caption's worth of subject. */
+  .ob-specs, .ob-cap { padding-left: var(--f-gut); }
+  .fp--detail .fp-frame { height: 56vh; }
+
+  /* THE BODY. Cropped to a phone the wall beside her is gone, so the headline
+     comes out of the picture and sets on the page under it. */
+  .fp--peak .fp-frame { height: 72vh; }
+  .fp--peak { --pos: 46% 50%; }
+  .fb-title { position: static; transform: none; padding: clamp(24px, 5vh, 48px) var(--f-gut) 0; }
+  .bd-label { padding-left: var(--f-gut); }
+  .mo-pin { height: 180vh; }
+  .fp--motion { --pos: 52% 44%; }
+
+  /* AFTER DARK. Stacked, the picture is the full width, so it is masked at the
+     TOP instead and the words sit above it in the page's own black. */
+  .nk { display: block; }
+  .nk-type { padding: 0 var(--f-gut) clamp(28px, 5vh, 54px); }
+  .fp--musician { --pos: 64% 30%; }
+  .fp--musician .fp-frame {
+    height: 78vh;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 12%, #000 30%);
+    mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 12%, #000 30%);
+  }
+  .nk-cap { padding: clamp(20px, 4vh, 36px) var(--f-gut) clamp(50px, 9vh, 100px); }
+  .nl-pin { height: 160vh; }
+  .rt-pin { height: 140vh; }
+
+  .fs-head { grid-template-columns: auto 1fr; gap: 12px 16px; }
+  .fs-meta { display: none; }
+  .fs-rule { grid-column: 2; }
+
+  .fs-end { grid-template-columns: 1fr; align-items: start; margin-left: var(--f-gut); }
+  .end-side { justify-items: start; }
+  .end-plate { text-align: left; }
+  .end-plate div { justify-content: flex-start; }
+}
+
+@media (max-width: 560px) {
+  .mo-word { font-size: clamp(2.4rem, 22vw, 7rem); }
+}
+
+/* Short landscape: vh-tall plates become taller than the screen is wide and the
+   crop closes in on nothing. Cap them against the width instead. */
+@media (max-height: 560px) and (orientation: landscape) {
+  .fp--peak .fp-frame, .fp--detail .fp-frame, .fp--musician .fp-frame { height: 150vh; }
+  .fs-head { padding-top: clamp(50px, 18vh, 110px); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOTION OFF
+   The world's own switch and the OS setting land on the same attribute, so
+   there is one code path rather than two that can disagree. Everything that
+   moves here is either a reveal or a scroll position; with motion off every
+   plate is simply already open and every line already down. Nothing that would
+   otherwise be hidden stays hidden — that is the whole point of this block.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.fw[data-motion="off"] .fp-frame { clip-path: none !important; }
+.fw[data-motion="off"] .fp-shift { transform: none !important; }
+.fw[data-motion="off"] .fln > span { transform: none !important; }
+.fw[data-motion="off"] .sp-cross,
+.fw[data-motion="off"] .nk-type,
+.fw[data-motion="off"] .fb-title,
+.fw[data-motion="off"] .fcoda p,
+.fw[data-motion="off"] .mo-word,
+.fw[data-motion="off"] .fh-type { transform: none !important; opacity: 1 !important; }
+.fw[data-motion="off"] .sp-floor { opacity: 0.34; }
+.fw[data-motion="off"] .fw-grain { display: none; }
+
+/* The pins collapse to a single screen each: with nothing to scrub there is no
+   reason to make somebody scroll three viewports past a still picture. */
+.fw[data-motion="off"] .sp-pin,
+.fw[data-motion="off"] .mo-pin,
+.fw[data-motion="off"] .nl-pin,
+.fw[data-motion="off"] .rt-pin { height: auto; }
+.fw[data-motion="off"] .fp-pin-stage { position: relative; height: 88vh; }

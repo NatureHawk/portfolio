@@ -8,6 +8,16 @@ assets/sleeping-fat-cat-figurine-*
 assets/fairy_lights.blend
 assets/lofi-room.png
 scripts
+
+# THE IMAGE MASTERS. Every photograph the site actually loads is a .webp
+# generated from these by `npm run images`; the .png and .jpeg originals are
+# the lossless/original sources and stay in the repo so the webp can always be
+# regenerated. Deploying both would upload 19 MB to serve 3 MB.
+# If you add a photograph, run `npm run images` before deploying — a source
+# with no encoded counterpart is simply a missing image in production.
+assets/*.png
+assets/website3/*.jpeg
+assets/website3/*.jpg
 .vscode
 HANDOFF.md
 README.md

@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>SOMEWHERE — asset probe</title>
+  <style>html,body{margin:0;height:100%;background:#e8e2d4;overflow:hidden}canvas{display:block}
+  #hud{position:fixed;left:12px;top:10px;color:#3a3226;font:11px/1.5 monospace;z-index:9;white-space:pre}</style>
+  <script type="importmap">
+    { "imports": { "three": "../../vendor/three/three.module.min.js", "three/addons/": "../../vendor/three/addons/" } }
+  </script>
+</head>
+<body>
+<div id="hud">booting…</div>
+<script type="module">
+const hud = document.getElementById('hud');
+window.onerror = (m,s,l,c,e) => { hud.textContent += '\nERR ' + (e?.stack || m); };
+
+try {
+  const THREE = await import('three');
+  const { loadKit } = await import('./kit.js');
+  const { build } = await import('./props.js');
+  const builds = await import('./builds.js');
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  document.body.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xe8e2d4);
+
+  const sun = new THREE.DirectionalLight(0xfff1da, 2.6);
+  sun.position.set(4, 7, 5); sun.castShadow = true;
+  sun.shadow.mapSize.set(1024,1024);
+  Object.assign(sun.shadow.camera, {left:-3,right:3,top:3,bottom:-3,near:0.1,far:24});
+  scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0xdfeaf2, 0x6d5c42, 1.5));
+
+  // A neutral ground so shadows read.
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(20,20),
+    new THREE.MeshStandardMaterial({ color: 0xd9d2c2, roughness: 1 }));
+  floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+
+  const kits = await loadKit();
+
+  // #a=kit:locomotive  or  #a=js:locomotive  (hash, not query: the dev server
+  // rewrites extensionless URLs and drops the search string on the way)
+  const q = new URLSearchParams(location.hash.slice(1) || location.search);
+  const spec = q.get('a') || 'kit:locomotive';
+  const [src, name] = spec.split(':');
+
+  const kit = src === 'kit' ? kits[name] : builds[name](1);
+  const node = build(kit, { name });
+  scene.add(node);
+
+  const box = new THREE.Box3().setFromObject(node);
+  const size = new THREE.Vector3(); box.getSize(size);
+  const ctr = new THREE.Vector3(); box.getCenter(ctr);
+  const span = Math.max(size.x, size.y, size.z);
+
+  const cam = new THREE.PerspectiveCamera(30, innerWidth/innerHeight, 0.01, 100);
+  let a = q.has('spin') ? 0 : Number(q.get('yaw') ?? 0.9);
+  const el = Number(q.get('pitch') ?? 0.42);
+  const dist = span * Number(q.get('zoom') ?? 3.1);
+
+  const place = () => {
+    cam.position.set(
+      ctr.x + Math.cos(a) * Math.cos(el) * dist,
+      ctr.y + Math.sin(el) * dist,
+      ctr.z + Math.sin(a) * Math.cos(el) * dist,
+    );
+    cam.lookAt(ctr);
+  };
+
+  hud.textContent = `${spec}\nsize ${size.toArray().map(n=>n.toFixed(3)).join(' × ')}`
+    + `\nparts ${kit.length}  tris ${kit.reduce((t,p)=>t+p.geo.attributes.position.count/3,0)|0}`;
+
+  const tick = () => {
+    if (q.has('spin')) a += 0.006;
+    place();
+    renderer.render(scene, cam);
+    requestAnimationFrame(tick);
+  };
+  tick();
+  window.PROBE = { scene, cam, node, kits, THREE };
+} catch (e) { hud.textContent += '\nFATAL ' + (e.stack||e); }
+</script>
+</body>
+</html>

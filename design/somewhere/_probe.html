@@ -1,0 +1,126 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>SOMEWHERE — world probe</title>
+  <style>html,body{margin:0;height:100%;background:#16374a;overflow:hidden}canvas{display:block}
+  #hud{position:fixed;left:12px;top:10px;color:#cfe6f2;font:11px/1.5 monospace;z-index:9;white-space:pre}</style>
+  <script type="importmap">
+    { "imports": { "three": "../../vendor/three/three.module.min.js", "three/addons/": "../../vendor/three/addons/" } }
+  </script>
+</head>
+<body>
+<div id="hud">booting…</div>
+<script type="module">
+const hud = document.getElementById('hud');
+const say = (s) => { hud.textContent = s; };
+window.onerror = (m,s,l,c,e) => { hud.textContent += '\nERR ' + (e?.stack || m); };
+
+try {
+  const THREE = await import('three');
+  const { buildLand, buildSea, heightAt, standable } = await import('./planet.js');
+  const { R, SKY } = await import('./content.js');
+  const { loadKit } = await import('./kit.js');
+  const { scatter } = await import('./props.js');
+  const { surfaceMatrix, rng } = await import('./craft.js');
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  document.body.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(SKY.landing.fog);
+
+  const cam = new THREE.PerspectiveCamera(34, innerWidth/innerHeight, 0.1, 400);
+  cam.position.set(0, R*1.35, R*3.5);
+  cam.lookAt(0,0,0);
+
+  const sun = new THREE.DirectionalLight(0xfff1da, 2.9);
+  sun.position.set(16, 20, 13); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048,2048);
+  const dd = R*1.45;
+  Object.assign(sun.shadow.camera, {left:-dd,right:dd,top:dd,bottom:-dd,near:1,far:70});
+  sun.shadow.bias = -0.0006;
+  scene.add(sun);
+  scene.add(new THREE.HemisphereLight(0xa8cde4, 0x53442f, 1.25));
+  const fill = new THREE.DirectionalLight(0x9dc2dc, 0.55); fill.position.set(-14,5,-11); scene.add(fill);
+
+  const t0 = performance.now();
+  const land = buildLand(40);
+  const sea  = buildSea();
+  const tTerrain = performance.now() - t0;
+
+  const world = new THREE.Group();
+  world.add(land, sea);
+  scene.add(world);
+  say(`terrain ${tTerrain|0}ms · loading kit…`);
+
+  const tK = performance.now();
+  const kits = await loadKit();
+  const tKit = performance.now() - tK;
+
+  const rand = rng(20260823);
+  function spots(n, { maxSteep = 0.34, tries = 60 } = {}) {
+    const out = [];
+    let guard = 0;
+    while (out.length < n && guard < n * tries) {
+      guard++;
+      const u = rand()*2 - 1, th = rand()*Math.PI*2;
+      const s = Math.sqrt(1 - u*u);
+      const dir = new THREE.Vector3(s*Math.cos(th), u, s*Math.sin(th));
+      if (!standable(dir, { maxSteep })) continue;
+      out.push(dir);
+    }
+    return out;
+  }
+
+  const tS = performance.now();
+  const treeSpots  = spots(300);
+  const coniSpots  = spots(220);
+  const charSpots  = spots(26);
+  const houseSpots = spots(14, { maxSteep: 0.16 });
+
+  const mk = (dirs, scale) => dirs.map((d) => {
+    const h = heightAt(d);
+    const lat = Math.asin(d.y) * 180/Math.PI;
+    const lon = Math.atan2(d.z, d.x) * 180/Math.PI;
+    return surfaceMatrix(lat, lon, h, { scale: scale(), spin: rand()*Math.PI*2 });
+  });
+
+  world.add(scatter(kits.tree,      mk(treeSpots,  () => 0.30 + rand()*0.12), { name:'trees' }));
+  world.add(scatter(kits.conifer,   mk(coniSpots,  () => 0.28 + rand()*0.14), { name:'conifers' }));
+  world.add(scatter(kits.character, mk(charSpots,  () => 0.9  + rand()*0.2 ), { name:'chars' }));
+  world.add(scatter(kits.house,     mk(houseSpots, () => 0.42 + rand()*0.10), { name:'houses' }));
+  const tScatter = performance.now() - tS;
+
+  renderer.info.autoReset = false;
+  const parts = Object.entries(kits).map(([k,v]) => `${k}:${v.length}`).join(' ');
+  const head = `terrain ${tTerrain|0}ms · kit ${tKit|0}ms (${parts}) · scatter ${tScatter|0}ms\n`
+    + `trees ${treeSpots.length} conifers ${coniSpots.length} houses ${houseSpots.length} chars ${charSpots.length}`;
+
+  let a = 0, last = performance.now(), fps = 60, draws = 0, tris = 0;
+  const tick = () => {
+    const now = performance.now();
+    fps = fps*0.92 + (1000/Math.max(1, now-last))*0.08; last = now;
+    a += 0.0022;
+    world.rotation.y = a;
+    renderer.info.reset();
+    renderer.render(scene, cam);
+    draws = renderer.info.render.calls; tris = renderer.info.render.triangles;
+    requestAnimationFrame(tick);
+  };
+  tick();
+  setInterval(() => {
+    hud.textContent = `${head}\ndraws ${draws} · tris ${(tris/1000).toFixed(0)}k · ${fps.toFixed(0)}fps`;
+  }, 400);
+
+  window.PROBE = { scene, cam, world, renderer, kits, THREE };
+} catch (e) { hud.textContent += '\nFATAL ' + (e.stack||e); }
+</script>
+</body>
+</html>

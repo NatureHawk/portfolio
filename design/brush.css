@@ -1,0 +1,1395 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   BRUSH / 01 — world 02's own material.
+
+   design.css is HUM's. worlds.css is what sits BETWEEN the worlds — the corner
+   controls and the portal. This file is the second site and nothing else: no
+   rule in here applies outside `.bw`, except the four on `body[data-world="02"]`
+   that take the substrate away, and those are scoped to the world being live.
+
+   THE MATERIAL. Near-black, one warm orange, and nothing in between. The
+   restraint is the whole design: the accent appears on about two percent of the
+   screen — a marker dot, a hairline under a number, a limit on a meter — and
+   everything else is ink at four levels of dimness on black. Any surface that
+   wanted a gradient got a hairline instead.
+
+   THE STACK inside this world (the world itself is z-index 3 in worlds.css):
+     30  the fixed rail and the base hairline
+      2  the page
+      1  a section's own type, over its own picture
+      0  the ground
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bw {
+  /* ── INK ───────────────────────────────────────────────────────────────── */
+  /* TRUE black, and it is a decision rather than a default. Every product
+     shot on this page was lit on #000, so any paper lighter than that turns
+     each one into a visible rectangle floating on the page. The ground below
+     supplies what a flat void otherwise lacks. */
+  --b-paper: #000;
+  --b-panel: #0b0b0e;
+  --b-ink: #eceae4;
+  --b-mid: rgba(236, 234, 228, 0.62);
+  --b-dim: rgba(236, 234, 228, 0.38);
+  --b-faint: rgba(236, 234, 228, 0.16);
+  --b-line: rgba(236, 234, 228, 0.11);
+  --b-accent: #ff6b21;
+
+  /* ── TYPE ──────────────────────────────────────────────────────────────
+     Archivo does the display work rather than HUM's Bricolage: this is a
+     product, and a face with personality in the letterforms would be a face
+     arguing with the object. DM Mono stays — the technical labels are the one
+     thing the two worlds are allowed to have in common, because both of them
+     are systems that tell you what they are doing. */
+  --b-display: "Archivo", "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --b-sans: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --b-mono: "DM Mono", ui-monospace, "SF Mono", Consolas, monospace;
+
+  --bt-hero: clamp(2.7rem, 10.2vw, 9.4rem);
+  --bt-mega: clamp(2.8rem, 10.4vw, 9.4rem);
+  --bt-big: clamp(2.3rem, 7.6vw, 6.6rem);
+  --bt-mid: clamp(2rem, 5.8vw, 4.9rem);
+  --bt-num: clamp(3.2rem, 11vw, 9.5rem);
+  --bt-lede: clamp(1rem, 1.15vw, 1.2rem);
+  --bt-body: 0.94rem;
+  --bt-ui: 0.72rem;
+  --bt-micro: 0.625rem;
+  --bt-nano: 0.5625rem;
+
+  /* The gutter has to clear the corner controls, which are 54px of button plus
+     13px of gutter and belong to the shell, not to this site. */
+  --b-pad: clamp(20px, 4.6vw, 86px);
+  --b-safe: calc(var(--b-pad) + 48px);
+  --b-act: clamp(96px, 17vh, 210px);
+
+  position: relative;
+  z-index: 1;
+  color: var(--b-ink);
+  background: var(--b-paper);
+  font-family: var(--b-sans);
+  font-size: var(--bt-body);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hidden the same way HUM is, and for the same reason: with the world
+   collapsed, every IntersectionObserver inside it reports off screen, so the
+   disassembly, the parallax scrubbers, the pressure meter and the hero drift
+   all stop by themselves. A world you are not in costs nothing. */
+.bw[hidden] { display: none !important; }
+
+/* ── THE DOCUMENT, WHILE THIS WORLD IS LIVE ──────────────────────────────────
+   Four rules, and every one of them is undone the moment the body's world
+   changes back. The substrate goes because HUM's paper grain over near-black
+   is a grey fog; the focus ring and the selection change because HUM's are
+   dark ink, which on this ground is invisible. */
+body[data-world="02"] { background: #000; }
+body[data-world="02"]::before { opacity: 0; }
+body[data-world="02"] :focus-visible { outline-color: #ff6b21; }
+body[data-world="02"] ::selection { background: #ff6b21; color: #000; }
+
+/* ── THE GROUND ──────────────────────────────────────────────────────────────
+   One fixed layer: a wash centred on the corner this world is entered through,
+   a fine grain, and nothing else. It is the layer the arrival scales out of the
+   doorway, which is why it is separate from the body's flat colour — there must
+   never be an edge to see while it moves. */
+.bw-ground {
+  position: fixed;
+  inset: -2px;
+  z-index: 0;
+  pointer-events: none;
+  /* Both washes are far weaker than they look like they ought to be on paper.
+     The measure is not "can I see it" but "can it outline a photograph": every
+     level of lift here is a level of difference between the ground and the
+     black every product shot on this page was lit on. */
+  background:
+    radial-gradient(96% 62% at var(--b-origin, 100% 0%), rgba(255, 107, 33, 0.058), transparent 60%),
+    radial-gradient(80% 55% at 50% 118%, rgba(120, 128, 145, 0.038), transparent 64%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+  background-size: auto, auto, 160px 160px;
+}
+
+/* ── THE RAIL AND THE BASE ───────────────────────────────────────────────────
+   The only persistent chrome: what this is on the left, which act you are in
+   in the middle, what it costs on the right. It never hides and never moves,
+   because a product film that keeps taking its own titles away is a film you
+   cannot tell your place in. */
+.bw-rail {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 18px var(--b-safe);
+  font: 500 var(--bt-micro) / 1 var(--b-mono);
+  letter-spacing: 0.2em;
+  pointer-events: none;
+  /* A short fade rather than a bar: an opaque strip across a full-bleed
+     product shot is a strip you can see the edge of. */
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0));
+  padding-bottom: 34px;
+}
+.bw-mark { display: flex; gap: 7px; align-items: baseline; }
+.bw-mark b { font-weight: 500; letter-spacing: 0.22em; }
+.bw-mark i { font-style: normal; color: var(--b-accent); }
+.bw-act { display: flex; gap: 9px; align-items: baseline; color: var(--b-mid); justify-self: center; }
+.bw-act i { font-style: normal; color: var(--b-accent); }
+.bw-price { justify-self: end; color: var(--b-dim); }
+
+.bw-base {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  height: 1px;
+  background: var(--b-line);
+  pointer-events: none;
+}
+.bw-base-fill {
+  display: block;
+  height: 100%;
+  background: var(--b-accent);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+.bw-page { position: relative; z-index: 2; }
+.bw:focus { outline: none; }
+
+/* ── THE GRID ────────────────────────────────────────────────────────────────
+   Twelve columns, one gutter, and every act placed on it. Sections are not
+   boxes with borders between them: the only thing that separates two acts is
+   the amount of nothing above and below them, which is why the padding is the
+   largest number in this file. */
+.bs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  column-gap: clamp(16px, 2.4vw, 40px);
+  row-gap: clamp(40px, 7vh, 96px);
+  align-content: start;
+  padding: var(--b-act) var(--b-pad);
+}
+
+.bs-col { grid-column: 1 / 6; align-self: center; }
+.bs-plate { grid-column: 7 / 13; align-self: center; }
+.bs-wide { grid-column: 1 / 13; }
+.bs-wide--centre { text-align: center; }
+
+/* ── DISPLAY TYPE ────────────────────────────────────────────────────────────
+   A masked box with a block inside it. The entrance is one transform on the
+   inner element — no clip-path is animated anywhere on this page, and the mask
+   costs nothing when nothing is moving. */
+.bl { display: block; overflow: hidden; }
+.bl > i { display: block; font-style: normal; }
+
+.bt {
+  margin: 0;
+  font-family: var(--b-display);
+  font-weight: 600;
+  font-size: var(--bt-mid);
+  line-height: 0.9;
+  letter-spacing: -0.032em;
+  text-transform: uppercase;
+  font-variation-settings: "wdth" 96;
+}
+.bt--big { font-size: var(--bt-big); }
+.bt--mega { font-size: var(--bt-mega); line-height: 0.86; letter-spacing: -0.038em; }
+.bt--tight { line-height: 0.88; }
+.bt--centre { text-align: center; }
+/* One word in the closing statement takes the accent — the only time display
+   type on this page is any colour but ink. */
+.bt--close .bl:last-child > i { color: var(--b-accent); }
+
+/* ── PLATES ──────────────────────────────────────────────────────────────────
+   Number, label, rule. The same three parts in the same place in all eight
+   acts, so the page reads as one document rather than as eight designs. */
+.bp {
+  display: grid;
+  grid-template-columns: auto auto minmax(20px, 1fr);
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 clamp(24px, 4vh, 48px);
+  font: 500 var(--bt-micro) / 1 var(--b-mono);
+  letter-spacing: 0.2em;
+}
+.bp-no { color: var(--b-accent); }
+.bp-label { color: var(--b-mid); }
+.bp-rule { display: block; height: 1px; background: var(--b-line); overflow: hidden; }
+.bp-rule i { display: block; height: 100%; background: var(--b-faint); transform-origin: 0 50%; }
+.bs-wide--centre .bp { justify-content: center; grid-template-columns: auto auto; }
+.bs-wide--centre .bp-rule { display: none; }
+
+/* ── PROSE AND SPECS ─────────────────────────────────────────────────────── */
+.bbody {
+  max-width: 46ch;
+  margin: clamp(20px, 3vh, 34px) 0 0;
+  font-size: var(--bt-lede);
+  line-height: 1.55;
+  color: var(--b-mid);
+  text-wrap: pretty;
+}
+.bbody--narrow { max-width: 38ch; }
+.bhint {
+  margin: clamp(20px, 3vh, 32px) 0 0;
+  font: 500 var(--bt-nano) / 1 var(--b-mono);
+  letter-spacing: 0.24em;
+  color: var(--b-dim);
+}
+.bcap {
+  margin: 12px 0 0;
+  font: 400 var(--bt-nano) / 1.4 var(--b-mono);
+  letter-spacing: 0.18em;
+  color: var(--b-dim);
+}
+
+.bfacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(20px, 3vw, 52px);
+  margin: clamp(26px, 4vh, 44px) 0 0;
+}
+.bfacts dt {
+  font: 500 var(--bt-nano) / 1 var(--b-mono);
+  letter-spacing: 0.24em;
+  color: var(--b-dim);
+}
+.bfacts dd {
+  margin: 8px 0 0;
+  font: 500 var(--bt-ui) / 1 var(--b-mono);
+  letter-spacing: 0.1em;
+  color: var(--b-ink);
+}
+
+/* ── PRODUCT SHOTS ───────────────────────────────────────────────────────────
+   Three elements and three owners — see the note in brush/site.js. The middle
+   one is the only place a transform is written by CSS, and it is written from
+   custom properties so nothing has to read it back. */
+.bfig { position: relative; margin: 0; }
+.bfig-box {
+  display: block;
+  /* One transform, three CSS-owned inputs: the pointer drift, the scroll drift
+     and a window's zoom. anime never writes here — it has .bfig and .bfig-img. */
+  transform:
+    translate3d(var(--px, 0px), calc(var(--drift, 0px) + var(--py, 0px)), 0)
+    scale(var(--zoom, 1));
+}
+.bfig-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* The shots are lit on their own near-black ground. A touch of contrast keeps
+     the smoked shell from going flat once it is composited over ours. */
+  filter: contrast(1.04) saturate(0.97);
+}
+
+/* ══ THE EDGE ════════════════════════════════════════════════════════════════
+   A photograph is a rectangle and this page is a void, so wherever the two
+   blacks differ by even a few levels there is a seam. There are only two honest
+   ways to remove one, and this page uses both:
+
+     BLEED    push the boundary off the screen — or off the side of the page —
+              so there is no edge left to see. Always the better answer when
+              there is somewhere for it to go.
+     FEATHER  the boundary is on screen, so dissolve it into the ground with a
+              mask.
+
+   WHICH ELEMENT CARRIES THE FEATHER IS THE WHOLE TRICK, and getting it wrong is
+   silent. The mask has to sit on the element that owns the VISIBLE boundary:
+
+     a plain shot  — the boundary is the photograph's own edge, so the mask goes
+                     on the image;
+     a window      — the photograph is drawn larger than its box and clipped to
+                     it, so the photograph's edge is not the boundary at all.
+                     The box's edge is. Mask the image there and the gradient is
+                     scaled and translated outside the clip with everything else,
+                     leaving the crop as hard as if there were no mask at all.
+                     So a window is masked on the WINDOW.
+
+   The four widths are per side and are set per composition below, because these
+   photographs were lit separately and measure very differently at their borders
+   — from a peak border luminance of 6 on the battery shot to 234 on the
+   pressure shot. One global figure is wrong twice over: too small and the
+   bright ones keep their rectangle, too large and the dark ones lose their
+   subject. A side that is bled rather than feathered is 0.
+
+   Two mask layers, composited as an INTERSECTION. Where `mask-composite` is not
+   understood the layers add instead, which feathers only the four corners —
+   less, but never wrong, and never a hard edge back. */
+.bfig-img,
+.bwin {
+  --fl: 7%;
+  --fr: 7%;
+  --ft: 3%;
+  --fb: 5%;
+  -webkit-mask-image:
+    linear-gradient(90deg, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%),
+    linear-gradient(180deg, transparent 0, #000 var(--ft), #000 calc(100% - var(--fb)), transparent 100%);
+  mask-image:
+    linear-gradient(90deg, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%),
+    linear-gradient(180deg, transparent 0, #000 var(--ft), #000 calc(100% - var(--fb)), transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+/* Inside a window the image is masked by the window. Masking it twice would
+   put a second, wrongly-placed gradient over the first. */
+.bwin .bfig-img { -webkit-mask-image: none; mask-image: none; }
+
+/* ── WINDOWS, AND WHEN NOT TO USE ONE ────────────────────────────────────────
+   A window is a box with the picture drawn larger than it and cropped to it. It
+   buys size, and `--wp` chooses what gets thrown away.
+
+   IT IS ALSO A TRAP, and it caught this page once already. `cover` crops
+   whichever axis the CONTAINER is relatively longer in — so which part of the
+   photograph survives depends on the container's aspect ratio, which depends on
+   the column width, which depends on the viewport. A crop that frames perfectly
+   at 1440px quietly eats the subject at 1100px, and nothing announces it.
+
+   That is fatal for these product shots specifically, because every one of them
+   is the same shape: the subject runs the FULL height of the frame — 0%–99.9%
+   for the shell, 6.5%–99.9% for the bristles, 10.7%–99.9% for the dock — and
+   occupies only the middle third of the width. There is no vertical margin to
+   crop into. Any vertical crop is subject, and the two most exposed were losing
+   the bristle tips and the whole dock.
+
+   So the whole-product shots below do not use a window at all. They are sized
+   by HEIGHT with `width: auto`, which makes the element exactly the picture,
+   crops nothing at any viewport size, and puts the generous side margin those
+   frames do have to work by bleeding it off the page instead.
+
+   A window is still right where the frame has margin to lose on the axis being
+   cropped — the pressure band is landscape, full-bleed, and cropping its
+   height is the composition. */
+.bwin { overflow: hidden; display: block; }
+.bwin .bfig { height: 100%; }
+.bwin .bfig-box { height: 100%; }
+.bwin .bfig-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--wp, 50% 50%);
+}
+
+/* ── THE TABLE ───────────────────────────────────────────────────────────────
+   Measured, not guessed: each comment carries the border luminance that decided
+   the numbers beside it. Any change to a composition below has to come back
+   here — a side that stops being bled starts needing a feather again. */
+
+/* PLAIN SHOTS — the photograph's own edge is the boundary. */
+
+/* border 0.3–4.4 · the base is cut by the fold, so the foot needs nothing */
+/* --fb is not 0 any more: with the section no longer clipping, the foot of
+   this picture does eventually come on screen, and it is the brightest part of
+   the frame. At rest it sits a hundred pixels below the fold and is not
+   visible at all. */
+.bfig--hero .bfig-img { --fl: 12%; --fr: 12%; --ft: 5%; --fb: 11%; }
+
+/* border 1.1–3.4, the quietest full-frame shot on the page */
+.bfig--object .bfig-img { --fl: 7%; --fr: 7%; --ft: 2.5%; --fb: 5%; }
+
+/* border 0–3.7, but it is a THUMBNAIL — barely 190px wide — and a feather is a
+   percentage of the box it is on, so the eight percent that dissolves a
+   full-height shot is fifteen pixels here and dissolves nothing. Small pictures
+   need proportionally wider feathers, not the same ones. */
+.bfig--rear .bfig-img { --fl: 17%; --fr: 17%; --ft: 9%; --fb: 14%; }
+
+/* border peaks at 6. Nothing to hide; this is nearly a formality. */
+.bfig--battery .bfig-img { --fl: 5%; --fr: 5%; --ft: 2.5%; --fb: 6%; }
+
+/* WINDOWS — the box's edge is the boundary, so the box carries the mask. The
+   feathers here are wider than a plain shot's because they are dissolving
+   mid-product content rather than a nearly-black border. */
+
+/* WHOLE-PRODUCT SHOTS — the element is the picture, so these are the
+   photograph's own edges again. Each is bled to whichever side of the page its
+   composition leans towards, and the foot of every one of them is a lit floor,
+   which is why the bottom feather is always the widest number in the row. */
+
+/* internals · border 0.7–14.7, peaking at 209 where the shell leaves frame at
+   the foot. Bled off the left of the page. */
+.bfig--internals .bfig-img { --fl: 0%; --fr: 9%; --ft: 7%; --fb: 13%; }
+
+/* macro · border 1.7–20.5, peaking at 231. Bled off the left. The bristle field
+   starts 6.5% down, so the top feather stays under that. */
+.bfig--macro .bfig-img { --fl: 0%; --fr: 9%; --ft: 5%; --fb: 12%; }
+
+/* dock · border 0.2–6.5, lifting to 11 at the lit floor. Centred, so all four
+   sides are on screen. The dock itself is widest at 79% of the frame — well
+   clear of a 12% dissolve at the foot. */
+.bfig--dock .bfig-img { --fl: 9%; --fr: 9%; --ft: 5%; --fb: 12%; }
+
+/* final · border 0.1–4.9, lifting to 17 a little way in at the foot. Bled off
+   the right of the page. */
+.bfig--final .bfig-img { --fl: 9%; --fr: 0%; --ft: 6%; --fb: 12%; }
+
+/* pressure · border peaks at 234, the brightest on the page, and it is the one
+   LANDSCAPE frame here — a row of brush heads with margin above and below. It
+   keeps its window, because cropping its height is the composition. */
+.bs-band { --fl: 0%; --fr: 0%; --ft: 14%; --fb: 14%; --wp: 50% 46%; }
+
+
+/* ═══ 00 · HERO ═════════════════════════════════════════════════════════════
+   One screen, one object, three words. The type sits on the left and the
+   product overlaps it from the right, so the two occupy the same optical space
+   without either being a caption for the other. */
+.bs--hero {
+  /* One screen, and it has to BE one screen: the facts and the scroll cue at
+     the foot are the proof that there is a page under the hero, and a hero
+     that runs ninety pixels long hides exactly those. Every number in this
+     block is tuned against the others to land that foot on the fold. */
+  min-height: 100svh;
+  align-content: end;
+  row-gap: clamp(18px, 2.4vh, 34px);
+  padding-top: clamp(92px, 12vh, 150px);
+  padding-bottom: clamp(18px, 3vh, 40px);
+  /* NO `overflow: hidden` HERE, and that is deliberate. Clipping the product at
+     the section's edge looks right for exactly as long as that edge is the
+     fold — the moment the page scrolls, the clip travels up the screen as a
+     hard horizontal cut straight through the handle.
+
+     The fold does the cropping instead, because the fold is the one edge that
+     cannot move: the picture is simply drawn taller than the screen. What comes
+     into view as the hero leaves is the picture's own foot, and that is
+     feathered like every other edge on this page. */
+}
+.bh-type {
+  grid-column: 1 / 8;
+  grid-row: 1;
+  align-self: end;
+  position: relative;
+  z-index: 2;
+  /* --px/--py is the pointer drift; --cy is the handoff. Both CSS-owned, so
+     anime never touches this element and the two never overwrite each other. */
+  transform: translate3d(var(--px, 0px), calc(var(--py, 0px) + var(--cy, 0px)), 0);
+}
+.bh-kicker {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  margin: 0 0 clamp(16px, 2.4vh, 28px);
+  font: 500 var(--bt-micro) / 1 var(--b-mono);
+  letter-spacing: 0.22em;
+}
+.bh-kicker b { font-weight: 500; color: var(--b-accent); }
+.bh-kicker i { font-style: normal; color: var(--b-dim); }
+
+.bh-title {
+  margin: 0;
+  font-family: var(--b-display);
+  font-weight: 600;
+  font-size: var(--bt-hero);
+  line-height: 0.84;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  font-variation-settings: "wdth" 94;
+}
+.bh-lede {
+  max-width: 34ch;
+  margin: clamp(18px, 2.6vh, 32px) 0 0;
+  font-size: var(--bt-lede);
+  color: var(--b-mid);
+  text-wrap: pretty;
+}
+
+/* TAKEN OUT OF THE GRID. In flow, the product's height sets the height of the
+   row, so every pixel it grows pushes the specification row further down the
+   page — which is how the hero ends up either short of a screen or missing its
+   foot. Positioned, it costs the layout nothing and can be as large as the
+   composition wants. */
+.bh-shot {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(64vw, 820px);
+  z-index: 0;
+  pointer-events: none;
+  display: grid;
+  justify-items: center;
+  align-items: start;
+  padding: 2svh clamp(0px, 2vw, 44px) 0 0;
+  /* The continuity gesture — see initHandoff in brush/site.js. */
+  transform: translateY(var(--cy, 0px)) scale(var(--cs, 1));
+  transform-origin: 50% 30%;
+}
+.bh-shot .bfig-img {
+  width: auto;
+  /* PAST THE FOLD ON PURPOSE, and by enough to be sure of it. At 94svh the
+     image stopped 27px short of the bottom of the screen, which put its lit
+     floor — the brightest thing in the frame — on screen with a feather of
+     zero underneath it. Drawn this tall the floor is below the fold entirely,
+     the handle is cut by the screen rather than by its own frame, and the foot
+     of the picture is a boundary nobody can reach. */
+  height: min(118svh, 1140px);
+  max-width: none;
+  object-fit: contain;
+}
+/* Both of these were above the product when it was a grid item on the right.
+   Now it is behind the whole hero, so they have to say so. */
+.bh-type { z-index: 2; }
+.bh-foot { position: relative; z-index: 2; }
+
+.bh-foot {
+  grid-column: 1 / 13;
+  grid-row: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-top: clamp(20px, 3vh, 34px);
+  border-top: 1px solid var(--b-line);
+}
+.bh-foot .bfacts { margin: 0; }
+.bh-scroll {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font: 500 var(--bt-nano) / 1 var(--b-mono);
+  letter-spacing: 0.26em;
+  color: var(--b-dim);
+  white-space: nowrap;
+}
+.bh-line { display: block; width: 46px; height: 1px; background: var(--b-line); overflow: hidden; }
+.bh-line i { display: block; height: 100%; background: var(--b-accent); animation: b-scroll 2.6s var(--ease-soft, ease-in-out) infinite; }
+@keyframes b-scroll {
+  0% { transform: translateX(-100%); }
+  55%, 100% { transform: translateX(100%); }
+}
+
+/* ═══ 01 · THE OBJECT — the markers ═════════════════════════════════════════
+   The one thing on this page you press. A marker is a ring and a number; open,
+   it is a hairline card set beside the part it names. Nothing about it is a
+   tooltip UI kit — it is the annotation on an industrial drawing. */
+/* The product crosses the centre line rather than sitting in the right-hand
+   half of a split. The copy column keeps its width and the two overlap. */
+.bs--object { align-content: center; min-height: 96svh; }
+.bs--object .bs-col { grid-column: 1 / 6; z-index: 2; }
+.bspots { grid-column: 5 / 12; position: relative; justify-self: center; width: min(100%, 560px); }
+.bspots .bfig-img { max-height: 96svh; width: auto; margin: 0 auto; }
+
+.bspot {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.bspot-dot {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--b-accent);
+  background: rgba(255, 107, 33, 0.16);
+  transition: inset 0.4s var(--ease-rise, ease), background 0.4s ease;
+}
+/* The idle pulse. It is the only looping animation in the world, it is on a
+   9px dot, and it exists because three markers on a dark product are otherwise
+   genuinely easy to miss. */
+.bspot::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--b-accent);
+  animation: b-ping 3.4s ease-out infinite;
+  animation-delay: calc(var(--i, 0) * 1.1s);
+  pointer-events: none;
+}
+@keyframes b-ping {
+  0% { transform: scale(1); opacity: 0.55; }
+  60%, 100% { transform: scale(2.6); opacity: 0; }
+}
+.bspot-no {
+  position: relative;
+  font: 500 var(--bt-nano) / 1 var(--b-mono);
+  letter-spacing: 0.1em;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.3s ease, transform 0.3s var(--ease-rise, ease);
+}
+.bspot:hover .bspot-dot, .bspot.is-open .bspot-dot { inset: 3px; background: rgba(255, 107, 33, 0.28); }
+.bspot.is-open .bspot-no { opacity: 0; }
+.bspot.is-open::after { animation: none; opacity: 0; }
+
+.bspot-card {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  z-index: 4;
+  width: min(240px, 62vw);
+  margin: -8px 0 0 26px;
+  padding: 14px 16px;
+  background: rgba(14, 14, 18, 0.94);
+  border: 1px solid var(--b-line);
+  border-left: 1px solid var(--b-accent);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-6px);
+  transition: opacity 0.34s ease, transform 0.34s var(--ease-rise, ease), visibility 0.34s;
+  pointer-events: none;
+}
+.bspot-card.is-open { opacity: 1; visibility: visible; transform: translateX(0); }
+.bspot-card b {
+  display: block;
+  font: 500 var(--bt-micro) / 1 var(--b-mono);
+  letter-spacing: 0.2em;
+  color: var(--b-ink);
+}
+.bspot-card em {
+  display: block;
+  margin-top: 8px;
+  font-style: normal;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--b-mid);
+}
+
+/* ═══ 02 · THE DISASSEMBLY ══════════════════════════════════════════════════
+   Four and a half screens of scroll, one screen of picture. The height on the
+   section IS the length of the animation — the pin holds for exactly as long
+   as there is section left, and the frame number is the scroll position across
+   it. Shorten this and the toothbrush comes apart faster.
+
+   Nothing inside `.bx` may have a transformed ancestor: sticky stops sticking
+   the moment one appears above it. See the note at the top of brush/site.js. */
+.bs--explode {
+  display: block;
+  height: 440svh;
+  padding: 0;
+}
+/* THE STAGE TAKES THE WHOLE PIN, and the titles sit on top of it. Stacked in
+   three rows instead, the head and the foot eat about a third of the screen —
+   and because the frames are portrait, every pixel of height they take costs
+   half a pixel of product WIDTH. Overlaid, the toothbrush is a third larger
+   for nothing, and the composition survives it: the frames put the assembled
+   handle right of centre and throw the parts left, so the middle of the top of
+   the picture is empty in exactly the frames where the title is over it. */
+.bx {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* NO PADDING. It moves to the head and the foot, which are overlaid on the
+     stage anyway — so the stage becomes the whole screen instead of the whole
+     screen less a fifth. Because the frames are portrait and fitted by height,
+     every pixel of padding reclaimed here is half a pixel of product WIDTH: it
+     is the single largest gain available to this section, and it costs nothing
+     and clips nothing. */
+  padding: 0;
+
+  /* WHERE THE PICTURE ACTUALLY IS. The frames are 720×1280 and they are fitted
+     by height, so the drawn toothbrush is a column of known width in the middle
+     of a stage that is the full width of the screen — which is why callouts
+     pinned to the stage edges end up pointing at nothing from three hundred
+     pixels away.
+
+     Half that column, in units the browser already has: the stage is the whole
+     100svh now that the padding has moved, and the frame is drawn 1.06× past a
+     contained fit (see brush/sequence.js), so the picture is 0.5625 × 1.06 of
+     the screen height wide and half of that is 0.298. A callout offset by this
+     plus a gap sits the same short distance from the product at every size. */
+  --bx-half: calc(100svh * 0.298);
+  --bx-gap: calc(var(--bx-half) + clamp(18px, 2.2vw, 40px));
+
+  /* WHERE THE HANDLE ACTUALLY IS, which is a much narrower thing than where
+     the FRAME is. The drawn frame is 59.6svh wide and almost all of it is
+     unlit black: measured off the canvas, the assembled handle occupies 79px
+     of a 900px-tall stage — 4.4% of the height on each side of the middle —
+     and it has thrown out no further than 9% by the time the title has gone.
+
+     11.5% is that plus room to breathe, and it is the column the split title
+     is kept out of. Everything either side of it is empty picture, which is
+     why the headline can be half again the size it was and still not be a
+     word sitting on a toothbrush. */
+  --bx-body: calc(100svh * 0.23);
+  /* What one side of the headline has to live in. `vw` rather than a
+     percentage because this ends up dividing into a font-size, and a
+     percentage there would be a percentage of the font-size. It is a
+     scrollbar's width optimistic on Windows; the 11.5% clearance absorbs it. */
+  --bx-col: calc(50vw - (100svh * 0.115) - var(--b-pad));
+}
+.bx-head {
+  grid-area: 1 / 1;
+  z-index: 2;
+  padding: clamp(58px, 8vh, 92px) var(--b-safe) 0;
+}
+.bx-stage { grid-area: 1 / 1 / 4 / 2; }
+.bx-foot {
+  grid-area: 3 / 1;
+  z-index: 2;
+  padding: 0 var(--b-safe) clamp(22px, 3.6vh, 40px);
+}
+.bx-head { text-align: center; }
+.bx-head .bp { justify-content: center; grid-template-columns: auto auto; margin-bottom: clamp(14px, 2.2vh, 24px); }
+.bx-head .bp-rule { display: none; }
+.bx-head .bt { font-size: clamp(1.6rem, 3.9vw, 3.3rem); }
+
+/* ── THE SPLIT HEADLINE ──────────────────────────────────────────────────────
+   The title is thrown to the two sides of the product instead of being set
+   across the top of it. Three things come out of that, and only the first one
+   was the brief:
+
+     1. NOTHING IS WRITTEN ON THE TOOTHBRUSH. Centred, the words and the
+        handle are in the same 30% of the screen and one of them is legibly on
+        top of the other.
+     2. IT IS HALF AGAIN THE SIZE. Set across the middle, the headline is
+        limited by the whole screen's width; set as two columns either side of
+        an 11.5%-clear middle, each half is limited by its own column — and
+        the longer half is one word instead of a whole line. Measured: the
+        title goes from 3.3rem to 4.4rem at 1440x900 and to 6rem at 1080p,
+        and takes no room off the picture to do it.
+     3. IT READS THROUGH THE OBJECT. Both halves are set towards the middle,
+        so the sentence runs left to right and the product interrupts it. The
+        entrance is already staggered by 80ms per line (see brush/site.js), so
+        the two halves arrive in reading order without anything being added.
+
+   The columns are grid, so the placement is exact; only the font-size uses the
+   vw approximation of half the screen, and it is the conservative one. */
+/* The head carries the SAME three columns as the title, so the plate can be
+   set to the left half's inner edge. Left centred at the top it lands directly
+   under the rail's own "02 ENGINEERING" and reads as an echo of it; hung off
+   the same edge as "THE BRUSH," it belongs to the headline, which is what a
+   plate is for. */
+.bx-head--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--bx-body) minmax(0, 1fr);
+  padding-inline: var(--b-pad);
+}
+.bx-head--split .bp { grid-column: 1; justify-self: end; }
+.bx-head--split .bt { grid-column: 1 / -1; }
+.bx-head .bt--split {
+  display: grid;
+  /* left column · the handle's clearance · right column */
+  grid-template-columns: minmax(0, 1fr) var(--bx-body) minmax(0, 1fr);
+  align-items: start;
+  /* 7.8em is "REENGINEERED." measured in Archivo 600 at wdth 96 with this
+     tracking (7.63em) plus a margin for the fallback face, which is wider.
+     Dividing the column by it is the largest size the longest half fits at. */
+  font-size: clamp(1.6rem, calc(var(--bx-col) / 7.8), 6.4rem);
+  /* The plate above is centred; the halves are not, so the inherited centring
+     has to be undone or a short half floats in the middle of its column. */
+  text-align: initial;
+}
+/* Both halves lean IN. The gap between them is the product, not a gutter. */
+.bx-head .bt--split > .bl:nth-child(1) { grid-column: 1; text-align: right; }
+.bx-head .bt--split > .bl:nth-child(2) { grid-column: 3; text-align: left; }
+/* Any further lines stack under the first half rather than disappearing into
+   the middle column — the copy is two lines and the layout says so, but this
+   is what happens if it stops being two. */
+.bx-head .bt--split > .bl:nth-child(n + 3) { grid-column: 1; text-align: right; }
+
+/* THE HEADLINE DROPS, THE PLATE DOES NOT. Left at the top of the head the two
+   halves flank the bristles and the neck — the thinnest, most crowded part of
+   the frame, and the one part of it a word can actually touch. A screen-eighth
+   down they flank the handle, which is the part of the object the sentence is
+   about. The plate keeps the top rail to itself. */
+.bx-head--split .bt { margin-top: clamp(30px, 14svh, 150px); }
+
+.bx-stage { position: relative; min-height: 0; pointer-events: none; }
+.bx-canvas,
+/* THE STILL IS SIZED TO THE PICTURE, not to the stage, and that is the whole
+   reason it is not `position: absolute; inset: 0` like the canvas beside it.
+   A percentage feather is a percentage of the ELEMENT — so an element stretched
+   across the full stage with the picture letterboxed inside it puts its feather
+   a hundred pixels out in empty space and leaves the picture's own edge as hard
+   as it started. Sized to its own aspect, the element and the picture are the
+   same rectangle and the mask lands where it is aimed.
+
+   (The canvas cannot do this — its size is set by the layout and the drawn
+   frame moves inside it — which is why that one feathers in the draw instead.
+   See brush/sequence.js.) */
+.bx-still {
+  position: relative;
+  display: block;
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+  object-fit: contain;
+  /* exploded.png: border 1.0–6.5, peaking at 88 in the lit floor at its foot. */
+  -webkit-mask-image:
+    linear-gradient(90deg, transparent 0, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(180deg, transparent 0, #000 4%, #000 91%, transparent 100%);
+  mask-image:
+    linear-gradient(90deg, transparent 0, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(180deg, transparent 0, #000 4%, #000 91%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+/* The stage has only a MIN height here, so a percentage height on the still
+   resolves against auto and the picture renders at its natural 1024x1535. It is
+   capped instead, and the cap is on the height so the element keeps the
+   picture's own aspect — which is what makes the percentage feather land. */
+.bs--explode.is-still .bx-stage { display: grid; place-items: center; }
+.bs--explode.is-still .bx-still { height: auto; max-height: 86svh; }
+
+/* The labels. Anchored to the stage rather than to the product, because the
+   product is a canvas and the parts inside it have no elements to attach to —
+   so they read as callouts on a drawing, which is what they are. */
+.bx-labels { position: absolute; inset: 0; pointer-events: none; }
+.bx-label {
+  position: absolute;
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  max-width: 210px;
+  opacity: 0;
+  transition: opacity 0.5s ease, transform 0.6s var(--ease-rise, ease);
+}
+.bx-label.is-on { opacity: 1; transform: translateX(0); }
+.bx-label b {
+  font: 500 var(--bt-nano) / 1 var(--b-mono);
+  letter-spacing: 0.2em;
+  color: var(--b-accent);
+}
+.bx-label span {
+  font: 500 var(--bt-ui) / 1.15 var(--b-mono);
+  letter-spacing: 0.13em;
+  color: var(--b-ink);
+}
+.bx-label em {
+  font-style: normal;
+  font: 400 var(--bt-nano) / 1.3 var(--b-mono);
+  letter-spacing: 0.16em;
+  color: var(--b-dim);
+}
+/* A hairline runs from each label towards the middle, so a callout points at
+   the product instead of floating beside it. */
+.bx-label::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  width: clamp(24px, 5vw, 70px);
+  height: 1px;
+  background: linear-gradient(to var(--to, right), var(--b-faint), transparent);
+}
+/* Positioned with margins, never with a transform: the transform on these
+   belongs to the appear-and-leave, and two systems on one property is the bug
+   this whole build is arranged around. */
+.bx-label::after { width: clamp(18px, 2.6vw, 38px); }
+.bx-label--left {
+  right: 50%;
+  margin-right: var(--bx-gap);
+  text-align: right;
+  justify-items: end;
+  transform: translateX(-14px);
+}
+.bx-label--left::after { left: calc(100% + 12px); --to: right; }
+.bx-label--right {
+  left: 50%;
+  margin-left: var(--bx-gap);
+  text-align: left;
+  justify-items: start;
+  transform: translateX(14px);
+}
+.bx-label--right::after { right: calc(100% + 12px); --to: left; }
+.bx-label[data-label="0"] { top: 24%; }
+.bx-label[data-label="1"] { top: 40%; }
+.bx-label[data-label="2"] { top: 58%; }
+.bx-label[data-label="3"] { top: 74%; }
+
+.bx-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  font: 500 var(--bt-nano) / 1 var(--b-mono);
+  letter-spacing: 0.24em;
+  color: var(--b-dim);
+}
+.bx-hint { margin: 0; }
+.bx-read { display: flex; align-items: center; gap: 14px; margin: 0; }
+.bx-pct { font-weight: 500; color: var(--b-accent); font-variant-numeric: tabular-nums; }
+.bx-bar { display: block; width: clamp(60px, 14vw, 190px); height: 1px; background: var(--b-line); overflow: hidden; }
+.bx-bar i { display: block; height: 100%; background: var(--b-accent); transform: scaleX(0); transform-origin: 0 50%; }
+.bx-parts { color: var(--b-faint); }
+
+/* Motion declined: the act is one still of the finished disassembly, all four
+   callouts showing, and no pin. The sixty frames are never requested — see
+   brush/site.js, which builds a different element entirely.
+
+   The overlay comes apart with it. Overlaying the title on the picture only
+   works because the title fades out as the parts rise into it, and there is no
+   scrub here to fade it — so the three pieces go back into ordinary stacked
+   rows and the title sits above the product the way it looks like it should. */
+.bs--explode.is-still { height: auto; padding: var(--b-act) 0; }
+.bs--explode.is-still .bx {
+  position: static;
+  height: auto;
+  gap: clamp(18px, 3vh, 34px);
+}
+.bs--explode.is-still .bx-head,
+.bs--explode.is-still .bx-stage,
+.bs--explode.is-still .bx-foot { grid-area: auto; }
+.bs--explode.is-still .bx-stage { min-height: 74svh; }
+.bs--explode.is-still .bx-label { opacity: 1; transform: none; }
+/* The split goes with the overlay. There is no product between the two halves
+   here — the picture is in the row underneath — so a sentence with a hole in
+   the middle of it would be a hole in the middle of it. */
+.bs--explode.is-still .bx-head--split { display: block; }
+.bs--explode.is-still .bx-head--split .bp { justify-self: auto; }
+.bs--explode.is-still .bx-head .bt--split {
+  display: block;
+  font-size: clamp(1.6rem, 3.9vw, 3.3rem);
+  margin-top: 0;
+  text-align: center;
+}
+/* `:nth-child(n)` only to carry the same weight as the three rules above
+   that place the halves — it matches every line, which is the point. */
+.bs--explode.is-still .bx-head .bt--split > .bl:nth-child(n) { text-align: center; }
+
+/* ═══ 03 · INTERNALS ════════════════════════════════════════════════════════ */
+.bs--internals .bt { max-width: 12ch; }
+.bi-grid {
+  grid-column: 1 / 13;
+  display: grid;
+  grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+  column-gap: clamp(24px, 4vw, 76px);
+  align-items: center;
+}
+/* A window the height of the screen with the shell drawn a quarter larger than
+   it, run off the left-hand edge of the page. Every edge of the photograph is
+   outside the box — which is the only reason an image whose border peaks at
+   luminance 209 can sit on this ground at all. */
+/* Sized by height, so the element is the picture and nothing is ever cropped.
+   The drama is scale and a bleed off the left, not a crop. */
+.bi-main { margin-left: calc(var(--b-pad) * -1); }
+.bi-main .bfig-img { width: auto; height: auto; max-height: 118svh; max-width: none; }
+.bi-side { display: grid; align-content: center; }
+.bi-side .bbody { margin-top: 0; }
+.bi-rear { margin-top: clamp(30px, 5vh, 56px); max-width: 220px; }
+.bi-rear .bfig-img { max-height: 300px; width: auto; }
+
+/* ═══ 04 · PRESSURE ═════════════════════════════════════════════════════════
+   The meter is a real reading of a fictional thing, and it does the one thing
+   the copy claims: it crosses the limit and then eases itself off. */
+/* Edge to edge, and the copy underneath it rather than beside it. The negative
+   inline margin cancels the section's own gutter exactly — which is the same
+   thing as 100vw but immune to the scrollbar, and a horizontal scrollbar on a
+   page like this one is not a small mistake. */
+.bs--pressure { align-content: center; row-gap: clamp(34px, 6vh, 76px); }
+.bs-band {
+  grid-column: 1 / 13;
+  margin-inline: calc(var(--b-pad) * -1);
+  height: min(74svh, 720px);
+  --zoom: 1.04;
+}
+.bs--pressure .bs-col { grid-column: 1 / 7; }
+
+.bpm { margin-top: clamp(30px, 4.6vh, 54px); max-width: 400px; }
+.bpm-cap {
+  margin: 0 0 12px;
+  font: 500 var(--bt-nano) / 1 var(--b-mono);
+  letter-spacing: 0.24em;
+  color: var(--b-dim);
+}
+.bpm-track { position: relative; height: 2px; background: var(--b-line); }
+.bpm-fill {
+  display: block;
+  height: 100%;
+  background: var(--b-ink);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: background 0.45s ease;
+}
+.bpm[data-over="true"] .bpm-fill { background: var(--b-accent); }
+.bpm-limit { position: absolute; top: -5px; bottom: -5px; left: var(--at); width: 1px; background: var(--b-mid); }
+.bpm-limit i {
+  position: absolute;
+  top: -20px;
+  left: 0;
+  font: 400 var(--bt-nano) / 1 var(--b-mono);
+  font-style: normal;
+  letter-spacing: 0.16em;
+  color: var(--b-dim);
+  white-space: nowrap;
+}
+.bpm-out { display: flex; align-items: baseline; gap: 8px; margin: 20px 0 0; }
+.bpm-val {
+  font-family: var(--b-display);
+  font-weight: 600;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.45s ease;
+}
+.bpm[data-over="true"] .bpm-val { color: var(--b-accent); }
+.bpm-out em {
+  font-style: normal;
+  font: 500 var(--bt-ui) / 1 var(--b-mono);
+  color: var(--b-dim);
+}
+.bpm-state {
+  margin-left: auto;
+  font: 500 var(--bt-nano) / 1 var(--b-mono);
+  letter-spacing: 0.24em;
+  color: var(--b-dim);
+  transition: color 0.45s ease;
+}
+.bpm[data-over="true"] .bpm-state { color: var(--b-accent); }
+
+/* ═══ 05 · THE HEAD ═════════════════════════════════════════════════════════ */
+.bs--head .bt { max-width: 14ch; }
+/* The largest thing on the page, and the closest. It fills its window rather
+   than fitting inside it, so the bristle field is cropped on every side and
+   reads as a detail of something much bigger than the screen. */
+.bhd-shot { grid-column: 1 / 10; margin-left: calc(var(--b-pad) * -1); }
+.bhd-shot .bfig-img { width: auto; height: auto; max-height: 116svh; max-width: none; }
+.bhd-side { grid-column: 10 / 13; align-self: end; padding-bottom: clamp(20px, 6vh, 80px); }
+.bhd-side .bbody { margin-top: 0; }
+.bhd-side .bfacts { flex-direction: column; gap: 22px; }
+
+/* ═══ 06 · PERFORMANCE ══════════════════════════════════════════════════════
+   Specifications set at the size of a headline, because that is what they are.
+   No cards, no icons, no rounded rectangles: three numbers on three rules. */
+.bs--power .bs-plate { grid-column: 6 / 13; }
+.bs--power .bs-plate .bfig-img { max-height: 94svh; width: auto; margin-inline: auto; }
+
+.bnums {
+  grid-column: 1 / 13;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(20px, 3vw, 56px);
+  margin: clamp(30px, 6vh, 80px) 0 0;
+  padding: 0;
+}
+.bnum { display: grid; gap: 10px; padding-top: 22px; border-top: 1px solid var(--b-line); }
+.bnum-v {
+  font-family: var(--b-display);
+  font-weight: 600;
+  font-size: var(--bt-num);
+  line-height: 0.86;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  font-variation-settings: "wdth" 92;
+}
+.bnum-u {
+  font: 500 var(--bt-micro) / 1.2 var(--b-mono);
+  letter-spacing: 0.2em;
+  color: var(--b-ink);
+}
+.bnum-n {
+  font-style: normal;
+  font: 400 var(--bt-nano) / 1.2 var(--b-mono);
+  letter-spacing: 0.18em;
+  color: var(--b-dim);
+}
+
+.btable {
+  grid-column: 1 / 13;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0;
+  margin: clamp(30px, 5vh, 64px) 0 0;
+  border-top: 1px solid var(--b-line);
+}
+.btable > div { display: grid; gap: 8px; padding: 20px 0 20px 18px; border-bottom: 1px solid var(--b-line); border-left: 1px solid var(--b-line); }
+.btable > div:first-child { padding-left: 0; border-left: 0; }
+.btable dt { font: 500 var(--bt-nano) / 1 var(--b-mono); letter-spacing: 0.24em; color: var(--b-dim); }
+.btable dd { margin: 0; font: 500 var(--bt-ui) / 1 var(--b-mono); letter-spacing: 0.08em; }
+
+/* ═══ 07 · THE DOCK ═════════════════════════════════════════════════════════
+   The one act with nothing beside the object. It is a sculpture on a plinth of
+   empty screen, and the copy waits underneath it. */
+.bs--dock { justify-items: center; }
+.bd-shot { grid-column: 3 / 11; justify-self: center; }
+.bd-shot .bfig-img { width: auto; height: auto; max-height: 106svh; max-width: none; margin-inline: auto; }
+.bd-foot {
+  grid-column: 2 / 12;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: clamp(24px, 4vw, 70px);
+  padding-top: clamp(24px, 4vh, 44px);
+  border-top: 1px solid var(--b-line);
+}
+.bd-foot .bfacts { margin: 0; }
+.bd-foot .bbody { margin: 0; }
+
+/* ═══ 08 · CLOSE ════════════════════════════════════════════════════════════ */
+.bs--close {
+  align-content: center;
+  min-height: 104svh;
+  padding-bottom: clamp(60px, 9vh, 130px);
+}
+.bc-shot {
+  grid-column: 6 / 13;
+  grid-row: 1;
+  justify-self: end;
+  margin-right: calc(var(--b-pad) * -1);
+}
+.bc-shot .bfig-img { width: auto; height: auto; max-height: 110svh; max-width: none; }
+.bc-type { grid-column: 1 / 8; grid-row: 1; align-self: center; z-index: 2; }
+
+.bc-buy {
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 3vw, 40px);
+  margin: clamp(34px, 5vh, 60px) 0 0;
+  padding-top: clamp(24px, 3.4vh, 36px);
+  border-top: 1px solid var(--b-line);
+}
+.bc-code { margin: 0; font: 500 var(--bt-micro) / 1 var(--b-mono); letter-spacing: 0.22em; color: var(--b-dim); }
+.bc-price {
+  margin: 0;
+  font-family: var(--b-display);
+  font-weight: 600;
+  font-size: clamp(1.5rem, 2.6vw, 2.2rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.bc-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+  padding: 15px 24px;
+  border: 1px solid var(--b-accent);
+  background: none;
+  color: var(--b-accent);
+  font: 500 var(--bt-micro) / 1 var(--b-mono);
+  letter-spacing: 0.22em;
+  cursor: pointer;
+  transition: background 0.4s var(--ease-soft, ease), color 0.4s ease;
+}
+.bc-cta i { font-style: normal; transition: transform 0.45s var(--ease-rise, ease); }
+.bc-cta:hover { background: var(--b-accent); color: #000; }
+.bc-cta:hover i { transform: translateX(5px); }
+.bc-cta[data-said="true"] { background: var(--b-accent); color: #000; }
+.bc-ship {
+  margin: clamp(18px, 2.6vh, 26px) 0 0;
+  font: 400 var(--bt-nano) / 1 var(--b-mono);
+  letter-spacing: 0.22em;
+  color: var(--b-dim);
+}
+
+/* ── THE FOOT ────────────────────────────────────────────────────────────── */
+.bw-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: clamp(30px, 5vh, 60px) var(--b-safe) clamp(40px, 7vh, 80px);
+  border-top: 1px solid var(--b-line);
+}
+.bw-colophon {
+  margin: 0;
+  max-width: 52ch;
+  font: 400 var(--bt-micro) / 1.5 var(--b-mono);
+  letter-spacing: 0.1em;
+  color: var(--b-dim);
+}
+.bw-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border: 1px solid var(--b-line);
+  background: none;
+  color: var(--b-mid);
+  font: 500 var(--bt-nano) / 1 var(--b-mono);
+  letter-spacing: 0.22em;
+  cursor: pointer;
+  transition: border-color 0.35s ease, color 0.35s ease;
+}
+.bw-home:hover { border-color: var(--b-accent); color: var(--b-accent); }
+.bw-home i { font-style: normal; }
+
+/* ── PROMOTION IS RENTED, NOT OWNED ──────────────────────────────────────────
+   The same rule worlds.css states for the frame worlds, and for the same
+   reason: a standing `will-change` on a full-screen ground is a screen-sized
+   texture held on the GPU for as long as the tab is open. It is granted for the
+   ~640ms a portal is crossing and taken back after. */
+body.is-crossing .bw-ground,
+body.is-crossing .bh-shot,
+body.is-crossing .bh-type,
+body.is-crossing .bw-rail { will-change: transform; }
+
+/* ═══ TABLET ════════════════════════════════════════════════════════════════
+   The two-column acts collapse to one and the product goes above the copy —
+   the object leads on every screen size, which is the one thing about this
+   layout that is not allowed to change. */
+@media (max-width: 1080px) {
+  .bw { --b-act: clamp(76px, 12vh, 140px); }
+
+  .bs-col, .bs-plate, .bs-wide, .bspots, .bhd-shot, .bhd-side,
+  .bd-shot, .bd-foot, .bc-shot, .bc-type { grid-column: 1 / 13; }
+
+  /* The hero product is positioned, not placed, so the grid columns that used
+     to move it do nothing now. It stays out of the layout and takes the top of
+     the screen instead of the right of it — the type drops underneath, which is
+     the same composition stood on its end. */
+  .bs--hero { align-content: end; }
+  .bh-type { grid-column: 1 / 13; grid-row: 1; align-self: end; }
+  .bh-shot {
+    inset: 0;
+    width: auto;
+    padding: 4svh 0 0;
+    align-items: start;
+    justify-items: center;
+  }
+  .bh-shot .bfig-img { height: min(66svh, 620px); }
+  .bh-foot { grid-row: 2; }
+
+  /* Section-specific column rules outrank the blanket one above them, so the
+     three that place a column narrowly have to say so again here. */
+  .bs--object .bs-col,
+  .bs--pressure .bs-col,
+  .bs--power .bs-plate { grid-column: 1 / 13; }
+  .bs--power .bs-plate .bfig-img { max-height: 70svh; }
+  /* These four are sized by the PICTURE's height now, not the container's —
+     see the note on windows. A height on the box would do nothing except
+     reserve space the picture does not fill. */
+  .bi-main .bfig-img { max-height: 86svh; }
+  .bhd-shot .bfig-img { max-height: 84svh; }
+  .bd-shot .bfig-img { max-height: 86svh; }
+  .bc-shot .bfig-img { max-height: 76svh; }
+  /* The bleeds go with the split layouts: on one column there is no side for a
+     picture to lean off, so it centres and takes a feather back. */
+  .bi-main, .bhd-shot { margin-left: 0; }
+  .bc-shot { justify-self: center; margin-right: 0; }
+  .bfig--internals .bfig-img,
+  .bfig--macro .bfig-img { --fl: 9%; }
+  .bfig--final .bfig-img { --fr: 9%; }
+  .bs-band { height: min(52svh, 460px); }
+
+  .bs--object .bspots { order: -1; width: min(100%, 380px); justify-self: center; }
+  .bi-grid { grid-template-columns: 1fr; row-gap: clamp(30px, 5vh, 60px); }
+
+  .bi-rear { max-width: 180px; }
+
+  .bhd-side { padding-bottom: 0; }
+  .bhd-side .bfacts { flex-direction: row; }
+
+  .bc-shot { grid-row: 1; }
+  .bc-type { grid-row: 2; }
+
+
+  .bnums { grid-template-columns: 1fr; gap: 0; }
+  .bnum { padding: 22px 0; }
+}
+
+/* ═══ MOBILE ════════════════════════════════════════════════════════════════
+   The disassembly KEEPS ITS PIN. It is the reason the page exists, and a
+   sticky product viewport is not a desktop luxury — a phone is where a
+   scroll-driven animation reads best, because the scroll is under a thumb.
+   What changes is the frame budget (sequence.js takes every second frame) and
+   where the callouts go: beside the product there is no room, so they stack
+   under it as a single line at a time. */
+@media (max-width: 760px) {
+  .bw {
+    --b-act: clamp(64px, 10vh, 110px);
+    --bt-body: 0.9rem;
+    --b-safe: calc(var(--b-pad) + 34px);
+  }
+
+  .bs { row-gap: clamp(22px, 3.4vh, 40px); }
+  /* The hero still has to end on the fold: the spec row and the scroll cue are
+     what tell a phone there is more page under the product. */
+  .bs--hero { padding-top: clamp(76px, 10vh, 120px); }
+
+  /* Big enough to be the hero, high enough that the headline underneath it
+     never lands on the handle. */
+  .bh-shot { padding-top: 3svh; }
+  .bh-shot .bfig-img { height: min(52svh, 430px); }
+  .bh-foot { flex-direction: column; align-items: flex-start; gap: 20px; }
+  .bh-foot .bfacts { gap: 26px; }
+
+  .bi-main .bfig-img { max-height: 68svh; }
+  .bhd-shot .bfig-img { max-height: 66svh; }
+  .bd-shot .bfig-img { max-height: 70svh; }
+  .bc-shot .bfig-img { max-height: 62svh; }
+  .bs-band { height: min(42svh, 380px); }
+  /* A feather is a percentage of its box, and these boxes are a third of the
+     width they are on a desktop — so the same proportions read as narrower
+     dissolves. Widened to match. */
+  .bfig--object .bfig-img { --fl: 10%; --fr: 10%; }
+  .bfig--rear .bfig-img { --fl: 20%; --fr: 20%; }
+
+  .bspot { width: 40px; height: 40px; margin: -20px 0 0 -20px; }
+  .bspot-card { width: min(210px, 56vw); margin-left: 22px; }
+  /* A marker on the right of the product would push its card off the screen. */
+  .bspot[data-spot="0"] + .bspot-card { left: auto; right: 0; margin-left: 0; }
+
+  .bs--explode { height: 380svh; }
+  /* The stage keeps the whole screen here too — the head and the foot carry
+     their own padding, so putting it back on the container would apply it
+     twice and push the title off the top. */
+  .bx { padding: 0; grid-template-rows: auto minmax(0, 1fr) auto auto; }
+  .bx-head { padding: clamp(52px, 7vh, 74px) var(--b-pad) 0; }
+  .bx-foot { padding: 0 var(--b-pad) clamp(16px, 2.6vh, 30px); }
+  .bx-stage { grid-area: 1 / 1 / 5 / 2; }
+  .bx-labels { grid-area: 3 / 1; z-index: 2; }
+  .bx-foot { grid-area: 4 / 1; }
+  .bx-head .bt { font-size: clamp(1.6rem, 7vw, 2.4rem); }
+  /* No split on a phone. Half a screen less a clearance for the handle is
+     about seven characters wide, and "REENGINEERED." is thirteen. */
+  .bx-head--split { display: block; padding-inline: var(--b-pad); }
+  .bx-head--split .bp { justify-self: auto; }
+  .bx-head .bt--split { display: block; text-align: center; margin-top: 0; }
+  .bx-head .bt--split > .bl:nth-child(n) { text-align: center; }
+  .bx-head--split .bt { margin-top: 0; }
+  .bx-labels { position: relative; inset: auto; height: 62px; }
+  .bx-label {
+    position: absolute;
+    inset: auto 0 0 0;
+    top: auto;
+    margin: 0;
+    max-width: none;
+    justify-items: start;
+    text-align: left;
+    transform: none;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .bx-label::after { display: none; }
+  .bx-label span { font-size: var(--bt-micro); }
+  /* One line at a time — see the note on `is-top` in brush/site.js. */
+  .bx-label.is-on { opacity: 0; }
+  .bx-label.is-top { opacity: 1; }
+  .bx-foot { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .bx-read { width: 100%; }
+  .bx-bar { flex: 1; width: auto; }
+  .bx-parts { display: none; }
+
+  .bnums { margin-top: clamp(24px, 4vh, 44px); }
+  .btable { grid-template-columns: 1fr 1fr; }
+  .btable > div { padding-left: 16px; }
+  .btable > div:nth-child(odd) { padding-left: 0; border-left: 0; }
+
+  .bc-buy { flex-wrap: wrap; gap: 16px; }
+  .bc-cta { margin-left: 0; width: 100%; justify-content: space-between; }
+
+  .bw-rail { padding-bottom: 26px; }
+  .bw-act { display: none; }
+  .bw-rail { grid-template-columns: 1fr auto; }
+}
+
+/* ═══ MOTION DECLINED ═══════════════════════════════════════════════════════
+   The two ambient loops in this world, and nothing else — every other piece of
+   motion here is either a scroll position or an entrance, and brush/site.js
+   builds a different page rather than switching those off. */
+@media (prefers-reduced-motion: reduce) {
+  .bh-line i, .bspot::after { animation: none; }
+  .bh-line i { transform: none; }
+  .bspot::after { opacity: 0; }
+}

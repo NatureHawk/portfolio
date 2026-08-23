@@ -1,0 +1,636 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   SOMEWHERE — world 04's own material.
+
+   Loaded with the page for the same reason brush.css and forms.css are: the
+   world is built the moment a hand moves towards the bottom-right corner, and a
+   stylesheet requested at that moment arrives after the portal has already
+   crossed the screen. Nothing in here applies until `.sw` exists.
+
+   THE UI IS SECONDARY TO THE WORLD. That rule is enforced with three habits
+   repeated throughout this file: type is small and widely tracked, surfaces are
+   either nothing at all or a warm translucent cream, and no element ever gets a
+   hard border when a hairline rule would do. The one thing allowed to be big is
+   the word SOMEWHERE on the landing, and it is big because the reference makes
+   it big.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.sw {
+  --sw-cream: #f3ead8;
+  --sw-cream-dim: rgba(243, 234, 216, 0.62);
+  --sw-cream-faint: rgba(243, 234, 216, 0.24);
+  --sw-tag: rgba(20, 34, 44, 0.72);
+
+  /* The landing's own type scale. Clamped rather than stepped, because this
+     headline has to sit beside a 3D object that is sized in viewport units —
+     a breakpoint would let them drift out of proportion between two widths. */
+  --sw-display: clamp(3.4rem, 9.2vw, 8.6rem);
+
+  /* FIXED, not absolute, and hidden by VISIBILITY rather than by `display`.
+     Both halves matter and both were learned the hard way.
+
+     Fixed, because `.worlds` is a zero-height relative box — the built worlds
+     are full-viewport overlays, not blocks in its flow, so an absolutely
+     positioned world inherits that zero height and the canvas comes out
+     1440×0. This is the same shape `.wframe` uses, for the same reason.
+
+     Visibility, because `display: none` gives the canvas no box at all. A
+     WebGL canvas measured while it is display-none reports zero, and the
+     renderer would be sized to nothing on the frame the world is revealed. */
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
+  contain: layout paint;
+  background: var(--sw-paper);
+  color: var(--sw-ink);
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+
+.sw[data-state='live'] { visibility: visible; pointer-events: auto; }
+
+/* ══ THE STAGE ═══════════════════════════════════════════════════════════ */
+
+.sw-stage {
+  position: absolute;
+  inset: 0;
+  /* The canvas is the transform owner during the world's arrival, so nothing
+     inside it may also be transformed. */
+  will-change: transform, opacity;
+}
+
+.sw-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  /* Without this a drag on a touchscreen scrolls the page instead of turning
+     the world — the single most important line in this file. */
+  touch-action: none;
+  outline: none;
+}
+
+.sw-canvas:focus-visible {
+  outline: 2px solid var(--sw-accent);
+  outline-offset: -4px;
+}
+
+/* ══ THE OVERLAY ═════════════════════════════════════════════════════════
+   One layer over the canvas that does not eat the pointer. Everything that
+   needs to be clickable turns pointer events back on for itself — which is
+   what lets a visitor drag the world by grabbing a spot that happens to be
+   underneath the headline. */
+
+.sw-ui {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.sw-ui button { pointer-events: auto; }
+
+.sw-ui[data-busy='yes'] { pointer-events: none; }
+.sw-ui[data-busy='yes'] button { pointer-events: none; }
+
+/* ══ LOADING ═════════════════════════════════════════════════════════════
+   Not a spinner. A short list of what is being built, ticking off. */
+
+.sw-boot {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 1.1rem;
+  background: var(--sw-paper);
+  z-index: 4;
+  transition: opacity 600ms cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+.sw-boot[data-state='gone'] { opacity: 0; pointer-events: none; }
+
+.sw-boot-title {
+  margin: 0;
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.28em;
+  color: var(--sw-cream-dim);
+}
+
+.sw-boot-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.42rem;
+}
+
+.sw-boot-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.2em;
+  color: var(--sw-cream-faint);
+  transition: color 340ms ease;
+}
+
+.sw-boot-list li[data-done='yes'] { color: var(--sw-cream); }
+
+/* The tick is a dot that fills. Cheaper than a glyph and it cannot go missing
+   if the font never answers. */
+.sw-boot-list i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  background: transparent;
+  transition: background 340ms ease;
+}
+
+.sw-boot-list li[data-done='yes'] i { background: var(--sw-accent); border-color: var(--sw-accent); }
+
+/* ══ THE LANDING ═════════════════════════════════════════════════════════
+   Left column, planet on the right — the composition of 4-Landing.png. */
+
+.sw-landing {
+  position: absolute;
+  left: clamp(1.5rem, 5.5vw, 5.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: min(46ch, 42vw);
+  transition: opacity 520ms cubic-bezier(0.7, 0, 0.2, 1),
+              transform 520ms cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+.sw-landing[data-state='idle'] { opacity: 0; }
+
+/* Pushed left and faded once the visitor commits to exploring. It does not
+   disappear — it gets out of the way, so the world is never suddenly bare. */
+.sw-landing[data-state='away'] {
+  opacity: 0;
+  transform: translateY(-50%) translateX(-2.4rem);
+  pointer-events: none;
+}
+
+.sw-title {
+  margin: 0 0 1.1rem;
+  font-family: 'Archivo', 'Instrument Sans', sans-serif;
+  font-size: var(--sw-display);
+  font-weight: 700;
+  font-stretch: 108%;
+  line-height: 0.86;
+  letter-spacing: -0.022em;
+  color: var(--sw-cream);
+  /* The reference title sits on a dark sky and has a soft lift under it. */
+  text-shadow: 0 2px 40px rgba(4, 18, 26, 0.55);
+}
+
+.sw-welcome,
+.sw-sub {
+  margin: 0;
+  font-size: clamp(0.94rem, 1.5vw, 1.22rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.32;
+  color: var(--sw-cream);
+}
+
+.sw-sub { color: var(--sw-cream-dim); margin-top: 0.16rem; }
+
+/* A dashed rule, exactly as the reference draws it — a stitched seam rather
+   than a divider. */
+.sw-rule {
+  display: block;
+  margin: 1.5rem 0 1.35rem;
+  width: min(15rem, 60%);
+  height: 1px;
+  background-image: linear-gradient(90deg, var(--sw-cream-faint) 0 62%, transparent 62% 100%);
+  background-size: 11px 1px;
+}
+
+/* The button is a paper tag: warm cream fill, dark ink, and a stitched inner
+   line instead of a border. */
+.sw-cta {
+  appearance: none;
+  position: relative;
+  padding: 0.86rem 1.9rem;
+  border: 0;
+  border-radius: 4px;
+  background: var(--sw-cream);
+  color: #17303c;
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  cursor: pointer;
+  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 260ms ease, background 200ms ease;
+  box-shadow: 0 6px 26px rgba(4, 18, 26, 0.34);
+}
+
+/* The stitch: an inset dashed outline drawn with a pseudo-element so it can
+   sit inside the fill without affecting the button's box. */
+.sw-cta::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px dashed rgba(23, 48, 60, 0.34);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.sw-cta:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(4, 18, 26, 0.42); }
+.sw-cta:active { transform: translateY(0); }
+.sw-cta:focus-visible { outline: 2px solid var(--sw-accent); outline-offset: 3px; }
+
+.sw-drag {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 1.5rem 0 0;
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.22em;
+  color: var(--sw-cream-dim);
+}
+
+.sw-drag svg { flex: none; opacity: 0.8; }
+
+/* The little scroll wheel ticks down, once, on a long loop — the only looping
+   animation on the landing. */
+@media (prefers-reduced-motion: no-preference) {
+  .sw-drag svg path {
+    animation: sw-wheel 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+}
+
+@keyframes sw-wheel {
+  0%, 62%  { transform: translateY(0); opacity: 1; }
+  78%      { transform: translateY(3px); opacity: 0; }
+  79%      { transform: translateY(-1px); opacity: 0; }
+  92%,100% { transform: translateY(0); opacity: 1; }
+}
+
+/* ══ LANDMARK TAGS ═══════════════════════════════════════════════════════
+   Anchored to the 3D landmarks and moved every frame from JS. Only transform
+   and opacity change here — never layout. */
+
+.sw-marks {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sw-mark {
+  position: absolute;
+  left: var(--x, 50%);
+  top: var(--y, 50%);
+  transform: translate(-50%, -50%);
+  transition: opacity 260ms ease;
+}
+
+.sw-mark[data-state='off'] { opacity: 0; pointer-events: none; }
+.sw-mark[data-state='dim'] { opacity: 1; }
+.sw-mark[data-state='on'] { opacity: 1; }
+
+.sw-mark button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sw-cream);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* The dot is always visible; the words only when the tag is live. That is the
+   whole "subtle until approached" behaviour, and it is two rules. */
+.sw-mark-dot {
+  position: relative;
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid var(--sw-cream);
+  background: rgba(20, 34, 44, 0.35);
+  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1), background 240ms ease;
+}
+
+.sw-mark-dot i {
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: var(--sw-accent);
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+
+.sw-mark[data-state='on'] .sw-mark-dot { transform: scale(1.32); }
+.sw-mark[data-state='on'] .sw-mark-dot i { opacity: 1; }
+
+/* A soft halo, so a dot over a pale hillside is still findable. */
+.sw-mark-dot::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(10, 26, 34, 0.5), transparent 70%);
+  z-index: -1;
+}
+
+.sw-mark-body {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.42rem 0.7rem;
+  border-radius: 4px;
+  background: var(--sw-tag);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 260ms ease, transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sw-mark[data-state='on'] .sw-mark-body { opacity: 1; transform: translateX(0); }
+
+.sw-mark-body b {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+}
+
+.sw-mark-body em {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-style: normal;
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  color: var(--sw-cream-dim);
+}
+
+.sw-mark button:focus-visible .sw-mark-body { opacity: 1; transform: translateX(0); }
+.sw-mark button:focus-visible { outline: 2px solid var(--sw-accent); outline-offset: 4px; border-radius: 6px; }
+
+/* ══ THE DESTINATION PLATE ═══════════════════════════════════════════════
+   AN EDITORIAL CAPTION, NOT A PAGE SECTION.
+
+   The environment is the content here and the words are a label on it, so this
+   is deliberately small, thin, and pushed into the bottom corner where a
+   photograph would carry its credit. An earlier version set the place name at
+   nearly fifty pixels with a full-width rule under it, which read as a website
+   section that happened to have a 3D background behind it — precisely the
+   impression this world exists to avoid.
+
+   The scrim is the one concession. Type over a lit forest is unreadable
+   wherever you put it, so there is a soft vertical wash behind the corner —
+   wide, very gradual, and carrying no edge of its own. It reads as the picture
+   getting darker towards the bottom, not as a panel. */
+.sw-place {
+  position: absolute;
+  left: clamp(1.4rem, 4vw, 3.4rem);
+  bottom: clamp(1.4rem, 5vh, 3rem);
+  max-width: 26ch;
+  transition: opacity 460ms cubic-bezier(0.7, 0, 0.2, 1),
+              transform 460ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* The wash. Sits behind the plate, anchored to the viewport corner, and is
+   pointer-transparent so the world underneath can still be dragged. */
+.sw-place::before {
+  content: '';
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: min(46rem, 60vw);
+  height: min(26rem, 48vh);
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(130% 110% at 0% 100%,
+      rgba(8, 22, 30, 0.70) 0%,
+      rgba(8, 22, 30, 0.58) 22%,
+      rgba(8, 22, 30, 0.40) 42%,
+      rgba(8, 22, 30, 0.22) 60%,
+      rgba(8, 22, 30, 0.09) 78%,
+      rgba(8, 22, 30, 0) 92%);
+  opacity: 0;
+  transition: opacity 520ms ease;
+}
+
+.sw-place[data-state='live']::before { opacity: 1; }
+
+.sw-place[data-state='idle'] {
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+}
+
+.sw-place[data-state='live'] { opacity: 1; transform: translateY(0); }
+
+.sw-place-no {
+  margin: 0 0 0.25rem;
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 0.56rem;
+  letter-spacing: 0.3em;
+  color: var(--sw-accent);
+}
+
+/* Noticeably smaller than it was, and lighter. It is a caption. */
+.sw-place-name {
+  margin: 0;
+  font-family: 'Archivo', sans-serif;
+  font-size: clamp(1.3rem, 2.1vw, 1.85rem);
+  font-weight: 600;
+  font-stretch: 104%;
+  line-height: 1.0;
+  letter-spacing: 0.01em;
+  color: var(--sw-cream);
+}
+
+.sw-place-line {
+  margin: 0.45rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--sw-cream-dim);
+}
+
+.sw-place-facts {
+  display: flex;
+  gap: 1.3rem;
+  margin: 0.8rem 0 0.95rem;
+  padding-top: 0.65rem;
+  /* A short rule rather than one spanning the column — it marks the figures
+     off, it does not underline the caption. */
+  border-top: 1px solid var(--sw-cream-faint);
+  max-width: 15rem;
+}
+
+.sw-place-facts dt {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.22em;
+  color: var(--sw-cream-dim);
+}
+
+.sw-place-facts dd {
+  margin: 0.16rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--sw-cream);
+}
+
+.sw-back,
+.sw-sound {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.95rem;
+  border: 1px solid var(--sw-cream-faint);
+  border-radius: 4px;
+  background: rgba(20, 34, 44, 0.42);
+  color: var(--sw-cream);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 0.56rem;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  transition: background 220ms ease, border-color 220ms ease, transform 240ms cubic-bezier(0.16,1,0.3,1);
+}
+
+.sw-back:hover,
+.sw-sound:hover { background: rgba(20, 34, 44, 0.66); border-color: var(--sw-cream-dim); }
+.sw-back:focus-visible,
+.sw-sound:focus-visible { outline: 2px solid var(--sw-accent); outline-offset: 3px; }
+
+.sw-back i { font-style: normal; transition: transform 260ms cubic-bezier(0.16,1,0.3,1); }
+.sw-back:hover i { transform: translateX(-3px); }
+
+/* ══ SOUND ═══════════════════════════════════════════════════════════════ */
+
+.sw-sound {
+  position: absolute;
+  right: clamp(1.2rem, 4vw, 3rem);
+  bottom: clamp(1.6rem, 6vh, 4rem);
+}
+
+.sw-sound-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+
+.sw-sound-bars i {
+  width: 2px;
+  height: 3px;
+  background: currentColor;
+  transition: height 240ms ease;
+}
+
+.sw-sound[data-on='yes'] .sw-sound-bars i { height: 10px; }
+.sw-sound[data-on='yes'] .sw-sound-bars i:nth-child(2) { height: 6px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .sw-sound[data-on='yes'] .sw-sound-bars i {
+    animation: sw-eq 900ms ease-in-out infinite alternate;
+  }
+  .sw-sound[data-on='yes'] .sw-sound-bars i:nth-child(2) { animation-delay: 150ms; }
+  .sw-sound[data-on='yes'] .sw-sound-bars i:nth-child(3) { animation-delay: 300ms; }
+}
+
+@keyframes sw-eq { from { height: 3px; } to { height: 10px; } }
+
+/* ══ SMALL SCREENS ═══════════════════════════════════════════════════════
+   Not the desktop scene scaled down. The type stacks to the top so the planet
+   owns the lower two-thirds of a tall screen, the landmark tags are always
+   labelled because there is no hover to reveal them, and the touch targets go
+   up to a size a thumb can actually hit. */
+
+@media (max-width: 860px), (pointer: coarse) {
+  .sw-landing {
+    top: clamp(2.2rem, 8vh, 4rem);
+    transform: none;
+    max-width: none;
+    left: clamp(1.2rem, 6vw, 2rem);
+    right: clamp(1.2rem, 6vw, 2rem);
+  }
+
+  .sw-landing[data-state='away'] { transform: translateY(-1.4rem); }
+
+  .sw-title { --sw-display: clamp(2.9rem, 15vw, 5rem); }
+  .sw-rule { width: 8rem; margin: 1.1rem 0 1rem; }
+  .sw-drag { margin-top: 1.1rem; }
+
+  /* Bigger tap targets, and the label always on. */
+  .sw-mark-dot { width: 14px; height: 14px; }
+  .sw-mark button { padding: 6px; }
+  .sw-mark-body { opacity: 1; transform: none; }
+
+  .sw-place {
+    left: clamp(1.2rem, 6vw, 2rem);
+    right: clamp(1.2rem, 6vw, 2rem);
+    bottom: 5.2rem;
+    max-width: none;
+  }
+
+  .sw-place-facts { gap: 1.2rem; }
+
+  .sw-sound {
+    right: clamp(1.2rem, 6vw, 2rem);
+    bottom: 1.4rem;
+  }
+
+  .sw-back, .sw-sound { padding: 0.8rem 1.1rem; }
+}
+
+/* ══ THE COMPACT MIDDLE ══════════════════════════════════════════════════
+   A window that is desktop-WIDE but short — a laptop with the browser chrome
+   eating a third of the screen, an editor's embedded preview pane — clears
+   the 860px mobile breakpoint by a wide margin and so never picks up its
+   tighter spacing, but at, say, 1024×580 the plate's desktop margins
+   (clamp() topping out at 3rem of bottom padding, a 26ch caption, a
+   full-height wash) leave the heading, the line and the facts nearly
+   touching. This is the fix: the same card, with the vertical rhythm pulled
+   in, triggered on height alone so a merely narrow desktop window is
+   untouched by it. */
+@media (max-height: 700px) and (min-width: 861px) {
+  .sw-place {
+    bottom: clamp(0.9rem, 3.2vh, 1.6rem);
+    max-width: 23ch;
+  }
+  .sw-place::before { height: min(20rem, 58vh); }
+  .sw-place-line { margin-top: 0.32rem; line-height: 1.32; }
+  .sw-place-facts { margin: 0.55rem 0 0.7rem; padding-top: 0.5rem; }
+  .sw-sound { bottom: clamp(1rem, 3.2vh, 1.8rem); }
+}
+
+/* A short screen in landscape — a phone turned sideways — has no room for a
+   stacked column, so the type goes back beside the world and shrinks. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .sw-landing { top: 50%; transform: translateY(-50%); right: auto; max-width: 40vw; }
+  .sw-title { --sw-display: clamp(2rem, 7vw, 3.2rem); }
+  .sw-welcome, .sw-sub { font-size: 0.8rem; }
+  .sw-place { bottom: 1rem; }
+}
+
+/* ══ REDUCED MOTION ══════════════════════════════════════════════════════
+   The world still turns when dragged — that is the content, not decoration —
+   but nothing moves on its own and every transition collapses. */
+
+@media (prefers-reduced-motion: reduce) {
+  .sw-landing,
+  .sw-place,
+  .sw-mark,
+  .sw-mark-body,
+  .sw-mark-dot,
+  .sw-boot,
+  .sw-cta,
+  .sw-back,
+  .sw-sound { transition-duration: 1ms !important; }
+}
