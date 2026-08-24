@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HUM — The internet should feel alive.</title>
+    <meta
+      name="description"
+      content="HUM is a shared canvas for studios that never sit still. A fictional product, built as a real website — every object on this page can be moved."
+    />
+    <meta name="author" content="Priyanshu Ghosh" />
+    <meta name="theme-color" content="#f1eee5" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+
+    <!-- WHICH WORLD IS THIS PAGE OPENING ON, decided before a single pixel is
+         painted. `/design?w=03` is a real address — it can be linked,
+         bookmarked and refreshed — and until this existed every one of those
+         arrivals was covered by HUM's cream curtain reading "OPENING THE
+         CANVAS", then cut to a black fashion editorial. The curtain was
+         announcing the wrong world.
+
+         IT HAS TO BE INLINE AND IT HAS TO BE HERE. The curtain is in the HTML
+         precisely so it paints before any module runs; a module that recoloured
+         it afterwards would be recolouring something the visitor had already
+         seen. This runs during head parsing, so `data-boot` is on the root
+         element before the body exists and the first paint is already correct.
+
+         It resolves the same two spellings registry.js does (`?w=03`, `#03`)
+         and falls back to 01 on anything it does not recognise, so a malformed
+         URL opens the home world rather than an unstyled panel. -->
+    <script>
+      (function () {
+        var id = '01';
+        try {
+          var raw =
+            new URLSearchParams(location.search).get('w') || location.hash.slice(1) || '';
+          var padded = raw.replace(/[^0-9]/g, '').padStart(2, '0');
+          if (/^0[1-4]$/.test(padded)) id = padded;
+        } catch (e) { /* opening the home world is the right failure */ }
+        document.documentElement.dataset.boot = id;
+        var paper = { '01': '#f1eee5', '02': '#000000', '03': '#08080a', '04': '#070d14' }[id];
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.content = paper;
+      })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Four families, four jobs, ONE request. Bricolage Grotesque is HUM's
+         display face and it is variable on width and optical size — not a
+         nicety: the hero words narrow on hover along the wdth axis and that
+         effect is that page's signature. Instrument Sans reads and DM Mono
+         labels, in both worlds.
+
+         Archivo is world 02's display face, and it is here rather than in a
+         second request because a stylesheet asked for at the moment a corner is
+         pressed arrives after the world it was meant to set. A product wants a
+         neo-grotesque with no opinions in the letterforms; Bricolage has
+         several, which is exactly right for HUM and exactly wrong for a
+         toothbrush. -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&family=DM+Mono:wght@400;500&family=Instrument+Sans:wdth,wght@75..100,400..700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="design.css" />
+    <!-- The only stylesheet the four worlds share: the corner controls, the
+         portal layer and the frame a world that is not built yet stands in.
+         Nothing in it styles HUM. -->
+    <link rel="stylesheet" href="design/worlds.css" />
+    <!-- World 02's own material. Loaded with the page and not with the world,
+         because the world is built the moment a hand moves towards the top-right
+         corner and has to be fully laid out before the portal finishes crossing
+         the screen. A stylesheet requested at that moment would land after it.
+         Nothing in here applies until `body[data-world="02"]`. -->
+    <link rel="stylesheet" href="design/brush.css" />
+    <!-- World 03's own material, loaded with the page for the same reason
+         brush.css is: the world is built the moment a hand moves towards the
+         bottom-left corner and has to be fully laid out before the portal
+         finishes crossing the screen. A stylesheet requested at that moment
+         would land after it. Nothing in here applies until `body[data-world="03"]`
+         or inside `.fw`. -->
+    <link rel="stylesheet" href="design/forms.css" />
+    <!-- World 04's own material. Same reason as the two above: the world is
+         built the moment a hand moves towards the bottom-right corner and has to
+         be laid out before the portal finishes opening. Nothing in here applies
+         until `.sw` exists. -->
+    <link rel="stylesheet" href="design/somewhere.css" />
+
+    <!-- World 04 is a real-time 3D scene, so the design section needs three.
+         Declared here rather than fetched by somewhere/site.js, because an
+         import map has to be in the document before any module that relies on it
+         is requested — and site.js is requested at the moment a corner is
+         pressed, which is far too late to add one. Nothing downloads three
+         until that happens; this only says where it lives. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.min.js",
+          "three/addons/": "./vendor/three/addons/"
+        }
+      }
+    </script>
+
+    <!-- The module graph, declared rather than discovered. Without these the
+         browser learns about anime only after design.js parses, and about the
+         section modules only after that — three serial round trips before a
+         frame runs. Declared here they are all fetched at once. -->
+    <link rel="modulepreload" href="vendor/anime/anime.esm.min.js" />
+    <link rel="modulepreload" href="design.js" />
+    <link rel="modulepreload" href="design/motion.js" />
+    <link rel="modulepreload" href="design/lazy.js" />
+    <link rel="modulepreload" href="vendor/unlazy/unlazy.js" />
+    <link rel="modulepreload" href="design/trail.js" />
+    <link rel="modulepreload" href="design/content.js" />
+    <link rel="modulepreload" href="design/parts.js" />
+    <link rel="modulepreload" href="design/canvas.js" />
+    <link rel="modulepreload" href="design/cursors.js" />
+    <link rel="modulepreload" href="design/chrome.js" />
+    <link rel="modulepreload" href="design/hero.js" />
+    <link rel="modulepreload" href="design/story.js" />
+    <link rel="modulepreload" href="design/product.js" />
+    <link rel="modulepreload" href="design/worlds/shell.js" />
+    <link rel="modulepreload" href="design/worlds/registry.js" />
+    <link rel="modulepreload" href="design/worlds/corners.js" />
+    <link rel="modulepreload" href="design/worlds/portal.js" />
+    <link rel="modulepreload" href="design/worlds/nav.js" />
+    <link rel="modulepreload" href="design/worlds/frame.js" />
+    <link rel="modulepreload" href="design/worlds/world01.js" />
+    <link rel="modulepreload" href="design/worlds/world02.js" />
+    <link rel="modulepreload" href="design/brush/site.js" />
+    <link rel="modulepreload" href="design/brush/content.js" />
+    <link rel="modulepreload" href="design/brush/sequence.js" />
+    <link rel="modulepreload" href="design/worlds/world03.js" />
+    <link rel="modulepreload" href="design/forms/site.js" />
+    <link rel="modulepreload" href="design/forms/content.js" />
+    <link rel="modulepreload" href="design/worlds/world04.js" />
+  </head>
+
+  <body class="is-arriving">
+    <!-- ENTRANCE. Not a loading screen: the page beneath is already built and
+         already interactive. This is a 700ms curtain that gives the hero
+         somewhere to arrive from, and it lifts whether or not the fonts
+         ever answer. -->
+    <!-- Four marks, one of which is shown — chosen by `data-boot` on the root
+         element, set by the inline script in the head. The other three are
+         `display: none` and cost nothing; doing it this way rather than writing
+         the text from JS means the curtain is correct in the HTML itself, so it
+         is right on the first paint and right with scripting off. -->
+    <div class="arrive" id="arrive" aria-hidden="true">
+      <p class="arrive-mark" data-boot-w="01">HUM<i></i></p>
+      <p class="arrive-mark" data-boot-w="02">BRUSH<b>/01</b><i></i></p>
+      <p class="arrive-mark" data-boot-w="03">NEW FORMS<i></i></p>
+      <p class="arrive-mark" data-boot-w="04">SOMEWHERE<i></i></p>
+      <p class="arrive-note" data-boot-w="01">OPENING THE CANVAS</p>
+      <p class="arrive-note" data-boot-w="02">PRODUCT / 01</p>
+      <p class="arrive-note" data-boot-w="03">ISSUE 03 — FORM STUDY</p>
+      <p class="arrive-note" data-boot-w="04">A WORLD WORTH EXPLORING</p>
+      <span class="arrive-rule"><i></i></span>
+    </div>
+
+    <a class="skip" href="#hero-title">Skip to content</a>
+
+    <!-- ══ WORLD 01 · HUM ═══════════════════════════════════════════════════
+         One of four sites reachable from this page, and the only one built.
+         Everything from here to the status strip is HUM; the wrapper exists so
+         all of it can leave through a corner at once. See design/worlds/. -->
+    <div class="world" id="world-01" data-world="01">
+    <!-- ── CHROME ──────────────────────────────────────────────────────── -->
+    <header class="top" id="top">
+      <a class="back" href="index.html" data-back data-cursor="BACK">
+        <i aria-hidden="true">←</i><span class="back-label">THE ROOM</span>
+      </a>
+      <span class="top-div" aria-hidden="true"></span>
+      <a class="mark-hum" href="#hero-title">
+        HUM<span class="mark-dot" aria-hidden="true"></span>
+        <span class="mark-sub">SHARED CANVAS</span>
+      </a>
+
+      <nav class="top-nav" aria-label="Sections">
+        <a class="top-link" href="#still"><b>WHY</b><i aria-hidden="true">WHY</i></a>
+        <a class="top-link" href="#moves"><b>LIVE</b><i aria-hidden="true">LIVE</i></a>
+        <a class="top-link" href="#product"><b>PRODUCT</b><i aria-hidden="true">PRODUCT</i></a>
+        <!-- The one control on this page that is about the page. It follows the
+             system setting until somebody presses it; after that it follows
+             them. See initMotionToggle in design/chrome.js. -->
+        <button class="motion" id="motion" type="button" data-cursor="MOTION">
+          <span class="motion-dot" aria-hidden="true"></span>
+          <span class="motion-word">MOTION</span>
+          <span class="motion-state" id="motion-state">ON</span>
+        </button>
+        <a class="btn btn--solid" href="#start" data-cursor="START" data-magnetic>
+          START
+          <span class="btn-arrow" aria-hidden="true"><i>→</i><i>→</i></span>
+        </a>
+      </nav>
+    </header>
+
+    <main>
+      <!-- ══ 01 · HERO ═══════════════════════════════════════════════════
+           The headline lives inside the canvas, not above it. Everything you
+           can see here can be picked up. -->
+      <section class="hero" id="hero" aria-labelledby="hero-title">
+        <div class="hero-eyebrow">
+          <p class="lab">SHARED CANVAS</p>
+          <span class="dot" aria-hidden="true"></span>
+          <p class="lab">STUDIO SOFTWARE</p>
+          <span class="dot" aria-hidden="true"></span>
+          <p class="lab">v0.9 OPEN BETA</p>
+          <div class="hero-live">
+            <p class="lab">IN THE ROOM</p>
+            <div class="av-stack" id="hero-people"></div>
+          </div>
+        </div>
+
+        <div class="hero-stage stage" id="hero-stage" data-canvas>
+          <div class="hero-type">
+            <h1 class="hero-title display" id="hero-title">
+              <span class="tl"><span class="tl-in">THE INTERNET</span></span>
+              <span class="tl"><span class="tl-in">SHOULD FEEL</span></span>
+              <span class="tl"
+                ><span class="tl-in"
+                  >ALIVE.<span class="hero-swipe" aria-hidden="true"></span></span
+              ></span>
+            </h1>
+          </div>
+          <!-- Canvas objects are injected here: they are only meaningful with
+               their behaviour attached, so the thing and its behaviour are
+               built in the same place. -->
+        </div>
+
+        <div class="hero-rail">
+          <p class="hero-lede">
+            HUM is one canvas the whole studio stands around. Nothing on it holds
+            still — <b>including this page.</b> Grab something and move it.
+          </p>
+
+          <div class="meter">
+            <p class="lab">HUM LEVEL</p>
+            <div class="meter-bars" id="meter" aria-hidden="true"></div>
+          </div>
+
+          <div class="hero-scroll">
+            <p class="hero-hint"><i aria-hidden="true"></i>DRAG ANYTHING</p>
+            <span class="hero-scroll-line" aria-hidden="true"><i></i></span>
+            <p class="lab">SCROLL</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ 02 · IDEAS ARE NOT STATIC ═══════════════════════════════════ -->
+      <section class="sec still" id="still" aria-labelledby="still-title">
+        <header class="plate">
+          <span class="plate-no">02</span>
+          <span class="plate-label">WHY</span>
+          <span class="plate-rule" aria-hidden="true"></span>
+          <span class="plate-meta">ONE PAGE / SIX PIECES</span>
+        </header>
+
+        <div class="sec-top">
+          <h2 class="h2" id="still-title">
+            <span class="tl"><span class="tl-in">Ideas are</span></span>
+            <span class="tl"><span class="tl-in">not static<em>.</em></span></span>
+          </h2>
+          <p class="lede">
+            A document is a photograph of a thought. Useful, and already out of
+            date. We kept flattening living work into files, then wondered why it
+            felt dead.
+          </p>
+        </div>
+
+        <!-- The flat document. `data-loose` is where each piece goes when it
+             comes apart: dx, dy in pixels and a rotation, interpolated by the
+             scroll scrubber. The page is a real page — headline, image, body,
+             caption — so what breaks up is recognisably a document. -->
+        <div class="flat" id="flat">
+          <div class="flat-piece" data-piece="p1" data-loose="-128,-66,-7">
+            <span class="lab">HEADLINE</span>
+            <span class="flat-bar"></span>
+          </div>
+          <div class="flat-piece" data-piece="p2" data-loose="158,-34,6">
+            <span class="lab">IMAGE</span>
+            <span class="art art--halftone"><span class="art-halftone"></span></span>
+          </div>
+          <div class="flat-piece" data-piece="p3" data-loose="-112,30,4">
+            <span class="lab">BODY</span>
+            <span class="flat-lines" aria-hidden="true">
+              <i style="--w: 96%"></i><i style="--w: 88%"></i><i style="--w: 92%"></i>
+              <i style="--w: 74%"></i><i style="--w: 90%"></i><i style="--w: 46%"></i>
+            </span>
+          </div>
+          <div class="flat-piece" data-piece="p4" data-loose="120,90,-9">
+            <span class="lab">NOTE</span>
+            <span class="flat-note">this bit is still true</span>
+          </div>
+          <div class="flat-piece" data-piece="p5" data-loose="-52,122,8">
+            <span class="lab">CAPTION</span>
+            <span class="flat-bar"></span>
+          </div>
+          <div class="flat-piece" data-piece="p6" data-loose="88,24,-5">
+            <span class="lab">SWATCH</span>
+            <span class="art art--stripe"><span class="art-stripe"></span></span>
+          </div>
+        </div>
+
+        <div class="flat-caption">
+          <p class="lab">FIG. 01 — A PAGE, AND THE SIX LIVE THINGS IT WAS MADE FROM</p>
+          <p class="lab lab--ink" id="flat-state">KEEP SCROLLING</p>
+        </div>
+
+        <div class="still-cols">
+          <div class="still-col">
+            <span class="still-col-no">A</span>
+            <div>
+              <h3 class="h3">The file was the problem</h3>
+              <p>
+                Export, attach, rename, resend. Every step turned something in
+                motion into something anyone could only look at.
+              </p>
+            </div>
+          </div>
+          <div class="still-col">
+            <span class="still-col-no">B</span>
+            <div>
+              <h3 class="h3">So we took the lid off</h3>
+              <p>
+                HUM has no export step, because there is nothing to freeze. The
+                work is the room, and you are already standing in it.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scroll velocity pushes this band, so the reader's own motion drives
+             the one mechanical thing on the page. -->
+        <div class="marq" id="marq" aria-hidden="true">
+          <div class="marq-row" id="marq-row"></div>
+        </div>
+      </section>
+
+      <!-- ══ 03 · EVERYTHING MOVES ═══════════════════════════════════════ -->
+      <section class="sec moves" id="moves" aria-labelledby="moves-title">
+        <header class="plate">
+          <span class="plate-no">03</span>
+          <span class="plate-label">LIVE</span>
+          <span class="plate-rule" aria-hidden="true"></span>
+          <span class="plate-meta">4 PEOPLE / ONE SURFACE</span>
+        </header>
+
+        <div class="sec-top">
+          <h2 class="h2" id="moves-title">
+            <span class="tl"><span class="tl-in">Everything</span></span>
+            <span class="tl"><span class="tl-in">moves<em>.</em></span></span>
+          </h2>
+          <p class="lede">
+            Four people, one surface, no turns. A real sequence at real speed —
+            the log is written as it happens, not before.
+          </p>
+        </div>
+
+        <div class="moves-grid">
+          <div class="moves-board stage stage--framed" id="moves-board" data-canvas></div>
+
+          <aside class="log" aria-label="Session log">
+            <div class="log-head">
+              <span class="lab">SESSION LOG</span>
+              <span class="log-live"><i aria-hidden="true"></i>LIVE</span>
+            </div>
+            <div class="log-list" id="log-list" aria-live="polite"></div>
+            <div class="log-foot">
+              <button class="log-replay" type="button" id="log-replay" data-cursor="REPLAY">
+                <i aria-hidden="true">↻</i>REPLAY TAKE
+              </button>
+              <span class="lab" id="log-count">0 EVENTS</span>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ══ 04 · MAKE SOMETHING TOGETHER ════════════════════════════════
+           A tall section with a sticky frame. The scroll IS the assembly — the
+           visitor performs it, which is what separates this from a video. -->
+      <section class="together" id="together" aria-labelledby="together-title">
+        <div class="together-track">
+          <div class="together-stick">
+            <div class="together-head">
+              <div>
+                <header class="plate">
+                  <span class="plate-no">04</span>
+                  <span class="plate-label">MAKE SOMETHING</span>
+                  <span class="plate-rule" aria-hidden="true"></span>
+                </header>
+                <h2 class="h2" id="together-title">
+                  <span class="tl"><span class="tl-in">Make something</span></span>
+                  <span class="tl"><span class="tl-in">together<em>.</em></span></span>
+                </h2>
+              </div>
+              <p class="lede">
+                Keep scrolling. Four people's loose scraps become one poster —
+                assembled once, by everyone, in the place it already lived.
+              </p>
+            </div>
+
+            <div class="together-stage">
+              <!-- The finished composition is described exactly once, by this
+                   grid. `data-from` is only the scatter each piece starts in,
+                   so the loose state and the landed state cannot disagree. -->
+              <div class="poster" id="poster">
+                <div class="poster-piece" data-slot="mark" data-from="-46,4,-18" data-who="alex">
+                  <span class="poster-mark">
+                    <span class="art art--dots"><span class="art-dots"></span></span>
+                    <b>HUM</b>
+                  </span>
+                </div>
+                <div class="poster-piece" data-slot="swatch" data-from="30,-34,9" data-who="juno">
+                  <span class="art art--swatch">
+                    <span class="art-chips">
+                      <i style="--c: var(--ink)"></i>
+                      <i style="--c: var(--accent)"></i>
+                      <i style="--c: var(--paper-deep)"></i>
+                      <i style="--c: var(--ink-soft)"></i>
+                    </span>
+                  </span>
+                </div>
+                <div class="poster-piece" data-slot="art" data-from="42,-16,11" data-who="alex">
+                  <span class="art art--arc">
+                    <span class="art-arc"></span>
+                    <span class="art-bar art-bar--a"></span>
+                    <span class="art-bar art-bar--b"></span>
+                  </span>
+                </div>
+                <div class="poster-piece" data-slot="type" data-from="-38,22,-13" data-who="mara">
+                  <span class="poster-kicker">HUM PRESENTS</span>
+                  <span class="poster-title">THE LIVING<br />ISSUE</span>
+                </div>
+                <div class="poster-piece" data-slot="rule" data-from="4,44,5" data-who="mara">
+                  <span class="poster-rule"></span>
+                </div>
+                <div class="poster-piece" data-slot="meta" data-from="36,34,-8" data-who="you">
+                  <span class="poster-meta">
+                    <span>NO. 04</span><span>SPRING</span><span>MADE BY FOUR</span>
+                  </span>
+                </div>
+                <span class="stamp" id="stamp" aria-hidden="true">SHIPPED</span>
+              </div>
+            </div>
+
+            <div class="together-foot">
+              <span class="lab" id="together-state">SCATTERED</span>
+              <span class="track" aria-hidden="true"><i id="together-fill"></i></span>
+              <span class="lab lab--ink" id="together-pct">00%</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ 05 · THE WORKSPACE ══════════════════════════════════════════ -->
+      <section class="sec product" id="product" aria-labelledby="product-title">
+        <header class="plate">
+          <span class="plate-no">05</span>
+          <span class="plate-label">THE WORKSPACE</span>
+          <span class="plate-rule" aria-hidden="true"></span>
+          <span class="plate-meta">EVERYTHING HERE WORKS</span>
+        </header>
+
+        <div class="sec-top">
+          <h2 class="h2" id="product-title">
+            <span class="tl"><span class="tl-in">The</span></span>
+            <span class="tl"><span class="tl-in">workspace<em>.</em></span></span>
+          </h2>
+          <p class="lede">
+            Not a screenshot. The sidebar switches projects, the tabs switch
+            panels, the canvas can be rearranged — building it was easier than
+            faking it convincingly.
+          </p>
+        </div>
+
+        <div class="app" id="app">
+          <div class="app-bar">
+            <p class="mark-hum">HUM<span class="mark-dot" aria-hidden="true"></span></p>
+            <p class="app-crumb"><b id="app-crumb">THE LIVING ISSUE</b> / <span id="app-crumb-tab">CANVAS</span></p>
+            <div class="app-bar-right">
+              <div class="av-stack" id="app-people"></div>
+              <button class="btn" type="button" data-cursor="INVITE" data-magnetic>
+                INVITE
+                <span class="btn-arrow" aria-hidden="true"><i>+</i><i>+</i></span>
+              </button>
+            </div>
+          </div>
+
+          <div class="app-side">
+            <div class="app-side-head">
+              <span class="lab">PROJECTS</span>
+              <span class="lab" id="app-proj-count">04</span>
+            </div>
+            <div id="app-projects" role="listbox" aria-label="Projects"></div>
+            <div class="app-side-foot">
+              <span class="lab">STORAGE / 42% OF 20 GB</span>
+            </div>
+          </div>
+
+          <div class="app-main">
+            <div class="app-tabs" id="app-tabs" role="tablist" aria-label="Workspace panels"></div>
+            <div class="app-panels" id="app-panels"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ 06 · COLLABORATION ══════════════════════════════════════════ -->
+      <section class="sec faster" id="faster" aria-labelledby="faster-title">
+        <header class="plate">
+          <span class="plate-no">06</span>
+          <span class="plate-label">COLLABORATION</span>
+          <span class="plate-rule" aria-hidden="true"></span>
+          <span class="plate-meta">NO HANDOFF / NO VERSIONS</span>
+        </header>
+
+        <div class="faster-grid">
+          <div class="faster-head">
+            <h2 class="h2" id="faster-title">
+              <span class="tl"><span class="tl-in">Ideas move</span></span>
+              <span class="tl"><span class="tl-in"><span class="mark">faster</span></span></span>
+              <span class="tl"><span class="tl-in">together<em>.</em></span></span>
+            </h2>
+            <p class="lede">
+              No handoff, no version, no “latest final”. Four cursors on one
+              object, and the object keeps up.
+            </p>
+
+            <dl class="faster-stats">
+              <div class="stat">
+                <b>0<em>MS</em></b>
+                <span>HANDOFF TIME</span>
+              </div>
+              <div class="stat">
+                <b>1<em>FILE</em></b>
+                <span>THERE IS ONLY EVER ONE</span>
+              </div>
+              <div class="stat">
+                <b>∞</b>
+                <span>PEOPLE PER SURFACE</span>
+              </div>
+            </dl>
+          </div>
+
+          <div class="shared stage stage--framed" id="shared" data-canvas>
+            <div class="shared-obj">
+              <span class="shared-word" id="shared-word">ALIVE</span>
+              <div class="shared-caption">
+                <span class="lab">HEADLINE / SHARED</span>
+                <div class="av-stack" id="shared-people"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ 07 · EVERYTHING IN ONE PLACE ════════════════════════════════ -->
+      <section class="sec every" id="everything" aria-labelledby="every-title">
+        <header class="plate">
+          <span class="plate-no">07</span>
+          <span class="plate-label">ONE PLACE</span>
+          <span class="plate-rule" aria-hidden="true"></span>
+          <span class="plate-meta" id="desk-count">09 THINGS</span>
+        </header>
+
+        <div class="sec-top">
+          <h2 class="h2" id="every-title">
+            <span class="tl"><span class="tl-in">Everything</span></span>
+            <span class="tl"><span class="tl-in">in one place<em>.</em></span></span>
+          </h2>
+          <p class="lede">
+            Notes, images, documents, references, sketches, tasks. Loose, on
+            purpose — a grid would tidy away the one thing that matters, which is
+            that somebody put each of these somewhere.
+          </p>
+        </div>
+
+        <div class="every-top">
+          <div class="filters" id="filters" role="group" aria-label="Filter the desk"></div>
+          <p class="lab">DRAG ANYTHING / NOTHING SNAPS BACK</p>
+        </div>
+
+        <div class="desk stage stage--framed" id="desk" data-canvas></div>
+
+        <div class="desk-foot">
+          <p class="lab" id="desk-state">SHOWING ALL 09</p>
+          <p class="lab">FIG. 02 — ONE SURFACE, EVERY KIND OF THING</p>
+        </div>
+      </section>
+
+      <!-- ══ 08 · MAKE SOMETHING ALIVE ═══════════════════════════════════
+           The page inverts once, at the end: the same three materials with ink
+           and paper swapped, so it reads as the same product at night. -->
+      <section class="cta" id="start" aria-labelledby="start-title">
+        <div class="cta-inner">
+          <h2 class="cta-title" id="start-title">
+            <span class="tl"><span class="tl-in">MAKE</span></span>
+            <span class="tl"><span class="tl-in">SOMETHING</span></span>
+            <span class="tl"><span class="tl-in cta-alive">ALIVE.</span></span>
+          </h2>
+
+          <div class="cta-row">
+            <p class="cta-lede">
+              Open a canvas. Invite three people. Watch it stop being a page.
+            </p>
+            <button class="cta-btn" type="button" id="cta-btn" data-cursor="START">
+              START A PROJECT
+              <span class="btn-arrow" aria-hidden="true"><i>→</i><i>→</i></span>
+            </button>
+          </div>
+
+          <div class="cta-hum" id="cta-hum" aria-hidden="true"></div>
+
+          <div class="colophon">
+            <div>
+              <p>HUM — a shared canvas for studios that never sit still.</p>
+              <p>A fictional product, built to prove a real point.</p>
+            </div>
+            <nav class="colophon-links" aria-label="Elsewhere">
+              <a href="index.html" data-back data-cursor="BACK">THE ROOM<i aria-hidden="true">↗</i></a>
+              <a href="code.html" data-cursor="OPEN">CODE / SHEET 01<i aria-hidden="true">↗</i></a>
+              <a href="mailto:ghpriyanshu2@gmail.com" data-cursor="EMAIL">EMAIL<i aria-hidden="true">↗</i></a>
+            </nav>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ── STATUS STRIP ────────────────────────────────────────────────── -->
+    <div class="strip" id="strip" aria-hidden="true">
+      <span class="strip-no" id="strip-no">01</span>
+      <span class="strip-label" id="strip-label">ALIVE</span>
+      <span class="strip-track"><i id="strip-fill"></i></span>
+      <span class="strip-pct" id="strip-pct">00%</span>
+    </div>
+    </div>
+    <!-- ══ WORLDS 02 – 04 ═══════════════════════════════════════════════════
+         Mounted here, by their own modules, the moment a pointer comes near the
+         corner they live in — so a world is always already built and laid out
+         before the portal that reveals it has finished opening. Empty until
+         then, and never navigated to. -->
+    <div class="worlds" id="worlds"></div>
+
+    <!-- ══ BACK TO THE ROOM ═════════════════════════════════════════════════
+         The one control that belongs to the DOCUMENT rather than to any world
+         in it. HUM carries its own in its top bar, which is part of that site's
+         chrome and stays; the other three worlds had no way out at all except
+         the browser's back button, so anyone who crossed a corner and then
+         wanted the room was stuck inside /design.
+
+         It sits outside `#worlds` on purpose: everything inside that element is
+         shown and hidden by the shell as worlds swap, and a way home that
+         disappears with the world it was in is not a way home.
+
+         It carries `data-back`, so initBackLinks in design/chrome.js gives it
+         the same treatment as HUM's: `history.go(-(trailDepth + 1))` when we
+         actually came from the room, which lets the browser restore index.html
+         from the bfcache rather than booting Three.js cold — and the plain href
+         when we did not. Being in the markup at boot is what puts it in that
+         query; nothing else had to change. -->
+    <a class="room-back" href="index.html" data-back data-cursor="BACK">
+      <i aria-hidden="true">←</i><span>THE ROOM</span>
+    </a>
+
+    <script type="module" src="design.js"></script>
+  </body>
+</html>

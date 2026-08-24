@@ -1,0 +1,2126 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   HUM — /design
+   Website 01 of the design section. Nothing here is shared with /code; the two
+   sheets are different products and are meant to look like it.
+
+   THE MATERIAL
+
+   Warm paper, near-black ink, one acid accent. The accent is a highlighter, not
+   a light source: it fills, it never glows, and text is never set in it — ink
+   sits ON it. That single rule is what keeps the page off the neon-gradient
+   pile, and it also keeps every accent surface above 4.5:1.
+
+   Three depths and no more:
+     PAPER    the ground. Dotted, grained, continuous under everything.
+     CARD     a sheet lying on the ground. Hairline edge, one soft shadow.
+     HELD     a sheet someone has picked up. Bigger shadow, tilted, above.
+   A fourth depth is what turns a layout into a pile of floating boxes.
+
+   THE GRID
+   Everything sits on an 8px rhythm and a 12-column measure. The dot field is
+   that grid, drawn — it is not texture for its own sake, it is the substrate
+   the objects are placed on, which is why objects can be dragged onto it.
+
+   PRIMITIVES — reuse these rather than inventing a fourth kind of box:
+     .obj / .obj-in   a canvas object: outer drags, inner tilts
+     .card            a plain sheet of paper
+     .plate           a section header: number, label, rule, count
+     .lab             a mono micro-label
+     .art             procedural artwork (no image assets anywhere on this page)
+     .pcur            a presence cursor with a name flag
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── MATERIAL ─────────────────────────────────────────────────────────── */
+  --paper: #f1eee5;          /* the ground                                   */
+  --paper-up: #fbfaf6;       /* a sheet on it                                */
+  --paper-deep: #e2ddcf;     /* a recess, a rule, a shade                    */
+  --ink: #15150f;            /* near-black, warm                             */
+  --ink-2: #2a2922;
+  --ink-soft: #55534a;       /* body copy on paper — 7.4:1                   */
+  /* Metadata. Darkened from the first pass, where it measured 3.71:1 on the
+     paper and carried every micro label on the page — the labels are small and
+     widely tracked, which is exactly the type that cannot also be low contrast.
+     Now 4.6:1 on the ground and 5.1:1 on a card. */
+  --ink-faint: #6e6b5d;
+  --hair: rgba(21, 21, 15, 0.16);
+  --hair-soft: rgba(21, 21, 15, 0.08);
+
+  /* One accent. A highlighter: it fills, ink sits on top of it. */
+  --accent: #cbf03c;
+  --accent-deep: #b3d621;
+  --accent-wash: rgba(203, 240, 60, 0.28);
+
+  /* ── DEPTH ────────────────────────────────────────────────────────────── */
+  --lift-card: 0 1px 1px rgba(21, 21, 15, 0.04), 0 6px 16px -8px rgba(21, 21, 15, 0.14);
+  --lift-held: 0 2px 4px rgba(21, 21, 15, 0.06), 0 22px 44px -14px rgba(21, 21, 15, 0.26);
+  --lift-nav: 0 1px 0 var(--hair-soft), 0 12px 30px -22px rgba(21, 21, 15, 0.4);
+
+  /* ── TYPE ─────────────────────────────────────────────────────────────── */
+  --display: "Bricolage Grotesque", "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --sans: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "DM Mono", ui-monospace, "SF Mono", Consolas, monospace;
+
+  /* The hero cap is a composition decision, not a taste one. At 10.4vw the
+     longest line ("THE INTERNET") sets to about 60% of the measure and its final
+     letter arrives just under the object cluster on the right — close enough to
+     read as one field, not so close that the two collide. Larger and the hero
+     loses the negative space beside ALIVE. that the whole composition is built
+     around; smaller and a gap opens between the words and the canvas. */
+  --t-hero: clamp(2.5rem, 10.4vw, 10.6rem);
+  --t-mega: clamp(3rem, 13vw, 13rem);      /* the closing statement only     */
+  --t-h2: clamp(1.9rem, 5.6vw, 4.6rem);
+  --t-h3: clamp(1.15rem, 1.9vw, 1.6rem);
+  --t-lede: clamp(0.98rem, 1.15vw, 1.22rem);
+  --t-body: 0.9rem;
+  --t-ui: 0.78rem;
+  --t-micro: 0.625rem;
+  --t-nano: 0.5625rem;
+
+  /* ── MEASURE ──────────────────────────────────────────────────────────── */
+  --pad: clamp(18px, 4vw, 74px);
+  --max: 1680px;
+  --nav: 68px;
+  --strip: 30px;
+  --gap: clamp(20px, 2.6vw, 48px);
+  --r: 3px;                  /* milled, not moulded                          */
+  --r-lg: 6px;
+
+  --ease-rise: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-snap: cubic-bezier(0.7, 0, 0.28, 1);
+}
+
+* { box-sizing: border-box; }
+
+html {
+  /* Anchor jumps are the one place native smooth scrolling is better than
+     anything we would write: it respects the OS reduce-motion setting itself. */
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  /* `clip`, not `hidden`. Objects are meant to hang off the edges of their
+     stages, and on a narrow screen some of them land past the right margin —
+     which must never turn into a horizontal scroll. `hidden` would do that too,
+     but it also makes the element a scroll container, and a scroll container on
+     html or body is what silently breaks `position: sticky` further down the
+     page. `clip` trims without scrolling anything. */
+  overflow-x: clip;
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--t-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+  font-feature-settings: "ss01" 1;
+}
+
+/* ── THE SUBSTRATE ─────────────────────────────────────────────────────────
+   The dot field and the paper grain, in ONE fixed layer rather than two.
+
+   Both are full-viewport and both are fixed, so each one the page carries is a
+   compositing layer the size of the screen that has to be re-rasterised
+   whenever anything under it changes. Stacking them as two background images on
+   a single element makes it one layer for the same picture.
+
+   Opacity is baked into each image — into the rgba for the dots, into the SVG
+   for the grain — because element opacity would apply to both at once and they
+   need different strengths.
+
+   The grain is a single inline turbulence: no request, about 300 bytes, and it
+   is what stops the flat colours reading as screen-flat. There is deliberately
+   no `mix-blend-mode` on it: this layer sits behind the content and over a flat
+   background, so blending changes nothing visible and costs a full-viewport
+   blend every frame. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -1px;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)' opacity='0.13'/%3E%3C/svg%3E"),
+    radial-gradient(circle at 1px 1px, rgba(21, 21, 15, 0.085) 1px, transparent 0);
+  background-size: 140px 140px, 26px 26px;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+dl, dd, dt, figure, p, h1, h2, h3, h4, ol, ul { margin: 0; padding: 0; }
+li { list-style: none; }
+em { font-style: normal; }
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 1px;
+}
+
+::selection { background: var(--accent); color: var(--ink); }
+
+/* Content sits above the substrate. */
+main, .top, .strip, .arrive { position: relative; z-index: 2; }
+
+.skip {
+  position: absolute;
+  left: var(--pad);
+  top: -100px;
+  z-index: 60;
+  padding: 10px 16px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 var(--t-micro)/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: top 0.2s var(--ease-soft);
+}
+.skip:focus { top: 12px; }
+
+/* ═══ SHARED TYPE ═══════════════════════════════════════════════════════════ */
+
+/* Masked line. `.tl` clips, `.tl-in` moves. The padding/margin pair is what
+   keeps descenders and the period in ALIVE. from being shaved off by the clip. */
+.tl {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
+}
+.tl-in { display: block; will-change: transform; }
+
+.display {
+  font-family: var(--display);
+  font-weight: 620;
+  font-variation-settings: "wdth" 96, "opsz" 96;
+  letter-spacing: -0.035em;
+  line-height: 0.86;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.h2 {
+  font-family: var(--display);
+  font-size: var(--t-h2);
+  font-weight: 580;
+  font-variation-settings: "wdth" 94, "opsz" 72;
+  letter-spacing: -0.03em;
+  line-height: 0.92;
+}
+/* The full stop, set as a square. The glyph is still in the accessibility tree
+   and still in the text — it is clipped, not removed — so the heading is read
+   with its punctuation while the page gets the mark it wants. A terminal period
+   in a headline carries no information, which is what makes this legitimate
+   rather than a colour-only cue. */
+.h2 em {
+  display: inline-block;
+  width: 0.15em;
+  height: 0.15em;
+  margin-left: 0.05em;
+  background: var(--accent-deep);
+  color: transparent;
+  overflow: hidden;
+  vertical-align: baseline;
+}
+
+.h3 {
+  font-family: var(--sans);
+  font-size: var(--t-h3);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.18;
+}
+
+.lede {
+  font-size: var(--t-lede);
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 46ch;
+  text-wrap: pretty;
+}
+
+.lab {
+  font: 500 var(--t-micro)/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.lab--ink { color: var(--ink); }
+
+/* The highlighter. A swipe of accent behind ink, drawn slightly off-square
+   because a real one is. Scales from 0 so it can be animated on. */
+.mark {
+  --swipe: 1;
+  position: relative;
+  display: inline-block;
+  isolation: isolate;
+}
+.mark::before {
+  content: "";
+  position: absolute;
+  inset: 0.1em -0.06em 0.09em -0.04em;
+  z-index: -1;
+  background: var(--accent);
+  transform: scaleX(var(--swipe, 1)) rotate(-0.5deg);
+  transform-origin: left center;
+  border-radius: 2px 4px 3px 5px;
+}
+
+/* ═══ SECTION FURNITURE ═════════════════════════════════════════════════════ */
+
+.sec {
+  position: relative;
+  padding: clamp(88px, 12vh, 180px) var(--pad);
+  max-width: var(--max);
+  margin: 0 auto;
+}
+
+/* Section header. A number set in the accent, the label, a rule that eats the
+   remaining width, and a true count on the right. */
+.plate {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: clamp(28px, 4vw, 56px);
+}
+.plate-no {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 22px;
+  background: var(--accent);
+  color: var(--ink);
+  font: 500 var(--t-micro)/1 var(--mono);
+  letter-spacing: 0.06em;
+  border-radius: 1px;
+}
+.plate-label {
+  font: 500 var(--t-micro)/1 var(--mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.plate-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--hair);
+  transform-origin: left center;
+}
+.plate-meta {
+  font: 400 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+/* ═══ NAV ═══════════════════════════════════════════════════════════════════ */
+
+.top {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;
+  height: var(--nav);
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 0 var(--pad);
+  background: color-mix(in srgb, var(--paper) 86%, transparent);
+  backdrop-filter: saturate(140%) blur(9px);
+  border-bottom: 1px solid transparent;
+  transition: transform 0.5s var(--ease-rise), border-color 0.3s var(--ease-soft),
+    background-color 0.3s var(--ease-soft);
+}
+.top.is-stuck { border-bottom-color: var(--hair); box-shadow: var(--lift-nav); }
+/* Hidden on the way down, back on the way up — the nav gets out of the way of
+   the thing it is navigating. */
+.top.is-away { transform: translate3d(0, calc(-100% - 4px), 0); }
+
+.mark-hum {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--display);
+  font-size: 1.32rem;
+  font-weight: 700;
+  font-variation-settings: "wdth" 88, "opsz" 24;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.mark-hum .mark-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-deep);
+  transform: translateY(-2px);
+}
+.mark-hum .mark-sub {
+  font: 400 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.18em;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: 6px 0;
+  transition: color 0.25s var(--ease-soft);
+}
+.back i { display: block; transition: transform 0.35s var(--ease-rise); }
+.back:hover { color: var(--ink); }
+.back:hover i { transform: translateX(-4px); }
+
+.top-div { width: 1px; height: 16px; background: var(--hair); flex: none; }
+
+.top-nav {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 1.6vw, 30px);
+}
+/* Nav hover: the label lifts out and its double rises in behind it. Cheap
+   (two transforms), and it reads as the word being replaced rather than
+   recoloured. */
+.top-link {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  padding: 8px 2px;
+  font: 500 var(--t-micro)/1 var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.top-link b, .top-link i {
+  display: block;
+  font: inherit;
+  transition: transform 0.42s var(--ease-rise);
+}
+/* Both layers travel by the FULL box height plus the padding. Translating by a
+   percentage of the text line leaves the incoming word parked inside the bottom
+   padding, where `overflow: hidden` cannot help — visible as a permanent double
+   of every nav item.
+
+   The incoming word is INK, not the accent. The accent is a highlighter here,
+   never a text colour: set as 10px type on paper it measures 1.14:1, so the
+   hover state would have made the label unreadable at the exact moment it is
+   being read. The accent does the signalling underneath instead, where it is a
+   mark rather than a word. */
+.top-link i {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 8px;
+  color: var(--ink);
+  transform: translateY(calc(100% + 8px));
+}
+.top-link:hover b, .top-link[aria-current="true"] b { transform: translateY(calc(-100% - 8px)); }
+.top-link:hover i, .top-link[aria-current="true"] i { transform: translateY(0); }
+.top-link::after {
+  content: "";
+  position: absolute;
+  inset: auto 2px 2px;
+  height: 1px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.42s var(--ease-rise);
+}
+.top-link:hover::after, .top-link[aria-current="true"]::after { transform: scaleX(1); }
+/* The section you are actually in gets the accent; hovering only gets the rule.
+   Two states, told apart by more than one property. */
+.top-link[aria-current="true"]::after { background: var(--accent-deep); height: 2px; }
+
+/* ═══ BUTTON ════════════════════════════════════════════════════════════════
+   One button, two sizes. The fill wipes up from the bottom edge, the arrow
+   leaves and its double arrives — the same two-layer idea as the nav, so the
+   page has one hover language rather than five. */
+/* ═══ THE MOTION SWITCH ═════════════════════════════════════════════════════
+   Nav furniture, built from the vocabulary already here: mono micro type, the
+   hairline, the highlighter. Small enough to sit beside the wordmark without
+   competing with START, legible enough that somebody who arrived to a still
+   page can find the way in.
+
+   The dot is the state, not the word: filled and acid when the page is alive,
+   hollow and faint when it is not. That reads at a glance from across a nav,
+   which the word ON does not. */
+.motion {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  border: 1px solid var(--hair);
+  border-radius: 2px;
+  background: transparent;
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color 0.26s var(--ease-soft), border-color 0.26s var(--ease-soft);
+}
+.motion:hover { color: var(--ink); border-color: var(--ink); }
+.motion:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.motion-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  background: transparent;
+  flex: none;
+  transition: background-color 0.26s var(--ease-soft), border-color 0.26s var(--ease-soft);
+}
+.motion[data-on="true"] .motion-dot { background: var(--accent); border-color: var(--accent-deep); }
+
+.motion-state { color: var(--ink); font-weight: 500; }
+.motion[data-on="false"] { color: var(--ink); border-color: var(--ink); }
+.motion[data-on="false"] .motion-state { color: var(--ink-faint); }
+
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 18px;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  background: transparent;
+  overflow: hidden;
+  isolation: isolate;
+  font: 500 var(--t-micro)/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink);
+  transition: color 0.3s var(--ease-soft);
+}
+.btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--accent);
+  transform: translateY(101%);
+  transition: transform 0.5s var(--ease-rise);
+}
+.btn:hover::before, .btn:focus-visible::before { transform: translateY(0); }
+.btn-arrow {
+  position: relative;
+  display: block;
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
+}
+.btn-arrow i {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transition: transform 0.44s var(--ease-rise);
+}
+.btn-arrow i + i { transform: translateX(-115%); }
+.btn:hover .btn-arrow i, .btn:focus-visible .btn-arrow i { transform: translateX(115%); }
+.btn:hover .btn-arrow i + i, .btn:focus-visible .btn-arrow i + i { transform: translateX(0); }
+
+.btn--solid { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn--solid:hover, .btn--solid:focus-visible { color: var(--ink); }
+
+.btn--big {
+  padding: 22px 30px;
+  font-size: var(--t-ui);
+  letter-spacing: 0.2em;
+  border-width: 1px;
+  border-radius: 3px;
+}
+
+/* ═══ CANVAS OBJECTS ════════════════════════════════════════════════════════ */
+
+/* A stage is a region of the canvas: dotted ground, clipped, and the place
+   percentages are measured from. `data-canvas` on it is what swaps the native
+   pointer for the YOU cursor. */
+.stage {
+  position: relative;
+  border-radius: var(--r-lg);
+  /* Stages carry an aspect-ratio AND a min-height. As grid items their
+     automatic minimum size transfers that min-height back through the ratio into
+     a minimum WIDTH, which on a phone is wider than the column — and the whole
+     section overflows. */
+  min-width: 0;
+}
+/* The native pointer is hidden only once its replacement actually exists.
+   Gating on the class rather than the selector means a JS failure, an old
+   browser or a blocked module leaves the visitor with a working cursor. */
+body.has-ucur .stage { cursor: none; }
+body.has-ucur .stage [data-drag] { cursor: none; }
+.stage--framed {
+  border: 1px solid var(--hair);
+  background:
+    radial-gradient(circle at 1px 1px, rgba(21, 21, 15, 0.13) 1px, transparent 0) 0 0 / 26px 26px,
+    linear-gradient(var(--paper-up), var(--paper-up));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+}
+
+/* Outer: placement and drag. Nothing else may write its transform. */
+.obj {
+  position: absolute;
+  left: var(--x, 0);
+  top: var(--y, 0);
+  width: var(--w, 200px);
+  z-index: 6;
+  touch-action: none;
+  border-radius: 0;
+}
+.obj[data-drag="true"] { cursor: grab; }
+.obj.is-held { cursor: grabbing; }
+
+/* Inner: the sheet itself, its resting rotation, and the hover tilt. */
+.obj-in {
+  position: relative;
+  display: block;
+  padding: 9px 11px 11px;
+  background: var(--paper-up);
+  border: 1px solid var(--hair);
+  border-radius: var(--r);
+  box-shadow: var(--lift-card);
+  transform: rotate(calc(var(--rot, 0deg) + var(--lean, 0deg)));
+  transition: box-shadow 0.4s var(--ease-soft), border-color 0.3s var(--ease-soft);
+}
+.obj.is-held .obj-in { box-shadow: var(--lift-held); border-color: rgba(21, 21, 15, 0.28); }
+.obj:focus-visible { outline: none; }
+.obj:focus-visible .obj-in { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+.obj-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.obj-label {
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The grab affordance. Three dots that spread a little when the object is
+   touched — the whole reason anyone believes it moves before trying. */
+.obj-handle { display: flex; gap: 2px; flex: none; }
+.obj-handle i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  transition: transform 0.32s var(--ease-rise), background-color 0.3s var(--ease-soft);
+}
+.obj-in:hover .obj-handle i { background: var(--ink); }
+.obj-in:hover .obj-handle i:first-child { transform: translateX(-2px); }
+.obj-in:hover .obj-handle i:last-child { transform: translateX(2px); }
+
+.obj-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 9px;
+  padding-top: 7px;
+  border-top: 1px solid var(--hair-soft);
+  font: 400 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.obj-foot-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-deep);
+  flex: none;
+}
+
+/* ── NOTE ───────────────────────────────────────────────────────────────────
+   The only object that is not white paper. Accent-filled, ink on top, and set
+   in the sans rather than the mono so it reads as somebody's handwriting-speed
+   thought and not as a system message. */
+.obj--note .obj-in {
+  background: var(--accent);
+  border-color: rgba(21, 21, 15, 0.22);
+  padding: 9px 12px 13px;
+}
+.obj--note[data-tone="paper"] .obj-in { background: var(--paper-deep); border-color: var(--hair); }
+.obj--note .obj-label { color: rgba(21, 21, 15, 0.62); }
+.obj--note .obj-handle i { background: rgba(21, 21, 15, 0.45); }
+.note-body {
+  display: block;
+  font-size: 0.94rem;
+  line-height: 1.28;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.note-pin {
+  position: absolute;
+  top: -5px;
+  right: 13px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 2px 4px rgba(21, 21, 15, 0.3);
+}
+
+/* ── COMMENT ────────────────────────────────────────────────────────────── */
+.obj--comment .obj-in { padding: 11px 13px 13px; border-radius: var(--r) var(--r-lg) var(--r) var(--r); }
+.cm-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cm-avatar {
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.02em;
+  background: var(--ink);
+  color: var(--paper);
+  flex: none;
+}
+.cm-avatar[data-tone="accent"] { background: var(--accent); color: var(--ink); }
+.cm-avatar[data-tone="outline"] { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.cm-name {
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.cm-time { margin-left: auto; font: 400 var(--t-nano)/1 var(--mono); color: var(--ink-faint); letter-spacing: 0.1em; }
+.cm-body {
+  display: block;
+  font-size: 0.85rem;
+  line-height: 1.42;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+/* The tail. A rotated square, clipped by the card's own edge. */
+.cm-tail {
+  position: absolute;
+  left: 22px;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  background: var(--paper-up);
+  border-right: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+  transform: rotate(45deg);
+}
+
+/* ── TYPE BLOCK ─────────────────────────────────────────────────────────── */
+.obj--type .obj-in { padding: 10px 13px 14px; }
+.tb { display: flex; align-items: baseline; gap: 3px; }
+.tb-word {
+  font-family: var(--display);
+  font-size: clamp(1.5rem, 2.6vw, 2.3rem);
+  font-weight: 640;
+  font-variation-settings: "wdth" 92, "opsz" 40;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tb-caret {
+  width: 2px;
+  align-self: stretch;
+  min-height: 1em;
+  background: var(--accent-deep);
+  opacity: 0;
+}
+.obj--type.is-editing .tb-caret { opacity: 1; animation: caret 1s steps(2) infinite; }
+@keyframes caret { 50% { opacity: 0; } }
+
+/* ── DOC / TASK / REF ───────────────────────────────────────────────────── */
+.doc-lines { display: grid; gap: 6px; padding: 4px 0 2px; }
+.doc-lines i { display: block; height: 3px; width: var(--w); background: var(--paper-deep); border-radius: 2px; }
+.doc-lines i:first-child { background: var(--ink); width: 56%; height: 5px; }
+
+.task-row { display: flex; align-items: flex-start; gap: 10px; }
+.task-box {
+  position: relative;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  display: grid;
+  place-items: center;
+  transition: background-color 0.28s var(--ease-soft);
+}
+.task-box i { font-size: 10px; line-height: 1; opacity: 0; transform: scale(0.4); transition: all 0.3s var(--ease-snap); }
+.task-box.is-done { background: var(--accent); }
+.task-box.is-done i { opacity: 1; transform: scale(1); }
+.task-title { font-size: 0.88rem; line-height: 1.3; letter-spacing: -0.01em; }
+.task-title.is-done { color: var(--ink-faint); text-decoration: line-through; text-decoration-thickness: 1px; }
+
+.ref-body { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.ref-title { font-size: 0.88rem; line-height: 1.3; letter-spacing: -0.01em; }
+.ref-arrow { font-size: 0.8rem; color: var(--ink-faint); transition: transform 0.34s var(--ease-rise); }
+.obj--ref .obj-in:hover .ref-arrow { transform: translate(2px, -2px); color: var(--ink); }
+
+/* ═══ ART ═══════════════════════════════════════════════════════════════════
+   Procedural, so there is not one image request on this page and not one stock
+   placeholder. Each is a small print: two inks, hard shapes, no gradients doing
+   the work of a shape. */
+.art {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--paper-deep);
+  aspect-ratio: 4 / 3;
+}
+.art--dots { aspect-ratio: 1 / 1; }
+.art--halftone { background: var(--accent); }
+.art--swatch { aspect-ratio: 16 / 5; background: none; }
+
+.art-arc {
+  position: absolute;
+  left: 50%;
+  bottom: 22%;
+  width: 62%;
+  aspect-ratio: 2 / 1;
+  transform: translateX(-50%);
+  background: var(--accent);
+  border-radius: 999px 999px 0 0;
+}
+.art-bar { position: absolute; background: var(--ink); }
+.art-bar--a { left: 12%; right: 12%; bottom: 14%; height: 7%; }
+.art-bar--b { left: 12%; width: 22%; bottom: 26%; height: 7%; }
+
+.art-dots {
+  position: absolute;
+  inset: 12%;
+  background-image: radial-gradient(circle at center, var(--ink) 1.6px, transparent 1.7px);
+  background-size: 11px 11px;
+}
+.art-halftone {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at center, var(--ink) 46%, transparent 47%);
+  background-size: 9px 9px;
+  -webkit-mask-image: linear-gradient(122deg, #000 6%, transparent 76%);
+  mask-image: linear-gradient(122deg, #000 6%, transparent 76%);
+}
+.art-stripe {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    58deg,
+    var(--ink) 0 2px,
+    transparent 2px 8px
+  );
+}
+.art--stripe { background: var(--accent); }
+
+.art-chips { position: absolute; inset: 0; display: flex; gap: 4px; }
+.art-chips i {
+  flex: 1;
+  background: var(--c);
+  border-radius: 2px;
+  border: 1px solid var(--hair-soft);
+}
+
+/* ═══ PRESENCE ══════════════════════════════════════════════════════════════ */
+
+.pcur-layer { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
+
+.pcur {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  pointer-events: none;
+  will-change: transform;
+  transform-origin: 2px 2px;
+}
+.pcur-arrow { display: block; filter: drop-shadow(0 2px 3px rgba(21, 21, 15, 0.25)); }
+.pcur-arrow path { fill: var(--ink); stroke: var(--paper-up); stroke-width: 1.5; }
+.pcur--accent .pcur-arrow path { fill: var(--accent); stroke: var(--ink); stroke-width: 1.2; }
+.pcur--outline .pcur-arrow path { fill: var(--paper-up); stroke: var(--ink); stroke-width: 1.6; }
+
+.pcur-flag {
+  position: absolute;
+  top: 17px;
+  left: 15px;
+  padding: 3px 7px 4px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-radius: 2px;
+}
+.pcur--accent .pcur-flag { background: var(--accent); color: var(--ink); }
+.pcur--outline .pcur-flag { background: var(--paper-up); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.pcur--you .pcur-flag { background: var(--ink); color: var(--accent); }
+
+.pcur-ping {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+/* The visitor's own cursor. The holder is fixed and translated every frame; the
+   arrow inside it is what gets scaled and faded. */
+.ucur {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  pointer-events: none;
+  will-change: transform;
+}
+.ucur .pcur { position: absolute; top: 0; left: 0; }
+.ucur.is-down .pcur-flag { transform: scale(0.94); }
+
+/* The label that says what a thing does. Trails the pointer, sits below-right,
+   and never covers what it is describing. */
+.ctip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 49;
+  pointer-events: none;
+  will-change: transform;
+}
+.ctip-text {
+  position: absolute;
+  transform-origin: top left;
+  top: 16px;
+  left: 16px;
+  padding: 5px 9px 6px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-radius: 2px;
+}
+
+/* ── SELECTION ──────────────────────────────────────────────────────────── */
+.sel { position: absolute; inset: -5px; pointer-events: none; }
+.sel-c { position: absolute; width: 7px; height: 7px; background: var(--paper-up); border: 1px solid var(--ink); }
+.sel--accent .sel-c { border-color: var(--accent-deep); }
+.sel-c--tl { top: -1px; left: -1px; }
+.sel-c--tr { top: -1px; right: -1px; }
+.sel-c--bl { bottom: -1px; left: -1px; }
+.sel-c--br { bottom: -1px; right: -1px; }
+.sel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+}
+.sel--accent::before { border-color: var(--accent-deep); }
+.sel-tag {
+  position: absolute;
+  top: -21px;
+  left: -1px;
+  padding: 3px 6px 4px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  border-radius: 2px 2px 0 0;
+}
+.sel--accent .sel-tag { background: var(--accent); color: var(--ink); }
+.sel--outline .sel-tag { background: var(--paper-up); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+
+/* ── CONNECTORS ─────────────────────────────────────────────────────────── */
+.link-layer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; overflow: visible; }
+.link { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 0; }
+.link--accent { stroke: var(--accent-deep); stroke-width: 2; }
+
+/* ── AVATARS ────────────────────────────────────────────────────────────── */
+.av {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  flex: none;
+  transition: transform 0.36s var(--ease-rise);
+}
+.av b { font: 500 var(--t-nano)/1 var(--mono); letter-spacing: 0.02em; }
+.av[data-tone="accent"] { background: var(--accent); color: var(--ink); }
+.av[data-tone="outline"] { background: var(--paper-up); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.av[data-tone="you"] { background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.av-live {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-deep);
+  box-shadow: 0 0 0 2px var(--paper);
+}
+.av-stack { display: flex; }
+.av-stack .av + .av { margin-left: -9px; }
+.av-stack:hover .av { transform: translateY(-3px); }
+.av-stack .av:hover { transform: translateY(-6px) scale(1.06); z-index: 2; }
+
+/* ═══ ENTRANCE ══════════════════════════════════════════════════════════════
+   Not a loading screen. The page under this is already built and already
+   interactive; the panel is a 700ms curtain that gives the hero somewhere to
+   arrive FROM, and it leaves whether or not the fonts ever answer. */
+.arrive {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  transform-origin: top center;
+}
+.arrive-mark {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--display);
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  font-weight: 700;
+  font-variation-settings: "wdth" 86, "opsz" 40;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.arrive-mark i { width: 11px; height: 11px; border-radius: 50%; background: var(--accent); }
+.arrive-rule {
+  position: absolute;
+  left: var(--pad);
+  right: var(--pad);
+  bottom: clamp(28px, 6vh, 60px);
+  height: 1px;
+  background: var(--hair);
+}
+.arrive-rule i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+.arrive-note {
+  position: absolute;
+  left: var(--pad);
+  bottom: calc(clamp(28px, 6vh, 60px) + 12px);
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+body.is-arriving { overflow: hidden; }
+
+/* ═══ 01 · HERO ═════════════════════════════════════════════════════════════ */
+
+.hero {
+  position: relative;
+  min-height: 100svh;
+  padding: calc(var(--nav) + clamp(14px, 3vh, 34px)) var(--pad) calc(var(--strip) + clamp(14px, 2.6vh, 30px));
+  max-width: var(--max);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2.4vh, 30px);
+}
+
+.hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.hero-eyebrow .lab { display: inline-flex; align-items: center; gap: 10px; }
+.hero-eyebrow .lab:first-child { color: var(--ink); }
+.hero-eyebrow .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--ink-faint); }
+.hero-live { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.hero-live .lab { white-space: nowrap; }
+
+/* The hero canvas. The headline lives INSIDE it, which is the point: the type
+   is a layer on the canvas, not a caption above a widget. It also keeps the
+   words hoverable, since the objects only intercept the pointer where they
+   actually are. */
+.hero-stage {
+  position: relative;
+  flex: 1;
+  min-height: clamp(320px, 52vh, 620px);
+  display: flex;
+  align-items: center;
+}
+
+.hero-type { position: relative; z-index: 4; width: 100%; }
+/* The swipe is a sibling of the words inside the line, so the line is the
+   positioning context and the words sit above it. The last line shrink-wraps —
+   as a block it would stretch the highlighter across the full measure instead of
+   across ALIVE., which is the difference between a marked word and a stripe. */
+.hero-title .tl-in { position: relative; }
+.hero-title .tl-w { position: relative; z-index: 1; }
+.hero-title .tl:last-child .tl-in { display: inline-block; }
+.hero-title { font-size: var(--t-hero); }
+/* Asymmetric indents. Flush left would be calmer and duller; these three
+   offsets are what make the block read as placed rather than defaulted. */
+.hero-title .tl:nth-child(2) .tl-in { padding-left: 0.09em; }
+/* Margin, not padding: the shrink-wrapped last line must not carry the indent
+   inside the box the highlighter is drawn to. */
+.hero-title .tl:nth-child(3) .tl-in { margin-left: 0.035em; }
+
+/* Words react to the pointer. The WIDTH AXIS is doing the work, not a colour
+   change: the letter shapes themselves narrow and the word leans, which is
+   something only a variable font can do, and it reads as the type being alive
+   rather than merely highlighted. */
+.tl-w {
+  display: inline-block;
+  transition: font-variation-settings 0.5s var(--ease-soft), transform 0.5s var(--ease-rise);
+}
+.hero-title .tl-w:hover {
+  font-variation-settings: "wdth" 76, "opsz" 96;
+  transform: translateY(-0.014em);
+}
+.hero-title .tl:last-child .tl-w { position: relative; }
+
+/* ALIVE. gets the highlighter, drawn on at the end of the entrance. */
+.hero-swipe {
+  position: absolute;
+  z-index: -1;
+  left: -0.03em;
+  right: -0.03em;
+  top: 0.15em;
+  bottom: 0.11em;
+  background: var(--accent);
+  border-radius: 3px 6px 4px 7px;
+  transform: scaleX(0) rotate(-0.6deg);
+  transform-origin: left center;
+}
+
+.hero-rail {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) auto auto;
+  align-items: end;
+  gap: var(--gap);
+  padding-top: clamp(12px, 2vh, 22px);
+  border-top: 1px solid var(--hair);
+}
+.hero-lede { max-width: 42ch; font-size: var(--t-lede); line-height: 1.46; color: var(--ink-soft); }
+.hero-lede b { color: var(--ink); font-weight: 600; }
+
+/* HUM LEVEL. A real meter: it reads scroll velocity and pointer movement, so it
+   is quiet when you are and busy when you are. Bars rather than a number,
+   because a number would be a claim and this is a feeling. */
+.meter { display: flex; flex-direction: column; gap: 8px; }
+.meter-bars { display: flex; align-items: flex-end; gap: 3px; height: 30px; }
+.meter-bars i {
+  width: 3px;
+  height: 100%;
+  background: var(--ink);
+  transform: scaleY(0.2);
+  transform-origin: bottom center;
+  border-radius: 1px;
+}
+.meter-bars i:nth-child(3n) { background: var(--accent-deep); }
+
+.hero-scroll { display: flex; flex-direction: column; align-items: flex-start; gap: 9px; }
+.hero-scroll-line { width: 1px; height: 34px; background: var(--hair); position: relative; overflow: hidden; }
+.hero-scroll-line i { position: absolute; inset: 0; background: var(--ink); transform: translateY(-100%); }
+.hero-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px 6px;
+  border: 1px dashed var(--hair);
+  border-radius: 2px;
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+.hero-hint i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-deep); }
+
+/* ═══ 02 · IDEAS ARE NOT STATIC ═════════════════════════════════════════════ */
+
+.sec-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: var(--gap);
+  align-items: end;
+  margin-bottom: clamp(34px, 5vw, 72px);
+}
+/* A and B, side by side — they are a pair, and stacking them in one column left
+   the right half of the section empty for no reason. */
+.still-cols {
+  margin-top: clamp(34px, 5vw, 72px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(20px, 3vw, 56px);
+}
+.still-col { display: grid; grid-template-columns: 26px 1fr; gap: 14px; align-items: start; }
+.still-col-no {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  font: 500 var(--t-nano)/1 var(--mono);
+}
+.still-col p { margin-top: 7px; color: var(--ink-soft); font-size: var(--t-body); max-width: 34ch; }
+
+/* The flat page, coming apart. Laid out as a real page — headline bar, image,
+   body copy, caption — so what breaks up is recognisably a document and not six
+   abstract rectangles. */
+.flat {
+  position: relative;
+  /* A document, not a section. Capped and pushed right, so the pieces have
+     somewhere to come loose INTO — the empty column on the left is part of the
+     composition, not leftover space. */
+  max-width: min(100%, 880px);
+  margin-left: auto;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  /* Pieces size to their own content. Stretching them to the tallest sibling
+     gives every card a pool of empty space under it, which reads as a broken
+     layout rather than as a page. */
+  align-items: start;
+  gap: clamp(10px, 1.4vw, 20px);
+  padding: clamp(20px, 3vw, 44px);
+  background: var(--paper-up);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  box-shadow: var(--lift-card);
+  transition: box-shadow 0.6s var(--ease-soft);
+}
+.flat-piece {
+  position: relative;
+  padding: 9px 11px 11px;
+  background: var(--paper-up);
+  border: 1px solid var(--hair-soft);
+  border-radius: var(--r);
+  will-change: transform;
+}
+.flat-piece[data-piece="p1"] { grid-column: span 12; }
+.flat-piece[data-piece="p2"] { grid-column: span 7; }
+.flat-piece[data-piece="p3"] { grid-column: span 5; }
+.flat-piece[data-piece="p4"] { grid-column: span 4; }
+.flat-piece[data-piece="p5"] { grid-column: span 4; }
+.flat-piece[data-piece="p6"] { grid-column: span 4; }
+.flat-piece .lab { display: block; margin-bottom: 8px; }
+/* Fixed height rather than a ratio: at seven columns wide a 4:3 box is half a
+   screen tall, and the document stops reading as a page. */
+.flat-piece .art { height: clamp(104px, 13vw, 168px); aspect-ratio: auto; }
+
+.flat-bar { display: block; height: clamp(22px, 3.4vw, 48px); background: var(--ink); border-radius: 2px; }
+.flat-piece[data-piece="p5"] .flat-bar { height: 12px; background: var(--paper-deep); }
+.flat-lines { display: grid; gap: 7px; }
+.flat-lines i { display: block; height: 4px; background: var(--paper-deep); border-radius: 2px; width: var(--w); }
+.flat-note {
+  display: block;
+  padding: 10px 12px 14px;
+  background: var(--accent);
+  border-radius: 2px;
+  font-size: 0.86rem;
+  line-height: 1.3;
+  color: var(--ink);
+}
+/* Once loose, a piece is a thing you could pick up. Saying so costs one rule. */
+.flat.is-loose { box-shadow: none; border-color: transparent; background: transparent; }
+.flat.is-loose .flat-piece { box-shadow: var(--lift-card); border-color: var(--hair); }
+
+.flat-caption { display: flex; justify-content: space-between; gap: 16px; margin-top: 16px; }
+
+/* The band closes section 02, so the section stops at its edge — otherwise a
+   full-bleed strip is followed by the section's bottom padding AND the next
+   section's top padding, which is a quarter of a screen of nothing. */
+.still { padding-bottom: 0; }
+
+/* The band. Mechanical on purpose — the one linear-eased thing on the page, and
+   scroll velocity pushes it, so the reader’s own motion drives it. */
+.marq {
+  position: relative;
+  margin: clamp(56px, 8vw, 120px) 0 0;
+  padding: clamp(12px, 1.5vw, 20px) 0;
+  background: var(--accent);
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  overflow: hidden;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+}
+.marq-row { display: flex; width: max-content; will-change: transform; }
+.marq-row span {
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 2.4vw, 40px);
+  padding-right: clamp(18px, 2.4vw, 40px);
+  font-family: var(--display);
+  font-size: clamp(1.5rem, 3.8vw, 3rem);
+  font-weight: 620;
+  font-variation-settings: "wdth" 88, "opsz" 40;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.marq-row span i { width: 10px; height: 10px; border-radius: 50%; background: var(--ink); flex: none; }
+
+/* ═══ 03 · EVERYTHING MOVES ═════════════════════════════════════════════════ */
+
+.moves-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.38fr);
+  gap: var(--gap);
+  align-items: stretch;
+}
+.moves-board { aspect-ratio: 16 / 10; min-height: 300px; }
+
+/* The session log. It proves the demo is live: every line is written by the
+   thing that just happened, in the order it happened. */
+.log {
+  display: flex;
+  flex-direction: column;
+  background: var(--paper-up);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--lift-card);
+}
+.log-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--hair);
+}
+.log-head .lab { color: var(--ink); }
+.log-live {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.16em;
+  color: var(--ink-faint);
+}
+.log-live i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-deep); }
+.log-list { flex: 1; overflow: hidden; padding: 4px 0; }
+.log-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--hair-soft);
+}
+.log-row:last-child { border-bottom: 0; }
+.log-who {
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 var(--t-nano)/1 var(--mono);
+  flex: none;
+}
+.log-who[data-tone="accent"] { background: var(--accent); color: var(--ink); }
+.log-who[data-tone="outline"] { background: var(--paper-up); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.log-who[data-tone="you"] { background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.log-what { font-size: 0.79rem; line-height: 1.26; color: var(--ink-2); }
+.log-what b { font-weight: 600; }
+.log-when { font: 400 var(--t-nano)/1 var(--mono); letter-spacing: 0.1em; color: var(--ink-faint); }
+.log-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  border-top: 1px solid var(--hair);
+  margin-top: auto;
+}
+.log-replay {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.log-replay i { display: block; transition: transform 0.6s var(--ease-rise); }
+.log-replay:hover i { transform: rotate(-180deg); }
+
+/* ═══ 04 · MAKE SOMETHING TOGETHER ══════════════════════════════════════════ */
+
+/* Tall section, sticky viewport. The scroll IS the assembly — the visitor does
+   it, which is the difference between a demonstration and a video. */
+.together { position: relative; }
+.together-track { position: relative; height: 320vh; }
+.together-stick {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: calc(var(--nav) + clamp(10px, 2.4vh, 28px)) var(--pad) calc(var(--strip) + 16px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: clamp(12px, 2.2vh, 26px);
+}
+.together-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.62fr);
+  gap: var(--gap);
+  align-items: end;
+}
+.together-stage { position: relative; min-height: 0; }
+
+/* The poster being built. A real grid — the pieces land wherever this puts
+   them, so there is exactly one description of the finished composition. */
+/* Absolutely positioned against the stage, so its height is measured against a
+   definite box. As a centred grid item, `height: 100%` has no definite
+   containing block to resolve against and the poster sizes itself from its
+   own content instead — which is how it ends up taller than the screen it is
+   supposed to be sitting inside. */
+.poster {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 100%;
+  max-width: 100%;
+  aspect-ratio: 3 / 4;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "mark   mark   .      .      swatch swatch"
+    "art    art    art    art    art    art"
+    "type   type   type   type   type   type"
+    "rule   rule   rule   rule   meta   meta";
+  gap: clamp(8px, 1vw, 16px);
+  padding: clamp(14px, 1.8vw, 26px);
+  background: var(--paper-up);
+  border: 1px solid var(--hair);
+  border-radius: var(--r);
+  box-shadow: var(--lift-card);
+}
+.poster-piece { position: relative; will-change: transform; }
+.poster-piece[data-slot="type"] { grid-area: type; align-self: end; }
+.poster-piece[data-slot="art"] { grid-area: art; min-height: 0; }
+.poster-piece[data-slot="swatch"] { grid-area: swatch; align-self: start; }
+.poster-piece[data-slot="meta"] { grid-area: meta; align-self: center; }
+.poster-piece[data-slot="rule"] { grid-area: rule; align-self: center; }
+.poster-piece[data-slot="mark"] { grid-area: mark; align-self: start; }
+
+.poster-piece .art { height: 100%; width: 100%; aspect-ratio: auto; }
+.poster-title {
+  font-family: var(--display);
+  font-size: clamp(1.4rem, 3.1vw, 3.1rem);
+  font-weight: 660;
+  font-variation-settings: "wdth" 92, "opsz" 72;
+  letter-spacing: -0.04em;
+  line-height: 0.86;
+  text-transform: uppercase;
+}
+.poster-kicker { display: block; font: 500 var(--t-nano)/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 8px; }
+.poster-rule { height: 2px; background: var(--ink); }
+.poster-meta { display: flex; flex-wrap: wrap; gap: 3px 12px; justify-content: flex-end; }
+.poster-meta span { font: 400 var(--t-nano)/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+.poster-mark { display: flex; align-items: center; gap: 8px; }
+.poster-mark .art { width: 24px; height: 24px; flex: none; aspect-ratio: 1; }
+.poster-mark b {
+  font-family: var(--display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variation-settings: "wdth" 86;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+/* Whose piece it is. Visible only while the piece is still loose. */
+.piece-tag {
+  position: absolute;
+  top: -10px;
+  left: -3px;
+  padding: 2px 6px 3px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.14em;
+  border-radius: 2px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.piece-tag[data-tone="accent"] { background: var(--accent); color: var(--ink); }
+.piece-tag[data-tone="outline"] { background: var(--paper-up); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.piece-tag[data-tone="you"] { background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+
+/* ── THE STAMP ───────────────────────────────────────────────────────────────
+   Planted ON the poster's bottom-right corner: the corner passes through the
+   middle of it, so about half sits on the sheet and half hangs off. A stamp
+   that clears the sheet entirely is a label sitting near a poster; a stamp that
+   straddles the edge is a stamp that was pressed onto one.
+
+   THE OFFSET IS `translate`, NOT `transform`, and that is the whole reason this
+   works. The entrance in story.js drives `rotate` and `scale` through anime,
+   which composes them into `transform` — anything written there by the
+   stylesheet is overwritten on the first frame of the stamping. `translate` is
+   an independent property, so the browser composes it BEFORE anime's transform
+   and neither ever sees the other. The percentages resolve against the stamp's
+   own border box, which is what puts its centre on the corner at any size.
+
+   Rotation and scale both take the centre as their origin, and the centre is
+   pinned by the translate — so the stamp lands on the corner rather than
+   travelling towards it. */
+.stamp {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  translate: 46% 46%;
+  z-index: 12;
+  padding: 9px 15px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  background: var(--paper);
+  font: 500 var(--t-ui)/1 var(--mono);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  transform: rotate(-8deg) scale(0.6);
+  opacity: 0;
+}
+
+.together-foot { display: flex; align-items: center; gap: 14px; }
+.together-foot .track { flex: 1; height: 1px; background: var(--hair); position: relative; }
+.together-foot .track i {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+.together-foot .lab { white-space: nowrap; }
+
+/* ═══ 05 · THE WORKSPACE ════════════════════════════════════════════════════
+   A real interface, because a fake one has to be redrawn every time the copy
+   changes and never quite behaves. Chrome is hairlines and mono labels; there
+   is no window furniture pretending to be macOS. */
+.app {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.26fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: clamp(420px, 56vh, 600px);
+  background: var(--paper-up);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  box-shadow: var(--lift-card);
+  overflow: hidden;
+}
+.app-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hair);
+  background: var(--paper);
+}
+.app-bar .mark-hum { font-size: 1rem; }
+.app-crumb { display: flex; align-items: center; gap: 9px; font: 500 var(--t-nano)/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+.app-crumb b { color: var(--ink); }
+.app-bar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+
+.app-side { border-right: 1px solid var(--hair); padding: 14px 0; display: flex; flex-direction: column; }
+/* The list itself is the flex line, not the rail around it — the rail also
+   holds the heading and the storage note, so flipping ITS direction leaves the
+   projects stacked inside an unchanged block. */
+.app-side [role="listbox"] { display: flex; flex-direction: column; min-width: 0; }
+.app-side-head { padding: 0 16px 10px; display: flex; align-items: center; justify-content: space-between; }
+.app-proj {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 10px;
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  border-left: 2px solid transparent;
+  transition: background-color 0.3s var(--ease-soft), border-color 0.3s var(--ease-soft);
+}
+.app-proj:hover { background: var(--paper); }
+.app-proj[aria-selected="true"] { border-left-color: var(--accent); background: var(--paper); }
+.app-proj b { font-size: 0.79rem; font-weight: 600; letter-spacing: -0.005em; }
+.app-proj .app-proj-meta { grid-column: 1 / -1; font: 400 var(--t-nano)/1 var(--mono); letter-spacing: 0.12em; color: var(--ink-faint); }
+.app-proj .app-proj-live { display: inline-flex; align-items: center; gap: 5px; font: 400 var(--t-nano)/1 var(--mono); color: var(--ink-faint); }
+.app-proj .app-proj-live i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-deep); }
+.app-side-foot { margin-top: auto; padding: 14px 16px 0; border-top: 1px solid var(--hair-soft); }
+
+.app-main { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; }
+.app-tabs { display: flex; align-items: stretch; border-bottom: 1px solid var(--hair); position: relative; overflow-x: auto; scrollbar-width: none; }
+.app-tabs::-webkit-scrollbar { display: none; }
+.app-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 13px 16px;
+  font: 500 var(--t-micro)/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  transition: color 0.28s var(--ease-soft);
+}
+.app-tab em { font: 400 var(--t-nano)/1 var(--mono); color: var(--ink-faint); }
+.app-tab:hover { color: var(--ink); }
+.app-tab[aria-selected="true"] { color: var(--ink); }
+.app-tab-ink {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--ink);
+  pointer-events: none;
+}
+.app-panels { position: relative; min-height: 0; }
+.app-panel { position: absolute; inset: 0; padding: clamp(14px, 2vw, 24px); overflow: auto; }
+.app-panel[hidden] { display: none; }
+
+.app-panel--canvas {
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+.app-canvas { position: relative; min-height: 240px; }
+.app-canvas-hint { align-self: end; }
+
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(186px, 1fr));
+  gap: clamp(10px, 1.4vw, 18px);
+}
+/* One box shape for every asset, whatever the artwork inside it is. Letting the
+   swatch keep its own 16:5 ratio drops its filename half a card higher than its
+   neighbours, and the grid stops reading as a grid. */
+.asset .art { aspect-ratio: 4 / 3; }
+.asset {
+  display: block;
+  text-align: left;
+  background: var(--paper-up);
+  border: 1px solid var(--hair-soft);
+  border-radius: var(--r);
+  padding: 8px 8px 10px;
+  transition: transform 0.42s var(--ease-rise), box-shadow 0.42s var(--ease-soft), border-color 0.3s var(--ease-soft);
+}
+.asset:hover { transform: translateY(-4px); box-shadow: var(--lift-card); border-color: var(--hair); }
+.asset .art { margin-bottom: 8px; }
+.asset-name { display: block; font-size: 0.76rem; font-weight: 600; letter-spacing: -0.005em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asset-meta { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; font: 400 var(--t-nano)/1 var(--mono); letter-spacing: 0.1em; color: var(--ink-faint); }
+
+.people-list { display: grid; gap: 1px; background: var(--hair-soft); border: 1px solid var(--hair-soft); border-radius: var(--r); overflow: hidden; }
+.person { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 13px 14px; background: var(--paper-up); }
+.person-name { font-size: 0.85rem; font-weight: 600; }
+.person-role { font: 400 var(--t-nano)/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+.person-state { display: inline-flex; align-items: center; gap: 6px; font: 500 var(--t-nano)/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+.person-state i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-deep); }
+
+.feed { display: grid; gap: 0; }
+.feed-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 11px; padding: 12px 2px; border-bottom: 1px solid var(--hair-soft); }
+.feed-row:last-child { border-bottom: 0; }
+.feed-what { font-size: 0.83rem; color: var(--ink-2); }
+.feed-what b { font-weight: 600; }
+.feed-when { font: 400 var(--t-nano)/1 var(--mono); letter-spacing: 0.1em; color: var(--ink-faint); }
+
+/* ═══ 06 · COLLABORATION ════════════════════════════════════════════════════ */
+
+.faster-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+  gap: var(--gap);
+  align-items: center;
+}
+.faster-head .h2 { max-width: 16ch; }
+.faster-head .lede { margin-top: clamp(18px, 2.4vw, 32px); }
+.faster-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(14px, 2vw, 30px);
+  margin-top: clamp(28px, 4vw, 52px);
+  padding-top: clamp(18px, 2.4vw, 30px);
+  border-top: 1px solid var(--hair);
+}
+.stat b {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--display);
+  font-size: clamp(2.2rem, 4.6vw, 4rem);
+  font-weight: 640;
+  font-variation-settings: "wdth" 90, "opsz" 72;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+}
+.stat b em { font-family: var(--mono); font-size: 0.9rem; font-weight: 500; letter-spacing: 0.1em; color: var(--ink-faint); }
+.stat span { display: block; margin-top: 8px; font: 400 var(--t-nano)/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+
+/* One object, four cursors. The whole argument of the section, in one frame. */
+.shared { aspect-ratio: 4 / 3; min-height: 300px; display: grid; place-items: center; }
+.shared-obj {
+  position: relative;
+  padding: clamp(20px, 3vw, 40px) clamp(24px, 4vw, 54px);
+  background: var(--paper-up);
+  border: 1px solid var(--hair);
+  border-radius: var(--r);
+  box-shadow: var(--lift-card);
+}
+.shared-word {
+  display: block;
+  font-family: var(--display);
+  font-size: clamp(2.4rem, 6vw, 5rem);
+  font-weight: 660;
+  font-variation-settings: "wdth" 90, "opsz" 96;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+  text-transform: uppercase;
+  overflow: hidden;
+}
+.shared-word span { display: inline-block; }
+.shared-caption { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+
+/* ═══ 07 · EVERYTHING IN ONE PLACE ══════════════════════════════════════════ */
+
+.every-top { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--gap); flex-wrap: wrap; margin-bottom: clamp(22px, 3vw, 40px); }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.filter {
+  padding: 8px 13px;
+  border: 1px solid var(--hair);
+  border-radius: 2px;
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  transition: color 0.26s var(--ease-soft), border-color 0.26s var(--ease-soft), background-color 0.26s var(--ease-soft);
+}
+.filter:hover { color: var(--ink); border-color: var(--ink); }
+.filter[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+.desk { aspect-ratio: 16 / 9; min-height: 420px; }
+.desk .obj.is-dimmed .obj-in { opacity: 0.24; }
+.desk-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
+
+/* ═══ 08 · MAKE SOMETHING ALIVE ═════════════════════════════════════════════
+   The page inverts once, at the end. Same three materials, the ink and the
+   paper swapped — which is why it reads as the same product at night and not as
+   a different website. */
+.cta {
+  position: relative;
+  margin-top: clamp(80px, 12vw, 160px);
+  padding: clamp(80px, 13vh, 170px) var(--pad) clamp(26px, 4vh, 44px);
+  background: var(--ink);
+  color: var(--paper);
+  overflow: hidden;
+}
+.cta::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 1px 1px, rgba(241, 238, 229, 0.16) 1px, transparent 0);
+  background-size: 26px 26px;
+}
+.cta-inner { position: relative; max-width: var(--max); margin: 0 auto; }
+.cta-title {
+  font-family: var(--display);
+  font-size: var(--t-mega);
+  font-weight: 660;
+  font-variation-settings: "wdth" 92, "opsz" 96;
+  letter-spacing: -0.045em;
+  line-height: 0.84;
+  text-transform: uppercase;
+  color: var(--paper);
+}
+.cta-title .tl:nth-child(2) .tl-in { padding-left: 0.07em; }
+.cta-title .tl:nth-child(3) .tl-in { padding-left: 0.02em; }
+.cta-title .tl-w { transition: font-variation-settings 0.5s var(--ease-soft); }
+.cta-title .tl-w:hover { font-variation-settings: "wdth" 76, "opsz" 96; }
+.cta-alive { position: relative; color: var(--accent); }
+
+.cta-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--gap);
+  flex-wrap: wrap;
+  margin-top: clamp(36px, 5vw, 72px);
+}
+.cta-lede { max-width: 34ch; color: rgba(241, 238, 229, 0.7); font-size: var(--t-lede); }
+
+/* The closing button. Magnetic, and the fill is the accent — the only place on
+   the page where the accent is the ground under a whole control. */
+.cta-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 32px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  overflow: hidden;
+  isolation: isolate;
+  font: 500 var(--t-ui)/1 var(--mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  transition: color 0.34s var(--ease-soft);
+  will-change: transform;
+}
+.cta-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--accent);
+  transform: scale(0, 1);
+  transform-origin: left center;
+  transition: transform 0.56s var(--ease-rise);
+}
+.cta-btn:hover, .cta-btn:focus-visible { color: var(--ink); }
+.cta-btn:hover::before, .cta-btn:focus-visible::before { transform: scale(1, 1); }
+.cta-btn .btn-arrow { width: 1.1em; height: 1.1em; }
+
+.colophon {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--gap);
+  align-items: end;
+  margin-top: clamp(70px, 12vh, 150px);
+  padding-top: clamp(18px, 3vh, 30px);
+  border-top: 1px solid rgba(241, 238, 229, 0.18);
+}
+.colophon p { font: 400 var(--t-nano)/1.7 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: rgba(241, 238, 229, 0.55); }
+.colophon-links { display: flex; gap: clamp(14px, 2vw, 30px); flex-wrap: wrap; }
+.colophon-links a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding-bottom: 4px;
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--paper);
+}
+.colophon-links a::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.42s var(--ease-rise);
+}
+.colophon-links a:hover::after { transform: scaleX(1); }
+.colophon-links a i { transition: transform 0.36s var(--ease-rise); }
+.colophon-links a:hover i { transform: translate(2px, -2px); }
+
+/* The hum, at the end. A waveform that is the same meter from the hero, read
+   one last time — the page signs off still moving. */
+.cta-hum { display: flex; align-items: flex-end; gap: 3px; height: 26px; margin-top: 26px; }
+.cta-hum i { width: 3px; height: 100%; background: rgba(241, 238, 229, 0.4); transform: scaleY(0.2); transform-origin: bottom; border-radius: 1px; }
+.cta-hum i:nth-child(3n) { background: var(--accent); }
+
+/* ═══ STATUS STRIP ══════════════════════════════════════════════════════════
+   Where you are, and how far in. Sits on the very bottom edge so it never
+   competes with content, and it is the same section list the nav reads. */
+.strip {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 38;
+  height: var(--strip);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 var(--pad);
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--hair);
+  pointer-events: none;
+  font: 500 var(--t-nano)/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  transition: transform 0.5s var(--ease-rise), color 0.4s var(--ease-soft),
+    background-color 0.4s var(--ease-soft), border-color 0.4s var(--ease-soft);
+}
+.strip-no { color: var(--ink); }
+.strip-label { color: var(--ink); }
+.strip-track { flex: 1; height: 1px; background: var(--hair); position: relative; max-width: 420px; margin-left: auto; }
+.strip-track i { position: absolute; inset: 0; background: var(--ink); transform: scaleX(0); transform-origin: left center; }
+.strip-pct { min-width: 3.4em; text-align: right; color: var(--ink); }
+/* Over the inverted closing act, the strip inverts too. */
+.strip.is-dark {
+  background: color-mix(in srgb, var(--ink) 88%, transparent);
+  border-top-color: rgba(241, 238, 229, 0.18);
+  color: rgba(241, 238, 229, 0.55);
+}
+.strip.is-dark .strip-no, .strip.is-dark .strip-label, .strip.is-dark .strip-pct { color: var(--paper); }
+.strip.is-dark .strip-track { background: rgba(241, 238, 229, 0.2); }
+.strip.is-dark .strip-track i { background: var(--accent); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+
+   Three intentional layouts, not one layout shrunk. What changes at each step
+   is the COMPOSITION, and the interaction survives all three: the canvas is
+   still draggable on a phone, the demo still plays, the poster still assembles.
+   What goes away is only what a small screen cannot hold — the number of
+   objects on a stage, never the fact that there are objects on a stage.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── TABLET ──────────────────────────────────────────────────────────────── */
+@media (max-width: 1180px) {
+  :root { --nav: 62px; }
+
+  .hero-rail { grid-template-columns: minmax(0, 1fr) auto; row-gap: 22px; }
+  .hero-scroll { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 14px; }
+  .hero-scroll-line { width: 34px; height: 1px; }
+  .hero-scroll-line i { transform: translateX(-100%); }
+
+  .sec-top { grid-template-columns: minmax(0, 1fr); }
+  .moves-grid { grid-template-columns: minmax(0, 1fr); }
+  .moves-board { aspect-ratio: 16 / 11; }
+  .together-head { grid-template-columns: minmax(0, 1fr); }
+  .faster-grid { grid-template-columns: minmax(0, 1fr); }
+  .faster-head .h2 { max-width: none; }
+  .shared { aspect-ratio: 16 / 10; }
+
+  /* The app keeps its sidebar, as a rail across the top: the projects are the
+     one thing you would still be switching between on a tablet. */
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
+  .app-side {
+    border-right: 0;
+    border-bottom: 1px solid var(--hair);
+    flex-direction: row;
+    align-items: stretch;
+    overflow-x: auto;
+    padding: 0;
+    scrollbar-width: none;
+  }
+  .app-side::-webkit-scrollbar { display: none; }
+  .app-side [role="listbox"] { flex-direction: row; }
+  .app-side-head, .app-side-foot { display: none; }
+  .app-proj {
+    width: auto;
+    min-width: 176px;
+    border-left: 0;
+    border-bottom: 2px solid transparent;
+    padding: 12px 16px;
+  }
+  .app-proj[aria-selected="true"] { border-left-color: transparent; border-bottom-color: var(--accent); }
+
+  .desk { aspect-ratio: 4 / 5; min-height: 520px; min-width: 0; }
+}
+
+/* ── MOBILE ──────────────────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  :root {
+    --nav: 56px;
+    --strip: 26px;
+    --t-hero: clamp(2.4rem, 13.4vw, 4.6rem);
+    --t-mega: clamp(2.6rem, 16vw, 5.4rem);
+    --t-h2: clamp(1.8rem, 9.4vw, 3rem);
+  }
+
+  /* The dot field halves its density: at this size the full grid reads as
+     noise behind type rather than as a surface. */
+  body::before { background-size: 20px 20px; opacity: 0.4; }
+
+  /* Nav: the wordmark and the CTA. The section links are reachable by
+     scrolling, which is the thing this page is actually for. */
+  .mark-hum .mark-sub { display: none; }
+  /* The switch keeps its dot and its state and drops the word, which is the
+     half you can infer from the other two. */
+  .motion { padding: 7px 9px; gap: 6px; }
+  .motion-word { display: none; }
+  .top-nav .top-link { display: none; }
+  .back .back-label { display: none; }
+
+  .hero { gap: 18px; }
+  .hero-eyebrow .lab:not(:first-child) { display: none; }
+  .hero-eyebrow .dot { display: none; }
+  /* Sized so the rail — lede, meter and the drag hint — still lands above the
+     fold on a 844px phone. The hint is the instruction the whole hero depends
+     on; pushing it under the fold would be the one thing worth losing height
+     over. */
+  .hero-stage { min-height: 56vh; align-items: flex-start; padding-top: 4px; }
+  .hero-type { position: relative; z-index: 8; }
+  .hero-title .tl:nth-child(2) .tl-in,
+  .hero-title .tl:nth-child(3) .tl-in { padding-left: 0; }
+  .hero-rail { grid-template-columns: minmax(0, 1fr); }
+  .hero-lede { font-size: 0.94rem; }
+  .meter { flex-direction: row; align-items: center; gap: 12px; }
+  .meter-bars { height: 20px; }
+  /* The scroll cue is what a scrollbar already says on a phone. The drag hint
+     is not — it is the one instruction this page actually needs — so that is
+     the half that stays. */
+  .hero-scroll { flex-direction: row; align-items: center; gap: 12px; }
+  .hero-scroll-line, .hero-scroll .lab { display: none; }
+
+  /* Objects get smaller and fewer. The three that stay are the three that carry
+     the idea: somebody wrote a note, somebody made a picture, somebody replied. */
+  .obj { --w: min(58vw, 210px) !important; }
+  .hero-stage .obj--swatch, .hero-stage .obj--shape { display: none; }
+  .note-body { font-size: 0.88rem; }
+
+  .still-cols { grid-template-columns: minmax(0, 1fr); }
+  .flat { padding: 16px; }
+  .flat-piece[data-piece="p2"] { grid-column: span 12; }
+  .flat-piece[data-piece="p3"] { grid-column: span 12; }
+  .flat-piece[data-piece="p4"] { grid-column: span 6; }
+  .flat-piece[data-piece="p5"] { grid-column: span 6; }
+  .flat-piece[data-piece="p6"] { grid-column: span 12; }
+
+  /* Explicit heights, no ratios. An aspect-ratio combined with a min-height
+     resolves the other way round on a narrow column — the height wins and pushes
+     the WIDTH past the screen — so the phone layout sizes these stages directly
+     instead. */
+  .moves-board { aspect-ratio: auto; height: 62vh; min-height: 420px; max-height: 560px; }
+  .moves-board .obj--shape { display: none; }
+  .log-list .log-row:nth-child(n + 5) { display: none; }
+
+  .together-track { height: 300vh; }
+  .together-stick { grid-template-rows: auto minmax(0, 1fr) auto; }
+  .together-head .lede { display: none; }
+  .poster { grid-template-rows: auto minmax(0, 1fr) auto auto; padding: 12px; }
+  /* Smaller chrome, same corner: right/bottom stay at 0 and the translate keeps
+     doing the placing, so the stamp straddles the corner at every size. */
+  .stamp { padding: 7px 12px 8px; font-size: var(--t-micro); }
+
+  .app { min-height: 0; }
+  .app-panel { position: relative; inset: auto; min-height: 400px; }
+  .app-panels { min-height: 400px; }
+  .app-bar .app-crumb { display: none; }
+  .asset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app-canvas { min-height: 380px; }
+  .app-canvas .obj { --w: min(46vw, 160px) !important; }
+
+  .faster-stats { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .faster-stats .stat { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 14px; }
+  .faster-stats .stat span { margin-top: 0; }
+  .shared { aspect-ratio: auto; height: 54vh; min-height: 330px; max-height: 440px; }
+
+  /* Taller than the screen, on purpose: it is a surface you move around on,
+     not a panel you look at. */
+  .desk { aspect-ratio: auto; height: 1120px; min-height: 0; }
+  .every-top { flex-direction: column; align-items: flex-start; }
+  .filters { width: 100%; }
+
+  .cta-row { flex-direction: column; align-items: flex-start; }
+  .cta-btn { width: 100%; justify-content: space-between; padding: 20px 22px; }
+  .colophon { grid-template-columns: minmax(0, 1fr); }
+  .colophon-links { order: -1; }
+
+  .strip-label { display: none; }
+}
+
+/* ── SMALL PHONES ────────────────────────────────────────────────────────── */
+@media (max-width: 420px) {
+  /* At this width the header is carrying five things and the corner controls
+     want a gutter at both ends. The nav closes up rather than dropping one. */
+  .top { gap: 14px; }
+  .motion { padding: 7px 8px; }
+  .motion-state { display: none; }
+
+  .hero-eyebrow .lab { font-size: var(--t-nano); }
+  .obj { --w: min(66vw, 200px) !important; }
+  .filters .filter { padding: 7px 10px; }
+}
+
+/* ── VERY SMALL PHONES ───────────────────────────────────────────────────── */
+/* 320px still exists, and at that width the header runs out of room even after
+   the switch has given up its label. The divider goes — it separates two things
+   that are already obviously separate — and the CTA tightens. Nothing is
+   dropped: every control in the header is still reachable. */
+@media (max-width: 360px) {
+  .top { gap: 10px; }
+  .top-div { display: none; }
+  .top-nav .btn { padding: 10px 12px; gap: 8px; }
+}
+
+/* ── TOUCH ───────────────────────────────────────────────────────────────── */
+/* No hover means no hover affordances to fake. The handle spreads permanently
+   instead, so the object still says it can be moved. */
+@media (hover: none) {
+  .obj-handle i:first-child { transform: translateX(-2px); }
+  .obj-handle i:last-child { transform: translateX(2px); }
+  .stage { cursor: default; }
+}
+
+/* ── SHORT VIEWPORTS ─────────────────────────────────────────────────────── */
+/* A laptop in landscape has the width for the hero composition and not the
+   height. The type gives up the vertical space rather than the canvas. */
+@media (max-height: 700px) and (min-width: 761px) {
+  :root { --t-hero: clamp(2.2rem, 7vw, 5.6rem); }
+  .hero-stage { min-height: 300px; }
+  .poster { aspect-ratio: 4 / 5; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+
+   The JS half of this is handled properly — every utility in motion.js lands
+   its targets in the final state instead of animating them, so the page is
+   fully composed and fully interactive with the setting on.
+
+   This block covers the CSS half. Transitions are shortened rather than removed:
+   at 0.16s a hover state still reads as a response, which is information, while
+   nothing crosses the threshold of being motion you have to watch. Keyframe
+   loops (the caret, anything ambient) are stopped outright.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.16s !important;
+  }
+  .obj--type.is-editing .tb-caret { opacity: 1; }
+  .arrive { display: none; }
+}

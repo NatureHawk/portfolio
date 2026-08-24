@@ -18,3 +18,6 @@ assets/sleeping-fat-cat-figurine-*/
 
 # Previous CODE design, kept locally as a reference. Not published.
 _backup/
+
+# Unrelated VS Code extension build that landed in the project root.
+kickbacks-v2.vsix
