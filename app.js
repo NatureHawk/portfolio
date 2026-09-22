@@ -95,6 +95,36 @@ const monitorSpecs = [
 ];
 
 const monitorTargets = [];
+// The full monitor groups (cabinet, bezel, pedestal — everything, not just
+// the screen-sized hit plane). Desk hit-testing only ever uses
+// monitorTargets, unchanged; stack mode's "whole cabinet is the tap target"
+// (point 4 of the second round of feedback) raycasts these recursively as a
+// second pass, see resolveMonitorHit().
+const monitorGroups = [];
+
+// Raycasts `pointer` against the small screen-plane hit targets first (exact
+// same behaviour as before, on both desk and stack — this is what desktop's
+// mouse hover/click has always used and must keep using byte-for-byte).
+// Only in stack mode, if that misses, a second recursive pass against the
+// full cabinet groups catches a tap anywhere on the bezel/body/pedestal, not
+// just the glass — resolved back to the owning spec via the group's own
+// userData (set in makeMonitor), since the recursive hit is whatever actual
+// mesh (a box, a cylinder...) the ray happened to land on.
+function resolveMonitorHit(inStackMode) {
+  const direct = raycaster.intersectObjects(monitorTargets, false)[0]?.object || null;
+  if (direct) return direct;
+  if (!inStackMode) return null;
+  const cabinetHit = raycaster.intersectObjects(monitorGroups, true)[0]?.object || null;
+  if (!cabinetHit) return null;
+  let o = cabinetHit;
+  while (o) {
+    if (o.userData && o.userData.spec) {
+      return monitorTargets.find((t) => t.userData.spec === o.userData.spec) || null;
+    }
+    o = o.parent;
+  }
+  return null;
+}
 
 // --- LAYOUT SYSTEM: "desk" (unchanged) vs "stack" (new, portrait) ---------
 // Desk is the ORIGINAL composition above, untouched. Stack rearranges the
@@ -136,23 +166,56 @@ const DESK_LAYOUT = {
 // look wrong stacked directly above one another). Recomputed from the live
 // viewport aspect every time it's applied (init + every resize), never
 // hardcoded for one phone.
+//
+// Second pass on this (first pass floated the whole tower up at y=4.3 to
+// dodge the keyboard, which read as "the desktop got stacked vertically",
+// not as a composed portrait shot of the room — no desk, no keyboard, no
+// sense of place). This version rests the tower on the desk instead, at
+// roughly the same y the desk layout's own monitors sit at, and solves the
+// keyboard-occlusion problem with a genuine camera PITCH — see
+// STACK_PITCH_DEG — plus a reserved margin of world space below the tower's
+// own footprint so the keyboard and a slice of desk are actually framed IN,
+// not cropped to a sliver.
 const STACK_ORDER = ['code', 'design', 'explore']; // top to bottom
-const STACK_GAP = 0.06;        // seam between stacked cabinets, world units
-// The desk (keyboard, mug, sticky note — all near x=0, the tower's own
-// column) sits at y~0.9-1.8 and is much closer to the camera (z~1.5-2) than
-// the monitors (z=-0.15), so at desk height it would occlude the bottom of
-// the tower outright rather than just being visually cluttered. Raising the
-// whole tower well above the desk's props (verified empirically — the frame's
-// own raw bottom edge needs to clear the keyboard's top, not just look clear)
-// is what keeps the stack composition clean without touching a single prop.
-const STACK_CENTER_Y = 4.3;    // vertical anchor of the middle (design) monitor
-const STACK_Z = -0.15;         // same depth as the desk monitors
-const STACK_HOME_FIT = 0.92;   // fraction of the fitting axis the tower fills at rest
-const STACK_HOVER_FILL = 0.76; // fraction of viewport width the screen fills on hover
-const STACK_ENTER_FILL = 0.85; // fraction of viewport width the screen fills on enter push
+const STACK_GAP = 0.14;         // a real, deliberate seam between cabinets — not a hairline
+const STACK_Z = -0.15;          // same depth as the desk monitors
 const CABINET_W = 2.28;
 const CABINET_H = 1.76;
 const SCREEN_W = 1.88;
+// How far the pedestal+base extend below the cabinet's own bottom edge, in
+// makeMonitor's local geometry (pedestal at local y -1.02..-0.95, cabinet
+// bottom at -0.88 — base plate goes down to -1.155). Needed here to know
+// where the tower's rendered footprint actually ends.
+const CABINET_PEDESTAL_DROP = 0.275;
+
+// The bottom (EXPLORE) cabinet's own y. This is the actual fix for the old
+// "keyboard occludes the bottom monitor" problem: it's chosen to sit at
+// essentially the SAME height the desk layout's own monitors already sit at
+// (2.05) — so its pedestal+base come to rest right at the real desk surface
+// (the desk box's own top is y=0.93) the way a monitor resting on a desk
+// should, instead of floating in mid-air with nothing under it.
+const STACK_BOTTOM_Y = 2.05;
+// Extra world-space height reserved below the tower's own footprint so the
+// keyboard (which sits almost exactly at this same height, just closer to
+// the camera) and a slice of desk actually get framed in as part of the
+// shot, not cropped off at the very edge.
+const STACK_DESK_MARGIN = 0.62;
+// The camera looks DOWN at this angle instead of sitting level with the
+// tower. A level camera close enough to fill the frame nicely aims almost
+// parallel to the desk at the bottom cabinet's lower edge — exactly the
+// sightline the keyboard (much closer to the camera, right in front of the
+// monitors) sits across, which is what produced the old "sliver" (and,
+// before that, the whole tower being floated up at y=4.3 to dodge it
+// outright). Tilting the camera down means that same sightline crosses the
+// keyboard's own height well above the keyboard's actual top, so the
+// keyboard projects BELOW the bottom cabinet in frame — visible, in its own
+// place, not fighting the monitor for the same pixels.
+const STACK_PITCH_DEG = 12;
+const STACK_SCREEN_FILL = 0.66;  // fraction of viewport width the SCREEN fills at rest — smaller monitors, room either side
+const STACK_HOME_FIT = 0.95;     // fraction of the reserved band the tower+desk content fills
+const STACK_HOVER_FILL = 0.58;   // screens are already smaller at rest, so hover only needs a modest push to read as "selected"
+const STACK_ENTER_FILL = 0.85;
+const STACK_HOVER_SCALE = 1.02;  // small, uniform — enough to read against the light-intensity jump without crowding neighbours
 
 // Reads the HUD chrome's actual rendered bounds so the tower can be fit into
 // the space genuinely left between them, instead of rendering full-bleed
@@ -163,7 +226,7 @@ function getStackHudBand() {
   const H = window.innerHeight;
   const headerEl = document.querySelector('.hud-top');
   const barEl = document.querySelector('.monitor-ui');
-  const PAD = 14; // breathing room between the HUD chrome and the cabinets
+  const PAD = 10; // breathing room between the HUD chrome and the cabinets
   let top = headerEl ? headerEl.getBoundingClientRect().bottom + PAD : 0;
   let bottom = barEl ? barEl.getBoundingClientRect().top - PAD : H;
   // Defensive fallback only — guards a pathological 0-height read (e.g. the
@@ -179,67 +242,91 @@ function computeStackLayout() {
   const aspect = W / Math.max(1, H);
   const halfV = THREE.MathUtils.degToRad(camera.fov) / 2; // fixed at 40deg vertical
   const halfH = Math.atan(Math.tan(halfV) * aspect);
+  const pitch = THREE.MathUtils.degToRad(STACK_PITCH_DEG);
 
-  const n = STACK_ORDER.length;
-  const stackH = n * CABINET_H + (n - 1) * STACK_GAP;
-  const halfStackH = stackH / 2;
+  const cellH = CABINET_H + STACK_GAP;
+  const exploreY = STACK_BOTTOM_Y;
+  const designY = STACK_BOTTOM_Y + cellH;
+  const codeY = STACK_BOTTOM_Y + 2 * cellH;
+
+  // The full "shot" being framed is the tower PLUS the reserved desk margin
+  // below it — not just the three cabinets — which is what actually gets
+  // the keyboard and a slice of desk into the picture.
+  const contentTop = codeY + CABINET_H / 2;
+  const contentBottom = exploreY - CABINET_H / 2 - CABINET_PEDESTAL_DROP - STACK_DESK_MARGIN;
+  const contentCenterY = (contentTop + contentBottom) / 2;
+  const contentHeight = contentTop - contentBottom;
 
   const band = getStackHudBand();
 
-  // "Contain" fit — take whichever axis is more restrictive, so the whole
-  // tower is always fully visible whatever the viewport's proportions are.
-  // The vertical fit is solved against the BAND actually left between the
-  // HUD header and the world-button bar (read live from the DOM above), not
-  // the full viewport height — fitting to the full height was what let the
-  // tower render behind that chrome instead of between it. Horizontal fit
-  // still uses the full viewport width; nothing in stack mode reserves side
-  // margins. A tall phone is height-bound (three monitors stacked is
-  // proportionally taller than any of the target phone aspects, even against
-  // the shrunk band); a squarer tablet can become width-bound instead.
-  const distForHeight = (halfStackH * H) / (STACK_HOME_FIT * band.height * Math.tan(halfV));
-  const distForWidth = CABINET_W / (2 * Math.tan(halfH) * STACK_HOME_FIT);
-  const distHome = Math.max(distForHeight, distForWidth);
+  // "Contain" fit against two independent targets: the SCREEN should read at
+  // STACK_SCREEN_FILL of the viewport's width (the "smaller monitors, room
+  // either side" ask), and the full tower+desk content should fit inside the
+  // reserved band's height (read live from the DOM above). Whichever needs
+  // the camera further back wins, so neither target is ever violated —
+  // horizontal fit always uses the full viewport width, nothing in stack
+  // mode reserves side margins.
+  const distForWidth = SCREEN_W / (2 * Math.tan(halfH) * STACK_SCREEN_FILL);
+  const distForHeight = (contentHeight * H) / (2 * STACK_HOME_FIT * band.height * Math.tan(halfV));
+  const distHome = Math.max(distForWidth, distForHeight);
 
-  // The tower's own world Y (STACK_CENTER_Y) stays fixed — chosen once so
-  // the monitors sit well above the desk props (see the comment by that
-  // constant), independent of framing. The camera's look Y is a SEPARATE,
-  // derived value: whatever world Y projects to the reserved band's pixel
-  // centre at this distance, so the tower ends up centred in the band rather
-  // than in the full viewport. The two coincide only when the band happens
-  // to be centred in the viewport (i.e. equal header/footer chrome).
-  const lookY = STACK_CENTER_Y - (1 - (2 * band.center) / H) * distHome * Math.tan(halfV);
+  // Band-centre the CONTENT (tower + desk margin), not just the tower: same
+  // derivation as before (whatever world Y projects to the reserved band's
+  // pixel centre at this distance), just against contentCenterY. The camera
+  // itself then sits ABOVE this look point by the pitch angle — lookAt
+  // always keeps the look point exactly centred on screen regardless of the
+  // camera's own height, so the pitch tilts the shot down without fighting
+  // the band-centring above.
+  const lookY = contentCenterY - (1 - (2 * band.center) / H) * distHome * Math.tan(halfV);
+  const camY = lookY + distHome * Math.tan(pitch);
+
+  // Diagnosed (toggling glassHighlight/phosphorGlow/scanlineOverlay
+  // visibility one at a time, and all three together, ruled every one of
+  // them out): the dark arc across each screen's upper third with the
+  // camera pitched is the recessed bezel opening itself — the camera now
+  // looks down INTO that recess at an angle instead of straight through it,
+  // so its inner wall becomes visible over the curved glass. Tilting each
+  // monitor back to stay square-on to the (pitched) camera closes that
+  // angle back up. The whole tower tilts together as one rigid rotation
+  // around the pivot where it meets the desk (not each cabinet's own
+  // centre), so cabinets stay flush against each other instead of opening
+  // seams — same angle drives both the position offset from the pivot and
+  // each group's own rotation.x below.
+  const pivotY = exploreY - CABINET_H / 2 - CABINET_PEDESTAL_DROP;
+  const tiltRx = -pitch;
 
   const monitors = {};
-  let cursorY = STACK_CENTER_Y + halfStackH - CABINET_H / 2;
-  for (const id of STACK_ORDER) {
-    const y = cursorY;
-    cursorY -= (CABINET_H + STACK_GAP);
+  for (const [id, y] of [['code', codeY], ['design', designY], ['explore', exploreY]]) {
+    const dy = y - pivotY;
+    const tiltY = pivotY + dy * Math.cos(pitch);
+    const tiltZ = STACK_Z - dy * Math.sin(pitch);
 
-    // Hover/enter dolly straight in along Z and recentre on this monitor's
-    // own Y — once a specific screen is the subject, filling the reserved
-    // band evenly no longer matters, filling the frame does. There is no X
-    // to pan to either; every monitor in the tower sits at x=0. Distances
-    // are solved so the SCREEN (not the cabinet) fills a target fraction of
-    // the viewport width, same "fit from the live aspect" method as above.
-    const distHover = SCREEN_W / (2 * Math.tan(halfH) * STACK_HOVER_FILL);
-    const distEnter = SCREEN_W / (2 * Math.tan(halfH) * STACK_ENTER_FILL);
+    // Hover/enter dolly in along the SAME tilted normal as the resting
+    // pose (not straight down +Z) — approaching level would reintroduce
+    // the exact oblique bezel view the tilt above fixes, just for whatever
+    // monitor is being hovered/entered instead of all three at once. There
+    // is no X to pan to either; every monitor in the tower sits at x=0.
+    // Distances are solved so the SCREEN (not the cabinet) fills a target
+    // fraction of the viewport width, same "fit from the live aspect"
+    // method as above.
+    const distHover = Math.min(SCREEN_W / (2 * Math.tan(halfH) * STACK_HOVER_FILL), distHome);
+    const distEnter = Math.min(SCREEN_W / (2 * Math.tan(halfH) * STACK_ENTER_FILL), distHome);
 
+    // Camera approaches along this cabinet's own (tilted) face normal —
+    // normal' = (sin(pitch), cos(pitch)) in (y,z) for rotation.x = -pitch
+    // (matches the untilted case exactly at pitch=0: normal (0,1), i.e. the
+    // original pure +Z offset).
     monitors[id] = {
-      // A small, uniform hover bump (not the desk's 1.06/1.24) — the cabinets
-      // are only STACK_GAP (0.06 world units) apart, so anything much larger
-      // risks the scaled-up cabinet visibly closing that seam with its
-      // neighbours. 1.02 reads clearly against the light-intensity jump
-      // (1.35 -> 2.8) alone without any visible crowding.
-      x: 0, y, z: STACK_Z, ry: 0, baseScale: 1, hoverScale: 1.02,
-      hoverCamera: [0, y, STACK_Z + Math.min(distHover, distHome)],
-      hoverLook: [0, y, STACK_Z],
-      enterCamera: [0, y, STACK_Z + Math.min(distEnter, distHome)],
-      enterLook: [0, y, STACK_Z]
+      x: 0, y: tiltY, z: tiltZ, ry: 0, rx: tiltRx, baseScale: 1, hoverScale: STACK_HOVER_SCALE,
+      hoverCamera: [0, tiltY + distHover * Math.sin(pitch), tiltZ + distHover * Math.cos(pitch)],
+      hoverLook: [0, tiltY, tiltZ],
+      enterCamera: [0, tiltY + distEnter * Math.sin(pitch), tiltZ + distEnter * Math.cos(pitch)],
+      enterLook: [0, tiltY, tiltZ]
     };
   }
 
   return {
-    home: { camera: [0, lookY, STACK_Z + distHome], look: [0, lookY, STACK_Z] },
+    home: { camera: [0, camY, STACK_Z + distHome], look: [0, lookY, STACK_Z] },
     monitors
   };
 }
@@ -271,6 +358,11 @@ function applyLayout(mode) {
     const group = hit.userData.group;
     group.position.set(m.x, m.y, m.z);
     group.rotation.y = m.ry;
+    // Desk never sets this (undefined -> 0): monitors stay perfectly
+    // upright, byte-identical to before this field existed. Stack mode
+    // tilts the tower back to stay square-on to the pitched camera — see
+    // the comment above STACK_PITCH_DEG's use in computeStackLayout.
+    group.rotation.x = m.rx || 0;
     group.scale.setScalar(hit === hovered ? spec.hoverScale : spec.baseScale);
   });
 
@@ -951,6 +1043,13 @@ function makeMonitor(spec, isCentre = false) {
   hit.userData = { spec, group, light, screen, phosphorGlow, scanlineOverlay, led, ledMat, ledBaseHsl };
   group.add(hit);
   monitorTargets.push(hit);
+
+  // Stack mode's "whole cabinet is the tap target" (see resolveMonitorHit)
+  // walks up from whatever mesh a recursive raycast actually hits looking
+  // for this — set on the GROUP, not the small screen-sized hit plane above,
+  // so a tap on the bezel/cabinet/pedestal resolves to the same spec.
+  group.userData.spec = spec;
+  monitorGroups.push(group);
 
   scene.add(group);
 }
@@ -2634,6 +2733,25 @@ let cameraSettled = true;
 // the camera arrived, which is the runaway all over again.
 const switchAnchor = new THREE.Vector2(3, 3);
 
+// Stack-mode touch "press" feedback (pointerdown, before pointerup even
+// decides it was a tap) — a brief, self-reverting light bump + scale dip,
+// independent of setHover's persistent state so it can't fight it. If
+// setHover/openWorld take ownership of this same monitor before the revert
+// timer fires (the common case — a real tap's pointerup follows within a
+// couple of frames), the revert below is a no-op since hovered/entering
+// already reflect the real state by then.
+function pressFeedback(hit) {
+  const { group, light, spec } = hit.userData;
+  light.intensity = 2.3;
+  group.scale.setScalar(spec.baseScale * 0.97);
+  window.setTimeout(() => {
+    if (hovered !== hit && !entering) {
+      light.intensity = 1.35;
+      group.scale.setScalar(spec.baseScale);
+    }
+  }, 90);
+}
+
 function setHover(target) {
   if (entering || hovered === target) return;
   if (target && performance.now() < suppressHoverUntil) return;
@@ -2928,6 +3046,16 @@ canvas.addEventListener('pointerdown', (event) => {
   if (event.pointerType !== 'mouse') {
     touchStartPointer.copy(pointer);
     touchTracking = true;
+    // Immediate touch-down feedback — a brief press (light bump + a small
+    // scale dip) fired the instant a finger lands, before pointerup decides
+    // whether it was a tap at all. Stack mode only: whole-cabinet hit test
+    // (see resolveMonitorHit) since a press anywhere on the bezel should
+    // register, not just the glass.
+    if (!entering && currentLayout === 'stack') {
+      raycaster.setFromCamera(pointer, camera);
+      const pressed = resolveMonitorHit(true);
+      if (pressed) pressFeedback(pressed);
+    }
   }
 });
 
@@ -2951,7 +3079,7 @@ canvas.addEventListener('pointerup', (event) => {
   pointer.x = upX;
   pointer.y = upY;
   raycaster.setFromCamera(pointer, camera);
-  const hit = raycaster.intersectObjects(monitorTargets, false)[0]?.object || null;
+  const hit = resolveMonitorHit(currentLayout === 'stack');
   if (!hit) return;
   if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume();
   // setHover() first, same as a mouse always has by the time it clicks — this
@@ -2990,7 +3118,10 @@ canvas.addEventListener('pointermove', (event) => {
   const userDriven = cameraSettled && pointer.distanceTo(switchAnchor) >= HOVER_SWITCH_TRAVEL;
 
   raycaster.setFromCamera(pointer, camera);
-  const hit = raycaster.intersectObjects(monitorTargets, false)[0]?.object || null;
+  // Whole-cabinet hit testing (resolveMonitorHit's stack-mode fallback) only
+  // applies in stack layout; desk keeps the exact same screen-plane-only
+  // raycast it has always used.
+  const hit = resolveMonitorHit(currentLayout === 'stack');
 
   if (hit) {
     // The ray is on a monitor, so we are definitely not unhovering — kill any
@@ -3045,7 +3176,7 @@ canvas.addEventListener('click', () => {
     openWorld(hovered.userData.spec.id);
   } else {
     raycaster.setFromCamera(pointer, camera);
-    const hit = raycaster.intersectObjects(monitorTargets, false)[0]?.object || null;
+    const hit = resolveMonitorHit(currentLayout === 'stack');
     if (hit) openWorld(hit.userData.spec.id);
   }
 });

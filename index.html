@@ -51,6 +51,10 @@
     <main class="app">
       <canvas id="scene" aria-label="A 3D lo-fi room with three interactive CRT monitors"></canvas>
 
+      <!-- Stack layout only (CSS-gated, see .stack-top-scrim in styles.css)
+           — reads the reserved band above the tower as a deliberate vignette
+           into the header instead of a flat black bar. -->
+      <div class="stack-top-scrim" aria-hidden="true"></div>
       <header class="hud hud-top">
         <p class="brand">PRIYANSHU GHOSH <span>— AFTER HOURS</span></p>
         <div class="top-controls">
@@ -80,6 +84,10 @@
         <p class="copy-touch">Tap a screen to enter its world.</p>
       </section>
 
+      <!-- Stack layout only (CSS-gated, see .stack-nav-scrim in styles.css) —
+           grounds the bottom nav strip into the floor of the shot instead of
+           it reading as buttons pasted over the scene. -->
+      <div class="stack-nav-scrim" aria-hidden="true"></div>
       <section class="monitor-ui hud" aria-label="Choose a portfolio world">
         <button class="world-button code" data-world="code"><span>01</span> Code</button>
         <button class="world-button design" data-world="design"><span>02</span> Design</button>
