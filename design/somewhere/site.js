@@ -270,6 +270,14 @@ export function createSomewhere(spec, host, context = {}) {
       opacity: 1, scale: 1, duration: 620, ease: EASE.rise,
     }, 0);
 
+    // exit() fades the whole UI layer out, so it has to be brought back here —
+    // otherwise returning to this world leaves every control invisible.
+    const layer = $('.sw-ui', root);
+    if (layer) {
+      utils.set(layer, { opacity: 0 });
+      timeline.add(layer, { opacity: 1, duration: 420, ease: EASE.rise }, 0);
+    }
+
     const type = [$('.sw-title', root), $('.sw-welcome', root), $('.sw-sub', root),
       $('.sw-rule', root), $('.sw-cta', root), $('.sw-drag', root)].filter(Boolean);
     utils.set(type, { opacity: 0, y: 26 });

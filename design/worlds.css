@@ -68,6 +68,12 @@
 
 .corner {
   --near: 0;
+  /* Stage 2 of a throw (see hotcorners.js): 0..1, written only while the
+     cursor is moving toward this corner fast enough and aimed well enough to
+     be a candidate — a preview of the response `--near` already gives a slow
+     approach, not a second mechanic. Idle and on every click-only visit it
+     just sits at 0 and touches nothing below. */
+  --charge: 0;
   position: absolute;
   width: var(--corner-size);
   height: var(--corner-size);
@@ -101,7 +107,12 @@
   width: 22px;
   height: 22px;
   opacity: calc(0.2 + var(--near) * 0.8);
-  transform: scale(calc(0.5 + var(--near) * 0.5));
+  transform: scale(calc(0.5 + var(--near) * 0.5 + var(--charge) * 0.12));
+  /* The one place a throw shows before it lands: the bracket warms toward the
+     world's own accent as the charge builds, on top of whatever `--near`
+     already gave it. Purely additive — a click-only visit never sets
+     `--charge` above 0 and this rule never fires. */
+  border-color: color-mix(in srgb, currentColor calc(100% - var(--charge) * 55%), var(--corner-accent) calc(var(--charge) * 55%));
 }
 .corner--tl .corner-tick { top: 0; left: 0; border-top: 1px solid; border-left: 1px solid; transform-origin: 0 0; }
 .corner--tr .corner-tick { top: 0; right: 0; border-top: 1px solid; border-right: 1px solid; transform-origin: 100% 0; }
@@ -166,7 +177,7 @@
 /* The arrow sits on the side the corner is on, so it always points out of the
    panel and into the doorway rather than back across it. */
 .corner--tl .corner-go, .corner--bl .corner-go { flex-direction: row-reverse; }
-.corner-go i { font-style: normal; transform: translate(calc(var(--near) * 3px), 0); }
+.corner-go i { font-style: normal; transform: translate(calc(var(--near) * 3px + var(--charge) * 5px), 0); }
 
 .corner-name {
   font-family: var(--display, sans-serif);

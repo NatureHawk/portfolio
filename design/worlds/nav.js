@@ -19,6 +19,7 @@
 import { animate, frame, pointer, hasHover, motion, utils, EASE, el, $$ } from '../motion.js';
 import { CORNERS, nearness } from './corners.js';
 import { WORLD_LIST } from './registry.js';
+import { createHotCorners } from './hotcorners.js';
 
 const REACH = 210;      // px from the corner at which a control starts waking
 const PREPARE_AT = 0.4; // nearness at which the destination is built, unasked
@@ -59,6 +60,15 @@ export function createNav({ onEnter, onApproach } = {}) {
   else document.body.prepend(node);
 
   let current = null;
+
+  /* THROWN, NOT CLICKED. A second way into the same four doors: aim the
+     cursor at a corner and move fast, and it opens on its own — see
+     hotcorners.js for what "fast" and "aimed" mean. It shares these exact
+     controls (so it lights the same corner click does) and the same
+     `onEnter`/`onApproach`, so a throw is indistinguishable from a very fast,
+     very deliberate click by the time it reaches the shell. Mouse-only, and
+     only where there is a pointer to throw in the first place. */
+  const hot = hasHover ? createHotCorners({ controls, node, getCurrent: () => current, onEnter, onApproach }) : null;
 
   const write = (control, value) => {
     // Two decimals is below the threshold at which any of the derived values
@@ -195,6 +205,7 @@ export function createNav({ onEnter, onApproach } = {}) {
     },
 
     destroy() {
+      hot?.destroy();
       utils.remove($$('.corner', node));
       node.remove();
     },

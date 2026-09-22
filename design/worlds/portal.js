@@ -32,6 +32,15 @@ import { CORNERS, OPPOSITE } from './corners.js';
 const SPAN = 1.5;   // sheet side, as a multiple of (W + H)
 const LEAD = 48;    // how far ahead of the ground the accent blade runs, in ms
 
+/* A THROWN crossing (see hotcorners.js) runs the blade a little further
+   ahead of the ground it is cutting — the one place the portal itself, which
+   is shared by every destination, gets to feel the momentum a click never
+   carries. `ctx.impulse` is null for a click, so `leadFor` is a no-op then. */
+function leadFor(ctx) {
+  const strength = ctx.impulse?.strength ?? 0;
+  return strength ? Math.round(LEAD + strength * 22) : LEAD;
+}
+
 /* The blade is a GLAZE, not a fill. At full opacity the screen spends a sixth
    of a second as one flat colour, which reads as a swipe effect; at three
    quarters the world you are leaving is still legible underneath it and the
@@ -87,6 +96,7 @@ export function createPortal() {
      by LEAD milliseconds, so the screen is cut rather than covered. */
   function sweep(timeline, ctx) {
     const { corner, portal, t } = ctx;
+    const LEAD = leadFor(ctx); // shadows the module default — see leadFor
     const back = OPPOSITE[corner];
     const coverDur = t.coverEnd - t.coverStart - LEAD;
     const uncoverDur = t.uncoverEnd - t.uncoverStart - LEAD;
@@ -140,6 +150,7 @@ export function createPortal() {
      that is what guarantees the screen is genuinely covered at the swap. */
   function shards(timeline, ctx) {
     const { corner, portal, t } = ctx;
+    const LEAD = leadFor(ctx); // shadows the module default — see leadFor
     const back = OPPOSITE[corner];
     const count = portal.shards ?? 4;
     const angles = [41, 45.5, 48, 43.5, 46.5];
@@ -195,6 +206,7 @@ export function createPortal() {
      crosses first) kept in a shape that belongs to a circle. */
   function iris(timeline, ctx) {
     const { corner, portal, t } = ctx;
+    const LEAD = leadFor(ctx); // shadows the module default — see leadFor
     const back = OPPOSITE[corner];
     const coverDur = t.coverEnd - t.coverStart - LEAD;
     const uncoverDur = t.uncoverEnd - t.uncoverStart - LEAD;

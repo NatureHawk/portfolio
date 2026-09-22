@@ -210,13 +210,17 @@ spec.mount = () => {
   function exit(timeline, ctx) {
     if (motion.reduced || !timeline) return;
     const dir = towards(ctx.corner);
+    // A throw carries its own momentum in; a click carries none. `kick` is
+    // the whole of that difference — the same departure, pushed a little
+    // harder toward the same corner, scaled by how fast the hand was moving.
+    const kick = 1 + (ctx.impulse?.strength ?? 0) * 0.65;
 
     remember([...chrome, page].filter(Boolean));
 
     if (chrome.length) {
       timeline.add(chrome, {
-        x: dir.x * 26,
-        y: dir.y * 26,
+        x: dir.x * 26 * kick,
+        y: dir.y * 26 * kick,
         opacity: 0,
         duration: 260,
         delay: (_, i) => i * 40,
@@ -226,8 +230,8 @@ spec.mount = () => {
 
     if (page) {
       timeline.add(page, {
-        x: dir.x * 18,
-        y: dir.y * 18,
+        x: dir.x * 18 * kick,
+        y: dir.y * 18 * kick,
         scale: 0.99,
         duration: 360,
         ease: EASE.exit,
@@ -245,6 +249,10 @@ spec.mount = () => {
   function enter(timeline, ctx) {
     const at = ctx.at ?? 0;
     const dir = towards(ctx.corner);
+    // Same idea as the exit's `kick`: arriving out of a throw starts a
+    // little further back in the corner, so the rise in has a touch more of
+    // it to cover — felt, not seen, since it happens under the portal.
+    const kick = 1 + (ctx.impulse?.strength ?? 0) * 0.5;
 
     const putBack = () => {
       for (const [node, rest] of restore) utils.set(node, rest);
@@ -262,7 +270,7 @@ spec.mount = () => {
     // then the offset the page will rise out of.
     timeline.call(putBack, Math.max(at - 30, 0));
     timeline.call(() => {
-      utils.set(surfaces, { x: dir.x * 34, y: dir.y * 34, opacity: 0, scale: 1 });
+      utils.set(surfaces, { x: dir.x * 34 * kick, y: dir.y * 34 * kick, opacity: 0, scale: 1 });
     }, Math.max(at - 20, 0));
 
     timeline.add(surfaces, {
