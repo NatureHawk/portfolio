@@ -171,9 +171,43 @@ export const CAM = {
      where you are standing — but nothing says which way you face once you
      get there. This is that: yaw and pitch of the view direction only, the
      position never moves. Slightly gentler than the globe's drag, because
-     turning your head is a smaller gesture than spinning a planet. */
+     turning your head is a smaller gesture than spinning a planet.
+
+     UP IS THE GROUND DIRECTLY UNDER THE CAMERA, not the landmark's own
+     surface normal — the destinations stand well back and up from the thing
+     they are looking at (the coast shot in particular floats out over open
+     water, a distance and a half of R away), and on a planet this small that
+     offset is itself a large angle. Yawing about the LANDMARK's normal was
+     the original bug's tilted axis all over again, just measured from a
+     different point. Building the frame instead from the eye's own radial
+     direction (see `placeFrame.up` in camera.js) is what makes the horizon
+     the camera actually shows level, wherever it is standing.
+
+     PITCH IS MEASURED FROM THE VISIBLE HORIZON, not from the tangent plane.
+     Standing above a small sphere, the true horizon DIPS below level by a
+     real, destination-dependent amount — `lookPitchWindow` is the small
+     window either side of THAT dip a person can tip their head through,
+     not either side of "flat". Several arrival shots already look down
+     further than even the bottom of that window on purpose — a deliberate
+     composition decision, not a bug — and arriving must never snap the view
+     to some narrower band. So the actual range used at a given destination
+     (built in camera.js, per arrival, from the measured dip and these two
+     numbers) is widened just enough to contain the arrival pitch, with a
+     little headroom past it — never narrowed. */
   lookSensitivity: 0.0026,
-  lookPitchLimit: 1.40,    // radians either side of level — just short of straight up/down
+  lookDamp: 0.20,                        // how fast the eased look catches its target, per 60Hz frame
+  lookPitchWindow: (12 * Math.PI) / 180, // how far either side of the horizon's own dip you may look
+  lookPitchMargin: (4 * Math.PI) / 180,  // headroom kept past the arrival pitch itself
+
+  /* The arrival shot is framed against the LANDMARK's own normal, not the
+     eye's — the two rarely coincide on a planet this small, so read off
+     directly the arrival roll is generally wrong for the eye's true
+     horizon. Snapping it straight would itself be a jump, so instead the
+     first `lookRollSettle` milliseconds of a place ease the roll in from
+     exactly what the flight left on screen to what standing there actually
+     looks like — nothing else moves, so it reads as the horizon settling
+     rather than as a cut. */
+  lookRollSettle: 400,
 };
 
 /* ══ THE FOUR DESTINATIONS ═════════════════════════════════════════════════

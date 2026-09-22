@@ -32,7 +32,7 @@
 // what finally makes the horizon level.
 
 import * as THREE from 'three';
-import { CAM, R } from './content.js';
+import { CAM, R, WORLD } from './content.js';
 import { heightAt } from './planet.js';
 import { onSphere } from './craft.js';
 
@@ -129,14 +129,23 @@ export function createCamera(aspect) {
   /* ── PLACE-MODE LOOK ─────────────────────────────────────────────────────
      The flight decides the EYE; this decides which way it faces once there.
      `placeFrame` is the fixed basis set the moment a flight arrives — the eye
-     itself, the surface normal as up, and the arrival view direction as the
-     yaw/pitch origin — and `look` is the offset from that origin the visitor
-     has since dragged in. Rebuilding the orientation from this basis every
-     frame (rather than nudging the quaternion directly) is what keeps the
-     horizon level through an arbitrary amount of looking around: `up` never
-     drifts, because it is never derived from anything that changed. */
+     itself, the TRUE surface normal as up, the arrival gaze split into its
+     horizontal direction and its pitch off the horizon, and the per-arrival
+     pitch range that is guaranteed to contain that arrival pitch — and
+     `look` is the yaw/pitch the visitor has since dragged in, measured
+     against that same horizon. Rebuilding the orientation from this basis
+     every frame (rather than nudging the quaternion directly) is what keeps
+     the horizon level through an arbitrary amount of looking around: `up`
+     never drifts, because it is never derived from anything that changed.
+
+     `yaw`/`pitch` are the EASED values the camera actually renders;
+     `goalYaw`/`goalPitch` are what the drag is asking for, already clamped.
+     Chasing the goal with damping (rather than setting `yaw`/`pitch`
+     directly) is what makes a flick settle instead of snapping, and
+     clamping the goal rather than the eased value is what guarantees the
+     eased value can never overshoot the limit while catching up. */
   let placeFrame = null;
-  const look = { yaw: 0, pitch: 0 };
+  const look = { yaw: 0, pitch: 0, goalYaw: 0, goalPitch: 0 };
 
   const world = new THREE.Group();
 
@@ -178,14 +187,20 @@ export function createCamera(aspect) {
     const cx = clamp(dx, -CAM.maxDragStep, CAM.maxDragStep);
     const cy = clamp(dy, -CAM.maxDragStep, CAM.maxDragStep);
 
-    /* PLACE — turn the head, not the world. Direct and un-momentumed: a look
-       around is a series of small deliberate glances, not a thing that should
-       still be coasting after the hand lifts. Yaw is left to wrap freely (it
-       is a full 360° pan); pitch stops just short of straight up or down,
-       where "which way am I facing" stops meaning anything. */
+    /* PLACE — turn the head, not the world. The GOAL moves straight with the
+       hand, same as a globe drag; `update` is what eases the rendered
+       yaw/pitch towards it, so the look settles instead of snapping. Yaw is
+       left to wrap freely (it is a full 360° pan); pitch is clamped to this
+       arrival's own range — tight around the horizon, but never tighter than
+       the arrival shot itself, so a look-around can never un-arrive. */
     if (mode === 'place') {
-      look.yaw -= cx * CAM.lookSensitivity;
-      look.pitch = clamp(look.pitch - cy * CAM.lookSensitivity * 0.62, -CAM.lookPitchLimit, CAM.lookPitchLimit);
+      if (placeFrame) {
+        look.goalYaw -= cx * CAM.lookSensitivity;
+        look.goalPitch = clamp(
+          look.goalPitch - cy * CAM.lookSensitivity * 0.62,
+          placeFrame.pitchLower, placeFrame.pitchUpper,
+        );
+      }
       return;
     }
 
@@ -269,19 +284,85 @@ export function createCamera(aspect) {
 
     start(to, mid, duration, () => {
       mode = 'place';
-      // The look-around origin: facing exactly where the flight left off, so
-      // arriving never itself causes a turn — dragging from here is purely
-      // additive. Read off the arrival quaternion's own basis rather than
-      // rebuilding it from `a`, so this is exactly the frame the visitor sees
-      // land, floating-point noise and all.
+      /* The look-around frame, built to stand on the ground directly under
+         THE CAMERA — not on the landmark's own surface normal. The two are
+         not the same thing: a destination stands `distance` * R back and
+         `height` * R up from the landmark it is framing (the coast shot in
+         particular sits more than a radius out over open water), and on a
+         ten-unit planet that tangential offset is itself tens of degrees.
+         Yawing about the LANDMARK's normal was the original bug's tilted
+         axis all over again, just measured from a point the camera is not
+         actually standing on.
+
+         So `up` is the EYE's own radial direction — `a.eye` is a point in
+         the planet's local (unrotated) space, and the planet is centred on
+         the origin in that space (nothing here ever moves or scales the
+         `world` group, only rotates it), so `normalize(a.eye)` IS that
+         direction; `Q` carries it into world space exactly like `upTo`
+         above. */
+      const eyeDist = a.eye.length();
+      const dirEyeLocal = a.eye.clone().normalize();
+      const up = dirEyeLocal.clone().applyQuaternion(Q).normalize();
+
+      /* THE HORIZON DIPS. Standing `eyeDist` from the planet's centre above
+         ground of radius `groundAtEye`, the horizon is not level — it falls
+         below the tangent plane by `dip = acos(groundAtEye / eyeDist)`. On a
+         planet this small and from up here that is not a rounding error: a
+         person standing at the mountain's height looks perceptibly DOWN to
+         see the edge of the world. `heightAt` is asked in the SAME local
+         space `a.eye` is in, and clamped up to the waterline — the coast
+         destination stands out over open water, and what a visitor sees as
+         "the ground" out there is the sea SURFACE, not the (lower) sea bed
+         `heightAt` returns underwater. */
+      const groundAtEye = Math.max(heightAt(dirEyeLocal), WORLD.ocean);
+      const dip = Math.acos(clamp(groundAtEye / eyeDist, -1, 1));
+
+      /* The arrival gaze (`forward0`, read off `to.quat` so this is exactly
+         the frame the visitor sees land, floating-point noise and all) is
+         split against this true horizon: `horiz0` is its component IN the
+         tangent plane at the eye — the direction yaw turns around — and
+         `pitch0` is how far off THAT horizon it already sits. `right0` is
+         derived the same way the yaw/pitch rebuild uses it every frame
+         (`horiz0 × up`); the reconstruction at yaw 0 / pitch `pitch0`
+         reproduces `forward0` exactly regardless of which `up` it is taken
+         against (see the proof in `update`'s place branch) — but its ROLL
+         generally will not match `to.quat`'s, since that was built against
+         the landmark's normal, not this one. `rollFrom`/`rollT` below are
+         what eases that one discrepancy out instead of snapping it.
+
+         `pitchLower`/`pitchUpper` are this arrival's own look range: a
+         window either side of the horizon's own dip, widened just enough to
+         contain `pitch0` with a little margin, so the very first drag can
+         never ask for a pitch narrower than where the camera already is. */
+      const forward0 = new THREE.Vector3(0, 0, -1).applyQuaternion(to.quat);
+      const dotFU = clamp(forward0.dot(up), -1, 1);
+      const horiz0 = forward0.clone().addScaledVector(up, -dotFU);
+      // Straight up/down (never happens with these destinations, but the
+      // fallback keeps a normalize() from ever dividing by zero): the
+      // approach bearing, carried into world space the same way `up` was.
+      if (horiz0.lengthSq() < 1e-10) horiz0.copy(a.along).applyQuaternion(Q);
+      horiz0.normalize();
+      const pitch0 = Math.asin(dotFU);
+      const right0 = new THREE.Vector3().crossVectors(horiz0, up).normalize();
+
       placeFrame = {
         eye: to.eye.clone(),
-        up: new THREE.Vector3(0, 1, 0).applyQuaternion(to.quat),
-        forward0: new THREE.Vector3(0, 0, -1).applyQuaternion(to.quat),
-        right0: new THREE.Vector3(1, 0, 0).applyQuaternion(to.quat),
+        up,
+        horiz0,
+        right0,
+        pitch0,
+        dip,
+        pitchLower: Math.min(-dip - CAM.lookPitchWindow, pitch0 - CAM.lookPitchMargin),
+        pitchUpper: Math.max(-dip + CAM.lookPitchWindow, pitch0 + CAM.lookPitchMargin),
+        // The roll-settle: exactly what the flight left on screen, eased
+        // towards the standing frame above over `CAM.lookRollSettle` ms.
+        rollFrom: to.quat.clone(),
+        rollT: 0,
       };
       look.yaw = 0;
-      look.pitch = 0;
+      look.goalYaw = 0;
+      look.pitch = pitch0;
+      look.goalPitch = pitch0;
       onArrive?.();
     });
   }
@@ -332,6 +413,11 @@ export function createCamera(aspect) {
   const _pq = new THREE.Quaternion();
   const _pf = new THREE.Vector3();
   const _pr = new THREE.Vector3();
+  const _sysQuat = new THREE.Quaternion();
+
+  // A smooth 0..1 ease, for the roll-settle blend below — cheap, and the
+  // same shape as the flight's own easing at each end.
+  const smoothstep01 = (t) => t * t * (3 - 2 * t);
 
   function globeEye(state, panFrac, pointer) {
     const halfW = state.dist * Math.tan((CAM.fov * Math.PI / 180) / 2) * camera.aspect;
@@ -410,22 +496,62 @@ export function createCamera(aspect) {
       quat.copy(g.quat);
     } else if (mode === 'place' && placeFrame) {
       /* THE LOOK-AROUND. Position never moves — `eye` is copied straight from
-         the frame the flight arrived on. Only the facing direction turns: yaw
-         about the fixed surface normal, then pitch about whatever axis is
-         "right" once that yaw has been applied. Rebuilt from `forward0` and
-         `right0` every frame rather than integrated onto the live quaternion,
-         so ten minutes of dragging accumulate exactly as much drift as zero —
-         none, since `look.yaw`/`look.pitch` are the only state and `up` is
-         never touched at all. */
+         the frame the flight arrived on. The rendered `look.yaw`/`look.pitch`
+         EASE toward whatever `drag` last set as the goal, frame-rate
+         independent exactly like the globe's own damping above — a flick
+         settles instead of snapping, and because the GOAL is what gets
+         clamped (in `drag`), the eased value can never overshoot the limit
+         while it is still catching up.
+
+         The facing direction is then rebuilt from scratch every frame,
+         rather than integrated onto the live quaternion: yaw turns
+         `horiz0` — the arrival gaze's own horizontal direction — about the
+         fixed surface normal; pitch then tilts that yawed direction up or
+         down from the horizon, about whatever axis is "right" once the yaw
+         has been applied. Rebuilding rather than integrating is what keeps
+         ten minutes of dragging accumulating exactly as much drift as
+         zero — none, since `look.yaw`/`look.pitch` are the only state and
+         `up` is never touched at all.
+
+         At yaw 0 / pitch `pitch0` (arrival, before any drag) this reproduces
+         `forward0` exactly, whichever `up` the frame is built against —
+         `horiz0` and `right0` are `forward0`'s own decomposition against
+         that axis, so rotating `horiz0` back up by `pitch0` about `right0`
+         retraces the same path in reverse. What it does NOT reproduce is
+         `to.quat`'s own ROLL, because `to.quat` was built against the
+         landmark's normal and `placeFrame.up` is the eye's own — see the
+         roll-settle just below. */
+      const k = 1 - Math.pow(1 - CAM.lookDamp, dt / 16.67);
+      look.yaw = lerp(look.yaw, look.goalYaw, k);
+      look.pitch = lerp(look.pitch, look.goalPitch, k);
+      if (Math.abs(look.goalYaw - look.yaw) < 1e-5) look.yaw = look.goalYaw;
+      if (Math.abs(look.goalPitch - look.pitch) < 1e-5) look.pitch = look.goalPitch;
+
       _pq.setFromAxisAngle(placeFrame.up, look.yaw);
-      _pf.copy(placeFrame.forward0).applyQuaternion(_pq);
+      _pf.copy(placeFrame.horiz0).applyQuaternion(_pq);
       _pr.copy(placeFrame.right0).applyQuaternion(_pq);
       _pq.setFromAxisAngle(_pr, look.pitch);
       _pf.applyQuaternion(_pq);
 
       eye.copy(placeFrame.eye);
       _look.copy(eye).add(_pf);
-      quat.copy(orientationAt(eye, _look, placeFrame.up));
+      _sysQuat.copy(orientationAt(eye, _look, placeFrame.up));
+
+      /* THE ROLL-SETTLE. `_sysQuat` is what standing here, looking this way,
+         actually looks like — level against the eye's own horizon. But the
+         very first place-mode frame has to be indistinguishable from the
+         flight's last one (`placeFrame.rollFrom`), or arriving is a cut, not
+         a landing. So for `CAM.lookRollSettle` ms the rendered orientation
+         is SLERPED from that exact arrival frame to `_sysQuat` — nothing
+         else about the shot moves, so it reads as the horizon settling
+         under your feet, not as the view jumping. Once `rollT` reaches 1 the
+         blend is indistinguishable from `_sysQuat` and is skipped outright. */
+      if (placeFrame.rollT < 1) {
+        placeFrame.rollT = Math.min(1, placeFrame.rollT + dt / CAM.lookRollSettle);
+        quat.slerpQuaternions(placeFrame.rollFrom, _sysQuat, smoothstep01(placeFrame.rollT));
+      } else {
+        quat.copy(_sysQuat);
+      }
     }
 
     /* The world's rotation is ONLY driven in globe mode. In a place it is
