@@ -34,6 +34,9 @@ scene.fog = new THREE.FogExp2(0x050714, 0.022);
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 80);
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2(3, 3);
+// Touch tap bookkeeping — see the pointerdown/pointerup listeners below.
+const touchStartPointer = new THREE.Vector2(3, 3);
+let touchTracking = false;
 
 // --- CAMERA STAGING & INTERACTION COORDINATES ---
 const homeCamera = new THREE.Vector3(0, 2.8, 9.5);
@@ -47,36 +50,266 @@ let entering = false;
 let silhouetteGroup = null;
 let silhouetteFadeAmount = 0;
 
+// hoverCamera/hoverLook/enterCamera/enterLook/baseScale/hoverScale are the
+// LIVE, mutable values setHover()/openWorld() read every time — the numbers
+// below are the desk (default) composition, captured verbatim from what used
+// to be hardcoded here. applyLayout() below overwrites these Vector3s in
+// place (via .set(), never reassigning the object) when the layout switches,
+// so setHover/openWorld need no per-layout branching of their own.
 const monitorSpecs = [
   {
     id: 'code',
     x: -2.85,
     ry: 0.18,
     color: 0x8eff56,
+    baseScale: 1,
+    hoverScale: 1.06,
     hoverCamera: new THREE.Vector3(-2.20, 2.35, 6.40),
     hoverLook: new THREE.Vector3(-2.85, 2.05, -0.15),
-    enterCamera: new THREE.Vector3(-2.85, 2.125, 2.55)
+    enterCamera: new THREE.Vector3(-2.85, 2.125, 2.55),
+    enterLook: new THREE.Vector3(-2.85, 2.125, -0.15)
   },
   {
     id: 'design',
     x: 0,
     color: 0x5aa2ff,
+    baseScale: 1.18,
+    hoverScale: 1.24,
     hoverCamera: new THREE.Vector3(1.10, 2.40, 6.00),
     hoverLook: new THREE.Vector3(0, 2.05, -0.15),
-    enterCamera: new THREE.Vector3(0, 2.125, 2.55)
+    enterCamera: new THREE.Vector3(0, 2.125, 2.55),
+    enterLook: new THREE.Vector3(0, 2.125, -0.15)
   },
   {
     id: 'explore',
     x: 2.85,
     ry: -0.18,
     color: 0xff9158,
+    baseScale: 1,
+    hoverScale: 1.06,
     hoverCamera: new THREE.Vector3(2.20, 2.35, 6.40),
     hoverLook: new THREE.Vector3(2.85, 2.05, -0.15),
-    enterCamera: new THREE.Vector3(2.85, 2.125, 2.55)
+    enterCamera: new THREE.Vector3(2.85, 2.125, 2.55),
+    enterLook: new THREE.Vector3(2.85, 2.125, -0.15)
   }
 ];
 
 const monitorTargets = [];
+
+// --- LAYOUT SYSTEM: "desk" (unchanged) vs "stack" (new, portrait) ---------
+// Desk is the ORIGINAL composition above, untouched. Stack rearranges the
+// same three monitor groups into a vertical tower for portrait/narrow
+// viewports instead of duplicating the rendering system as a DOM card grid.
+//
+// The gate is a simple aspect check rather than a fixed width breakpoint, so
+// it captures portrait phones AND portrait tablets while never catching a
+// landscape desktop window or a landscape phone (390x844 landscape has
+// aspect 2.16 — stays "desk").
+const STACK_ASPECT_THRESHOLD = 0.8;
+function layoutMode() {
+  return (window.innerWidth / window.innerHeight) < STACK_ASPECT_THRESHOLD ? 'stack' : 'desk';
+}
+
+const DESK_LAYOUT = {
+  home: { camera: [0, 2.8, 9.5], look: [0, 1.85, -0.15] },
+  monitors: {
+    code: {
+      x: -2.85, y: 2.05, z: -0.15, ry: 0.18, baseScale: 1, hoverScale: 1.06,
+      hoverCamera: [-2.20, 2.35, 6.40], hoverLook: [-2.85, 2.05, -0.15],
+      enterCamera: [-2.85, 2.125, 2.55], enterLook: [-2.85, 2.125, -0.15]
+    },
+    design: {
+      x: 0, y: 2.05, z: -0.15, ry: 0, baseScale: 1.18, hoverScale: 1.24,
+      hoverCamera: [1.10, 2.40, 6.00], hoverLook: [0, 2.05, -0.15],
+      enterCamera: [0, 2.125, 2.55], enterLook: [0, 2.125, -0.15]
+    },
+    explore: {
+      x: 2.85, y: 2.05, z: -0.15, ry: -0.18, baseScale: 1, hoverScale: 1.06,
+      hoverCamera: [2.20, 2.35, 6.40], hoverLook: [2.85, 2.05, -0.15],
+      enterCamera: [2.85, 2.125, 2.55], enterLook: [2.85, 2.125, -0.15]
+    }
+  }
+};
+
+// Stack: the three monitors nested vertically at x=0, all facing the camera
+// square-on (ry=0 — angling them the way the desk V-formation does would
+// look wrong stacked directly above one another). Recomputed from the live
+// viewport aspect every time it's applied (init + every resize), never
+// hardcoded for one phone.
+const STACK_ORDER = ['code', 'design', 'explore']; // top to bottom
+const STACK_GAP = 0.06;        // seam between stacked cabinets, world units
+// The desk (keyboard, mug, sticky note — all near x=0, the tower's own
+// column) sits at y~0.9-1.8 and is much closer to the camera (z~1.5-2) than
+// the monitors (z=-0.15), so at desk height it would occlude the bottom of
+// the tower outright rather than just being visually cluttered. Raising the
+// whole tower well above the desk's props (verified empirically — the frame's
+// own raw bottom edge needs to clear the keyboard's top, not just look clear)
+// is what keeps the stack composition clean without touching a single prop.
+const STACK_CENTER_Y = 4.3;    // vertical anchor of the middle (design) monitor
+const STACK_Z = -0.15;         // same depth as the desk monitors
+const STACK_HOME_FIT = 0.92;   // fraction of the fitting axis the tower fills at rest
+const STACK_HOVER_FILL = 0.76; // fraction of viewport width the screen fills on hover
+const STACK_ENTER_FILL = 0.85; // fraction of viewport width the screen fills on enter push
+const CABINET_W = 2.28;
+const CABINET_H = 1.76;
+const SCREEN_W = 1.88;
+
+// Reads the HUD chrome's actual rendered bounds so the tower can be fit into
+// the space genuinely left between them, instead of rendering full-bleed
+// BEHIND them. Forces a synchronous layout read (getBoundingClientRect) —
+// only ever called from computeStackLayout(), itself only reached from
+// applyLayout() on init/resize, never from the render loop.
+function getStackHudBand() {
+  const H = window.innerHeight;
+  const headerEl = document.querySelector('.hud-top');
+  const barEl = document.querySelector('.monitor-ui');
+  const PAD = 14; // breathing room between the HUD chrome and the cabinets
+  let top = headerEl ? headerEl.getBoundingClientRect().bottom + PAD : 0;
+  let bottom = barEl ? barEl.getBoundingClientRect().top - PAD : H;
+  // Defensive fallback only — guards a pathological 0-height read (e.g. the
+  // stylesheet hasn't applied yet); never expected to fire in practice since
+  // this always runs after layout.
+  if (!(bottom - top > 80)) { top = 0; bottom = H; }
+  return { top, bottom, height: bottom - top, center: (top + bottom) / 2 };
+}
+
+function computeStackLayout() {
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  const aspect = W / Math.max(1, H);
+  const halfV = THREE.MathUtils.degToRad(camera.fov) / 2; // fixed at 40deg vertical
+  const halfH = Math.atan(Math.tan(halfV) * aspect);
+
+  const n = STACK_ORDER.length;
+  const stackH = n * CABINET_H + (n - 1) * STACK_GAP;
+  const halfStackH = stackH / 2;
+
+  const band = getStackHudBand();
+
+  // "Contain" fit — take whichever axis is more restrictive, so the whole
+  // tower is always fully visible whatever the viewport's proportions are.
+  // The vertical fit is solved against the BAND actually left between the
+  // HUD header and the world-button bar (read live from the DOM above), not
+  // the full viewport height — fitting to the full height was what let the
+  // tower render behind that chrome instead of between it. Horizontal fit
+  // still uses the full viewport width; nothing in stack mode reserves side
+  // margins. A tall phone is height-bound (three monitors stacked is
+  // proportionally taller than any of the target phone aspects, even against
+  // the shrunk band); a squarer tablet can become width-bound instead.
+  const distForHeight = (halfStackH * H) / (STACK_HOME_FIT * band.height * Math.tan(halfV));
+  const distForWidth = CABINET_W / (2 * Math.tan(halfH) * STACK_HOME_FIT);
+  const distHome = Math.max(distForHeight, distForWidth);
+
+  // The tower's own world Y (STACK_CENTER_Y) stays fixed — chosen once so
+  // the monitors sit well above the desk props (see the comment by that
+  // constant), independent of framing. The camera's look Y is a SEPARATE,
+  // derived value: whatever world Y projects to the reserved band's pixel
+  // centre at this distance, so the tower ends up centred in the band rather
+  // than in the full viewport. The two coincide only when the band happens
+  // to be centred in the viewport (i.e. equal header/footer chrome).
+  const lookY = STACK_CENTER_Y - (1 - (2 * band.center) / H) * distHome * Math.tan(halfV);
+
+  const monitors = {};
+  let cursorY = STACK_CENTER_Y + halfStackH - CABINET_H / 2;
+  for (const id of STACK_ORDER) {
+    const y = cursorY;
+    cursorY -= (CABINET_H + STACK_GAP);
+
+    // Hover/enter dolly straight in along Z and recentre on this monitor's
+    // own Y — once a specific screen is the subject, filling the reserved
+    // band evenly no longer matters, filling the frame does. There is no X
+    // to pan to either; every monitor in the tower sits at x=0. Distances
+    // are solved so the SCREEN (not the cabinet) fills a target fraction of
+    // the viewport width, same "fit from the live aspect" method as above.
+    const distHover = SCREEN_W / (2 * Math.tan(halfH) * STACK_HOVER_FILL);
+    const distEnter = SCREEN_W / (2 * Math.tan(halfH) * STACK_ENTER_FILL);
+
+    monitors[id] = {
+      // A small, uniform hover bump (not the desk's 1.06/1.24) — the cabinets
+      // are only STACK_GAP (0.06 world units) apart, so anything much larger
+      // risks the scaled-up cabinet visibly closing that seam with its
+      // neighbours. 1.02 reads clearly against the light-intensity jump
+      // (1.35 -> 2.8) alone without any visible crowding.
+      x: 0, y, z: STACK_Z, ry: 0, baseScale: 1, hoverScale: 1.02,
+      hoverCamera: [0, y, STACK_Z + Math.min(distHover, distHome)],
+      hoverLook: [0, y, STACK_Z],
+      enterCamera: [0, y, STACK_Z + Math.min(distEnter, distHome)],
+      enterLook: [0, y, STACK_Z]
+    };
+  }
+
+  return {
+    home: { camera: [0, lookY, STACK_Z + distHome], look: [0, lookY, STACK_Z] },
+    monitors
+  };
+}
+
+// Applies either layout's numbers to the live spec Vector3s and monitor
+// group transforms. Desk's numbers are the ORIGINAL constants verbatim, so
+// re-applying "desk" — which resize() does on every landscape/desktop resize
+// — reproduces exactly what was hardcoded before this system existed.
+let currentLayout = null;
+function applyLayout(mode) {
+  const modeChanged = mode !== currentLayout;
+  currentLayout = mode;
+  const data = mode === 'stack' ? computeStackLayout() : DESK_LAYOUT;
+
+  homeCamera.set(data.home.camera[0], data.home.camera[1], data.home.camera[2]);
+  homeLook.set(data.home.look[0], data.home.look[1], data.home.look[2]);
+
+  monitorTargets.forEach((hit) => {
+    const spec = hit.userData.spec;
+    const m = data.monitors[spec.id];
+    spec.x = m.x;
+    spec.baseScale = m.baseScale;
+    spec.hoverScale = m.hoverScale;
+    spec.hoverCamera.set(m.hoverCamera[0], m.hoverCamera[1], m.hoverCamera[2]);
+    spec.hoverLook.set(m.hoverLook[0], m.hoverLook[1], m.hoverLook[2]);
+    spec.enterCamera.set(m.enterCamera[0], m.enterCamera[1], m.enterCamera[2]);
+    spec.enterLook.set(m.enterLook[0], m.enterLook[1], m.enterLook[2]);
+
+    const group = hit.userData.group;
+    group.position.set(m.x, m.y, m.z);
+    group.rotation.y = m.ry;
+    group.scale.setScalar(hit === hovered ? spec.hoverScale : spec.baseScale);
+  });
+
+  // The seated character sits directly in front of the centre monitor and
+  // would occlude the stack's tight vertical framing — every monitor in the
+  // tower shares its x=0 column and (with small seams) tiles the tower's
+  // full height continuously, so there is no clear spot to slide the figure
+  // aside into. Hiding it in stack mode only is the deliberate, intentional
+  // choice: the tight tower framing is already a different, closer-in
+  // composition than the desk's wide "look over my shoulder" shot, and nothing
+  // else in the stack view implies a person should be visible. Desk restores
+  // it exactly (`visible` defaults true and nothing else ever touches it).
+  if (silhouetteGroup) silhouetteGroup.visible = mode !== 'stack';
+
+  if (entering) return; // mid-flood — leave the active camera goal alone
+
+  if (modeChanged) {
+    // A layout switch is a hard cut (device rotation, not a mid-gesture
+    // change), so the camera snaps to the new composition's home instead of
+    // gliding across two entirely different compositions.
+    hovered = null;
+    body.classList.remove('is-hovering');
+    buttons.forEach((b) => b.classList.remove('active'));
+    cameraGoal.copy(homeCamera);
+    lookGoal.copy(homeLook);
+    camera.position.copy(homeCamera);
+    lookNow.copy(homeLook);
+    silhouetteFadeAmount = 0;
+  } else if (hovered) {
+    cameraGoal.copy(hovered.userData.spec.hoverCamera);
+    lookGoal.copy(hovered.userData.spec.hoverLook);
+  } else {
+    // Same layout, viewport just resized (toolbar show/hide, window drag).
+    // Desk's numbers never change, so this is a no-op there; in stack mode
+    // it eases to the freshly recomputed home instead of snapping.
+    cameraGoal.copy(homeCamera);
+    lookGoal.copy(homeLook);
+  }
+}
 
 // --- GEOMETRIC PRIMITIVE HELPERS ---
 function box(w, h, d, material, pos, parent = scene, castShadow = true, receiveShadow = true) {
@@ -2419,9 +2652,7 @@ function setHover(target) {
   monitorTargets.forEach((hit) => {
     hit.userData.light.intensity = hit === target ? 2.8 : 1.35;
     hit.userData.group.scale.setScalar(
-      hit === target
-        ? hit.userData.spec.id === 'design' ? 1.24 : 1.06
-        : hit.userData.spec.id === 'design' ? 1.18 : 1
+      hit === target ? hit.userData.spec.hoverScale : hit.userData.spec.baseScale
     );
   });
 
@@ -2507,7 +2738,7 @@ function openWorld(id) {
   audio.playEnter(id);
 
   cameraGoal.copy(target.userData.spec.enterCamera);
-  lookGoal.set(target.userData.spec.x, 2.125, -0.15);
+  lookGoal.copy(target.userData.spec.enterLook);
 
   const route = WORLD_ROUTES[id];
   if (route) {
@@ -2642,6 +2873,11 @@ window.addEventListener('pageshow', (event) => {
   if (!event.persisted) return;
   entering = false;
   body.classList.remove('is-entering');
+  // Re-resolve the layout in case the device was rotated (or the window
+  // resized) while this document was away in the bfcache — a restore with no
+  // intervening resize event must still land on the CURRENT layout's home,
+  // not whichever one was live when the page was left.
+  applyLayout(layoutMode());
   // The flood is driven by INLINE styles, and inline styles survive a bfcache
   // restore and outrank the stylesheet — so clearing the class is not enough.
   // Without this the room comes back underneath a solid opaque panel.
@@ -2678,8 +2914,60 @@ function returnRoom() {
 }
 
 // Event Listeners with Sticky Workspace Hysteresis
+//
+// Touch has no hover: `pointer` was previously only ever updated by
+// pointermove, but a tap can raycast via `click` before any pointermove has
+// fired, so the click handler's fallback raycast would fire from a stale
+// (or default, off-screen) NDC position. pointerdown updates `pointer` for
+// every pointer type (harmless for mouse — pointermove already keeps it
+// current) purely so a tap's own raycast has the right coordinates.
+canvas.addEventListener('pointerdown', (event) => {
+  const rect = canvas.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  if (event.pointerType !== 'mouse') {
+    touchStartPointer.copy(pointer);
+    touchTracking = true;
+  }
+});
+
+// A tap should give brief lit feedback (setHover already does this — glow +
+// scale — synchronously, independent of the camera glide) and then enter
+// the world directly, rather than driving the mouse-only hover-preview
+// glide. Handled on pointerup (not relying solely on the synthetic `click`
+// touches get, which is inconsistent enough headless / across browsers to
+// be unsafe to depend on alone) and gated on "didn't move much since
+// pointerdown" so a scroll/drag gesture on the canvas doesn't fire it.
+const TOUCH_TAP_TRAVEL = 0.04; // NDC distance
+canvas.addEventListener('pointerup', (event) => {
+  if (event.pointerType === 'mouse' || !touchTracking) return;
+  touchTracking = false;
+  if (entering) return;
+  const rect = canvas.getBoundingClientRect();
+  const upX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  const upY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  const moved = Math.hypot(upX - touchStartPointer.x, upY - touchStartPointer.y);
+  if (moved > TOUCH_TAP_TRAVEL) return;
+  pointer.x = upX;
+  pointer.y = upY;
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects(monitorTargets, false)[0]?.object || null;
+  if (!hit) return;
+  if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume();
+  // setHover() first, same as a mouse always has by the time it clicks — this
+  // is what actually produces the brief lit glow/scale feedback (openWorld's
+  // own setHover(target) call is a no-op: it sets entering=true a line above,
+  // and setHover bails out immediately whenever entering is already true).
+  setHover(hit);
+  openWorld(hit.userData.spec.id);
+});
+
 canvas.addEventListener('pointermove', (event) => {
   if (entering) return;
+  // Touch/pen drags (e.g. a scroll gesture) fire pointermove too; a real
+  // mouse is the only pointer type that should ever drive the hover-preview
+  // camera glide below.
+  if (event.pointerType && event.pointerType !== 'mouse') return;
   const rect = canvas.getBoundingClientRect();
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -2798,6 +3086,7 @@ function resize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  applyLayout(layoutMode());
 }
 window.addEventListener('resize', resize);
 
@@ -2897,6 +3186,10 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
+// Establish the correct layout (desk or stack) for the viewport the page
+// actually loaded at, before the very first frame — this is what sets
+// homeCamera/homeLook and every monitor's transform for the first time.
+applyLayout(layoutMode());
 camera.position.copy(homeCamera);
 camera.lookAt(homeLook);
 animate();

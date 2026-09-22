@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="A three-dimensional portfolio room." />
     <meta name="theme-color" content="#070914" />
     <title>Priyanshu Ghosh — The Late Night Desk</title>
@@ -65,12 +65,19 @@
           </button>
           <p class="system"><i></i> 3 worlds online</p>
         </div>
+        <!-- Stack layout only (app.js's layoutMode()/max-aspect-ratio: 4/5) —
+             wraps onto its own line inside this same fixed header rather than
+             using a guessed pixel offset, so it always sits correctly below
+             the brand row whether that row is one line or two. -->
+        <p class="stack-hint copy-mouse">Click a screen to enter its world.</p>
+        <p class="stack-hint copy-touch">Tap a screen to enter its world.</p>
       </header>
 
       <section class="intro hud" aria-live="polite">
         <p class="kicker">A small universe of work</p>
         <h1>Look over<br />my shoulder.</h1>
-        <p>Hover a monitor to move closer.<br />Click to enter its world.</p>
+        <p class="copy-mouse">Hover a monitor to move closer.<br />Click to enter its world.</p>
+        <p class="copy-touch">Tap a screen to enter its world.</p>
       </section>
 
       <section class="monitor-ui hud" aria-label="Choose a portfolio world">
@@ -79,7 +86,7 @@
         <button class="world-button explore" data-world="explore"><span>03</span> Explore</button>
       </section>
 
-      <p class="cursor-note hud"><span>↗</span> Move across a screen</p>
+      <p class="cursor-note hud copy-mouse"><span>↗</span> Move across a screen</p>
 
       <section class="world-view" data-world-view="code" hidden>
         <p>01 / signal received</p>

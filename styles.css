@@ -17,7 +17,10 @@ button { font: inherit; }
 #scene { cursor: crosshair; touch-action: none; }
 
 .hud { position: fixed; z-index: 2; pointer-events: none; text-shadow: 0 2px 18px rgba(0,0,0,.9); }
-.hud-top { position: fixed; z-index: 10; display: flex; justify-content: space-between; align-items: center; top: clamp(18px, 3vw, 42px); left: clamp(20px, 4vw, 64px); right: clamp(20px, 4vw, 64px); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+/* env(safe-area-inset-*) resolves to 0 on every device without a notch/pill,
+   so this is a no-op everywhere it isn't needed — safe to apply globally
+   rather than gating it behind a layout media query. */
+.hud-top { position: fixed; z-index: 10; display: flex; justify-content: space-between; align-items: center; top: calc(clamp(18px, 3vw, 42px) + env(safe-area-inset-top)); left: calc(clamp(20px, 4vw, 64px) + env(safe-area-inset-left)); right: calc(clamp(20px, 4vw, 64px) + env(safe-area-inset-right)); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
 .brand, .system { margin: 0; }
 .brand { font-weight: 800; font-size: 11px; letter-spacing: .14em; }
 .brand span, .system { color: var(--muted); }
@@ -80,8 +83,8 @@ button { font: inherit; }
 .intro { top: 50%; left: clamp(20px, 7vw, 125px); transform: translateY(-50%); transition: opacity .35s ease, transform .5s ease; }
 .kicker { margin: 0 0 13px; color: var(--muted); font-size: 10px; letter-spacing: .13em; text-transform: uppercase; }
 h1 { max-width: 450px; margin: 0 0 16px; font: 400 clamp(3.6rem, 6.5vw, 7.8rem)/.82 var(--display); letter-spacing: -.04em; text-transform: uppercase; }
-.intro > p:last-child { margin: 0; color: #d0c5bb; font-size: 11px; line-height: 1.65; }
-.monitor-ui { display: flex; gap: 7px; left: 50%; bottom: clamp(20px, 3vw, 46px); transform: translateX(-50%); pointer-events: auto; }
+.intro > p.copy-mouse, .intro > p.copy-touch { margin: 0; color: #d0c5bb; font-size: 11px; line-height: 1.65; }
+.monitor-ui { display: flex; gap: 7px; left: 50%; bottom: calc(clamp(20px, 3vw, 46px) + env(safe-area-inset-bottom)); transform: translateX(-50%); pointer-events: auto; }
 .world-button { border: 1px solid rgba(238,225,207,.28); padding: 10px 14px; color: var(--paper); background: rgba(7,9,20,.42); backdrop-filter: blur(8px); cursor: pointer; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; transition: background .25s ease, color .25s ease, border-color .25s ease; }
 .world-button span { margin-right: 6px; color: var(--muted); }
 .world-button.code:hover, .world-button.code.active { color: var(--code); border-color: var(--code); background: rgba(178,255,120,.1); }
@@ -91,6 +94,60 @@ h1 { max-width: 450px; margin: 0 0 16px; font: 400 clamp(3.6rem, 6.5vw, 7.8rem)/
 .cursor-note span { color: var(--paper); font-size: 16px; vertical-align: -1px; }
 body.is-hovering .intro, body.is-hovering .cursor-note { opacity: 0; }
 body.is-hovering .intro { transform: translateY(-50%) translateX(-12px); }
+
+/* Touch has no hover-preview and no mouse pointer, so it gets its own HUD
+   copy rather than text that assumes a cursor ("Move across a screen",
+   "Click to enter"). Both copies live in the HTML; this is the only thing
+   that decides which shows, independent of the desk/stack 3D layout gate —
+   a narrow desktop browser window still gets the mouse copy. */
+.copy-touch { display: none; }
+@media (hover: none), (pointer: coarse) {
+  .copy-mouse { display: none; }
+  .copy-touch { display: block; }
+}
+
+/* Stack layout's compact caption — see the two .stack-hint paragraphs inside
+   .hud-top in index.html. It lives INSIDE the same fixed header as the brand
+   row rather than using a guessed pixel offset from the top of the viewport:
+   with .hud-top set to wrap (below) it always lands directly under the brand
+   row whether that row is one line or two, correct at any viewport height
+   without needing to know either height up front.
+
+   Deliberately self-contained rather than reusing the generic .copy-mouse/
+   .copy-touch display toggle: this element needs to stay hidden outright on
+   desk (including a touch landscape phone, which keeps the desk 3D
+   composition), so each of the three real states — mouse+stack, touch+stack,
+   and everything else — is spelled out as its own single combined media
+   query instead of leaning on cascade order between two separately
+   conditioned rules. */
+.stack-hint {
+  display: none;
+  width: 100%;
+  margin: 6px 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+@media (max-aspect-ratio: 4/5) {
+  .hud-top { flex-wrap: wrap; row-gap: 4px; }
+  .stack-hint.copy-mouse,
+  .stack-hint.copy-touch {
+    /* flex-basis: 100% inside a wrapping flex row forces it onto its own
+       new line below the brand + audio-toggle row, whatever their height. */
+    flex-basis: 100%;
+  }
+}
+@media (max-aspect-ratio: 4/5) and (hover: hover) and (pointer: fine) {
+  .stack-hint.copy-mouse { display: block; }
+}
+@media (max-aspect-ratio: 4/5) and (hover: none) {
+  .stack-hint.copy-touch { display: block; }
+}
+@media (max-aspect-ratio: 4/5) and (pointer: coarse) {
+  .stack-hint.copy-touch { display: block; }
+}
 
 .world-view { position: fixed; inset: 0; z-index: 5; display: grid; align-content: center; justify-items: center; gap: 14px; color: var(--world); background: var(--world-bg); text-align: center; opacity: 0; transform: scale(.95); transition: opacity .48s cubic-bezier(.16, 1, 0.3, 1), transform .55s cubic-bezier(.16, 1, 0.3, 1); }
 .world-view[hidden] { display: none; }
@@ -214,14 +271,74 @@ body.booting .intro { transform: translateY(-50%) translateX(-18px); }
    with it. Keyframes get no custom properties now; nothing to fail to
    resolve, and the same code path runs in every browser. */
 
+/* --- STACK LAYOUT HUD ------------------------------------------------------
+   Mirrors app.js's layoutMode() aspect gate exactly (max-aspect-ratio: 4/5 ==
+   width/height < 0.8), so CSS and JS always agree on which 3D composition is
+   live — this is what covers portrait TABLETS too, not just narrow phones
+   (a 768px-wide portrait tablet is well past the old 700px width breakpoint
+   but is still the stack layout in app.js).
+
+   The tower already fills most of the frame by design (see computeStackLayout
+   in app.js), so the HUD floats over it exactly the way it does on desktop —
+   no large reserved band, just a compact top brand row and the labelled
+   world-button strip. The button strip alone is enough for a mobile visitor
+   to understand there are three worlds to enter, so the big "Look over my
+   shoulder." headline is dropped here rather than shrunk into something that
+   still collides with the screens — there is no size small enough to both
+   read as a real headline and clear three stacked, near-full-width monitors. */
+@media (max-aspect-ratio: 4/5) {
+  .intro { display: none; }
+  .monitor-ui { width: calc(100% - 28px); justify-content: center; gap: 8px; }
+  .world-button { flex: 1; padding: 12px 6px; }
+  /* "PRIYANSHU GHOSH — AFTER HOURS" wraps mid-phrase at narrow widths ("AFTER"
+     stranded alone on its own line by the browser's own line-break, not an
+     intentional one) — forcing the em-dash clause onto its own line makes the
+     wrap a deliberate two-line brand mark instead. Both the brand and the
+     hint below it run smaller here too — the tower's own top edge is only a
+     small, viewport-height-proportional letterbox away, and the shortest
+     phones in the target range (320x568, 360x740) don't leave much of it. */
+  .hud-top { font-size: 9px; }
+  .brand { max-width: 60vw; font-size: 10px; }
+  .brand span { display: block; margin-top: 1px; }
+  .stack-hint { font-size: 8.5px; margin-top: 4px; }
+}
+
 @media (max-width: 700px) {
-  .intro { top: auto; bottom: 103px; left: 22px; transform: none; }
   h1 { font-size: clamp(3.2rem, 14vw, 5rem); }
-  .intro > p:last-child { display: none; }
-  .system, .cursor-note { display: none; }
-  .monitor-ui { width: calc(100% - 28px); justify-content: center; bottom: 18px; }
-  .world-button { flex: 1; padding: 11px 6px; }
-  body.is-hovering .intro { transform: translateX(-10px); }
+  .system { display: none; }
+}
+
+/* Touch targets want real hit area regardless of how compact the button
+   text is; 44px is the usual minimum recommendation. Additive to whatever
+   padding the rules above already set. */
+@media (pointer: coarse) {
+  .world-button { min-height: 44px; }
+}
+
+/* Landscape phones keep the DESK composition (app.js's layoutMode() only
+   switches to stack under aspect 0.8, and landscape is always well above
+   that) — nothing here touches the 3D framing, only HUD sizing. At these
+   heights the big "LOOK OVER MY SHOULDER." headline, vertically centred the
+   way desktop shows it, covers almost the entire CODE monitor — and unlike
+   desktop, touch has no hover state to fade it away again (`is-hovering`
+   never gets set without a mouse), so on a landscape phone it would sit
+   there permanently. The headline is dropped entirely here; the kicker plus
+   the (mouse- or touch-worded) one-liner, tucked compactly under the brand
+   instead of centred, is enough context without blocking the screen. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .hud-top { font-size: 9px; }
+  .intro {
+    top: calc(54px + env(safe-area-inset-top));
+    left: calc(clamp(20px, 4vw, 64px) + env(safe-area-inset-left));
+    max-width: 46vw;
+    transform: none;
+  }
+  body.is-hovering .intro { transform: none; }
+  .kicker { margin: 0 0 4px; }
+  h1 { display: none; }
+  .intro > p.copy-mouse, .intro > p.copy-touch { font-size: 10px; }
+  .monitor-ui { bottom: calc(10px + env(safe-area-inset-bottom)); }
+  .world-button { padding: 7px 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
