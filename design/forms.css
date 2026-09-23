@@ -998,3 +998,38 @@ body[data-world="03"] ::selection { background: #df3d1d; color: #08080a; }
 .fw[data-motion="off"] .nl-pin,
 .fw[data-motion="off"] .rt-pin { height: auto; }
 .fw[data-motion="off"] .fp-pin-stage { position: relative; height: 88vh; }
+
+/* ═══ THE PORTAL MARKER, IN NEW FORMS' OWN LANGUAGE ════════════════════════
+   The same register `.fw-mark` and `.fw-rail` already read in — dim mono
+   type, a folio square instead of the ring or the triangle the other worlds
+   use (it is `.fw-mark`'s own square, reused rather than invented), and an
+   underline that grows out of nothing as `--near` climbs, the same gesture
+   `.fw-rail a::before` already makes for the section you are closest to. The
+   glyph's one idle motion is a slow blink — an editorial "live" mark, not a
+   flicker — reusing the vocabulary a red index dot already has in this
+   world. */
+body[data-world="03"] .corner-mark { color: var(--f-chalk-soft, #9a9488); }
+body[data-world="03"] .corner-mark-name {
+  position: relative;
+  padding-bottom: 3px;
+}
+body[data-world="03"] .corner-mark-name::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 1px;
+  width: calc(var(--near) * 100%);
+  background: currentColor;
+  opacity: 0.6;
+}
+body[data-world="03"] .corner--tr .corner-mark-name::after,
+body[data-world="03"] .corner--br .corner-mark-name::after { left: auto; right: 0; }
+body[data-world="03"] .corner-glyph { animation: forms-mark-blink 3.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  body[data-world="03"] .corner-glyph { animation: none; }
+}
+@keyframes forms-mark-blink {
+  0%, 100% { opacity: 0.92; }
+  50% { opacity: 0.4; }
+}

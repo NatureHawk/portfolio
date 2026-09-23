@@ -1384,12 +1384,28 @@ body.is-crossing .bw-rail { will-change: transform; }
   .bw-rail { grid-template-columns: 1fr auto; }
 }
 
+/* ═══ THE PORTAL MARKER, IN BRUSH'S OWN LANGUAGE ═══════════════════════════
+   Naked type on black, the same register `.bw-act` reads in — dim cream,
+   tight tracking, no card, nothing behind it but the ground. The marker's one
+   idle motion is a projector's flicker on the glyph alone: brief, infrequent,
+   and small enough that nothing here reads as "flashing" — the name beside it
+   holds still through every one of them. */
+body[data-world="02"] .corner-mark { color: var(--b-dim, rgba(236, 234, 228, 0.62)); }
+body[data-world="02"] .corner-glyph { animation: brush-mark-flicker 6.4s steps(1, end) infinite; }
+@keyframes brush-mark-flicker {
+  0%, 91%, 100% { opacity: 0.92; }
+  92% { opacity: 0.45; }
+  94% { opacity: 0.95; }
+  96% { opacity: 0.5; }
+  98% { opacity: 0.92; }
+}
+
 /* ═══ MOTION DECLINED ═══════════════════════════════════════════════════════
    The two ambient loops in this world, and nothing else — every other piece of
    motion here is either a scroll position or an entrance, and brush/site.js
    builds a different page rather than switching those off. */
 @media (prefers-reduced-motion: reduce) {
-  .bh-line i, .bspot::after { animation: none; }
+  .bh-line i, .bspot::after, body[data-world="02"] .corner-glyph { animation: none; }
   .bh-line i { transform: none; }
   .bspot::after { opacity: 0; }
 }

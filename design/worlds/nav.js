@@ -36,8 +36,17 @@ export function createNav({ onEnter, onApproach } = {}) {
     button.dataset.world = world.id;
     button.dataset.cursor = 'ENTER';
     button.setAttribute('aria-label', `${world.name} — ${world.kicker}, ${corner.label} corner`);
+    // The destination's own accent, so its portal marker's glyph carries a
+    // stable colour cue no matter which world's own palette the marker is
+    // otherwise drawn in — see the four `.corner-mark` treatments in
+    // design.css / brush.css / forms.css / somewhere.css.
+    button.style.setProperty('--dest-accent', world.accent);
     button.innerHTML = `
       <span class="corner-tick" aria-hidden="true"></span>
+      <span class="corner-mark" aria-hidden="true">
+        <i class="corner-glyph">${world.glyph}</i>
+        <b class="corner-mark-name">${world.name}</b>
+      </span>
       <span class="corner-no">${world.id}</span>
       <span class="corner-panel" aria-hidden="true">
         <span class="corner-rule"></span>

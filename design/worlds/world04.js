@@ -41,6 +41,10 @@ const spec = {
   accent: '#8fb04a',
   title: 'SOMEWHERE — a world worth exploring.',
 
+  // The portal marker's glyph — a lens, the same shape the iris portal opens
+  // in and the landmark dots on the world's own compass share.
+  glyph: '◎',
+
   /* The portal recipe. An iris rather than a wipe: this world has depth behind
      it and a blade crossing the screen would flatten it on arrival. `fill` is
      the landing sky, so the opening is already the right colour before the

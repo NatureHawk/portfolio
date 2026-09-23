@@ -619,6 +619,42 @@
   .sw-place { bottom: 1rem; }
 }
 
+/* ══ THE PORTAL MARKER, IN SOMEWHERE'S OWN LANGUAGE ═══════════════════════
+   The same small HUD pill `.sw-mark-body` already is — a wash of the world's
+   own tag colour under blur, cream type — wrapped around the marker's name,
+   with the glyph carrying the same soft halo `.sw-mark-dot::after` glows a
+   landmark with. The halo breathes slowly, the one idle motion this world's
+   own landmark tags don't have while at rest (theirs only light up once
+   picked) but which suits a world whose only other idle loop is a scroll
+   wheel ticking on the landing. */
+body[data-world="04"] .corner-mark {
+  padding: 4px 8px 5px 6px;
+  border-radius: 9px;
+  background: var(--sw-tag, rgba(20, 34, 44, 0.72));
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  color: var(--sw-cream, #f3ead8);
+}
+body[data-world="04"] .corner-glyph { position: relative; z-index: 1; }
+body[data-world="04"] .corner-glyph::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  z-index: -1;
+  background: radial-gradient(circle, color-mix(in srgb, var(--dest-accent, #8fb04a) 55%, transparent), transparent 70%);
+  opacity: 0.5;
+}
+@media (prefers-reduced-motion: no-preference) {
+  body[data-world="04"] .corner-glyph::after {
+    animation: sw-mark-halo 4.4s ease-in-out infinite;
+  }
+}
+@keyframes sw-mark-halo {
+  0%, 100% { opacity: 0.32; }
+  50% { opacity: 0.85; }
+}
+
 /* ══ REDUCED MOTION ══════════════════════════════════════════════════════
    The world still turns when dragged — that is the content, not decoration —
    but nothing moves on its own and every transition collapses. */

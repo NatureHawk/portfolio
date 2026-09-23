@@ -37,6 +37,10 @@ const spec = {
   accent: '#df3d1d',
   title: 'NEW FORMS — Issue 03.',
 
+  // The portal marker's glyph — the same small red square `.fw-mark` sets
+  // beside the issue number, the one folio mark this world already owns.
+  glyph: '■',
+
   /* The portal recipe. The letterform variant, because this world's whole
      argument is made in type: a single enormous word grows out of the corner
      and the ground arrives inside it, so the wipe reads as the masthead

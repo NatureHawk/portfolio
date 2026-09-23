@@ -69,6 +69,12 @@ const spec = {
   accent: '#cbf03c',
   title: 'HUM — The internet should feel alive.',
 
+  // The portal marker's glyph — a pinned object on the canvas, the same
+  // hollow ring the cursor leaves under an .obj when it is picked up. Read
+  // by the OTHER three corners' markers when they point back here; never
+  // drawn on HUM's own corner, which stays unlabelled.
+  glyph: '○',
+
   // Coming home is the plain sweep, in HUM's own paper and highlighter.
   portal: { variant: 'sweep', fill: '#f1eee5', edge: '#cbf03c' },
 };

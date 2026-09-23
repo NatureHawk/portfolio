@@ -32,6 +32,11 @@ const spec = {
   accent: '#ff6b21',
   title: 'BRUSH / 01 — Rethink your morning.',
 
+  // The portal marker's glyph — the same small triangle `.bw-act` uses to
+  // mark the live act, read here as a cue into a product film rather than
+  // out of one.
+  glyph: '▸',
+
   /* The portal recipe. The straight diagonal blade, because this world is
      about machined edges and a shattering entrance would be a promise the site
      behind it does not keep. `edge` runs 48ms ahead of `fill`, so the screen is

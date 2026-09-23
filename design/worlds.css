@@ -68,6 +68,10 @@
 
 .corner {
   --near: 0;
+  /* How much room the portal marker takes under the digits — the panel opens
+     past it rather than over it. Zero on the corner you are already in, and
+     on touch, where there is no marker to clear. */
+  --corner-mark-room: 26px;
   /* Stage 2 of a throw (see hotcorners.js): 0..1, written only while the
      cursor is moving toward this corner fast enough and aimed well enough to
      be a candidate — a preview of the response `--near` already gives a slow
@@ -126,6 +130,94 @@
   transform: scale(calc(1 + var(--near) * 0.08));
 }
 
+/* ── THE PORTAL MARKER ────────────────────────────────────────────────────
+   A second, smaller mark beside the idle digits: which world this corner
+   leads to, worn in the art language of the world you are STANDING IN, not
+   the one behind the door — the four treatments are in design.css, brush.css,
+   forms.css and somewhere.css, each keyed on `body[data-world]`. This is only
+   the one shared structure: where it sits, and the same continuous response
+   to `--near`/`--charge` every other idle mark on this corner already has.
+   No new per-frame work, and (in keeping with the rest of this file) no
+   transition on the properties that value drives every frame — a transition
+   on top of an already-damped write is just lag.
+
+   The glyph is tinted with the DESTINATION's own accent (`--dest-accent`,
+   written once per button in nav.js from the world's spec) so a corner reads
+   as "that place" by colour before it reads by word, whichever world's own
+   type and motion it is otherwise dressed in. */
+/* A COLUMN, not a row: a glyph over a name is roughly half the width a glyph
+   beside one would be, and the width this mark can spend is the one thing it
+   cannot ask for more of — it sits wherever a world's own chrome already
+   happens to end, not somewhere reserved for it. (BRUSH's fact row and
+   NEW FORMS' ticker both run close enough to their bottom corners that a
+   wide mark clipped them.) It also happens to be the same shape SOMEWHERE's
+   own landmark tags are already built from. */
+.corner-mark {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 104px;
+  overflow: hidden;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: currentColor;
+  /* The name is ALWAYS legible — this is wayfinding, not a flourish, and a
+     visitor who cannot read where a corner goes has no reason to throw the
+     cursor at it. Idle sits high enough to read at a glance; the approach
+     takes it the rest of the way. It is never animated to nothing, and never
+     hidden — see the crossing rule below, which dims it rather than dropping
+     it. */
+  opacity: calc(0.66 + var(--near) * 0.24 + var(--charge) * 0.1);
+  /* A breath of the world's own ground behind the type, so the name holds up
+     over whatever the page happens to put in that corner — a photograph, a
+     bright panel, a dark field — without a card around it. */
+  text-shadow:
+    0 1px 7px color-mix(in srgb, var(--corner-paper, #000) 82%, transparent),
+    0 0 2px color-mix(in srgb, var(--corner-paper, #000) 64%, transparent);
+  transform: scale(calc(1 + var(--near) * 0.1 + var(--charge) * 0.06));
+}
+.corner--tl .corner-mark { top: 29px; left: 1px; align-items: flex-start; transform-origin: 0 0; }
+.corner--tr .corner-mark { top: 29px; right: 1px; align-items: flex-end; text-align: right; transform-origin: 100% 0; }
+.corner--bl .corner-mark { bottom: 29px; left: 1px; align-items: flex-start; transform-origin: 0 100%; }
+.corner--br .corner-mark { bottom: 29px; right: 1px; align-items: flex-end; text-align: right; transform-origin: 100% 100%; }
+
+.corner-glyph {
+  font-style: normal;
+  font-size: 1.4em;
+  line-height: 1;
+  color: var(--dest-accent, currentColor);
+  opacity: 0.92;
+}
+.corner-mark-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Where you already are: no mark, same as the tick and the panel. */
+.corner[data-current="true"] .corner-mark { display: none; }
+.corner[data-current="true"] { --corner-mark-room: 0px; }
+
+/* Mid-crossing, and during the one-time arrival hint, the mark steps back so
+   it is not competing with the portal or with the digits introducing
+   themselves — but it steps back, it does not leave. Where each corner goes
+   is the one thing on this page that should never have to be waited for. */
+body.is-crossing .corner-mark,
+.corners.is-hinting .corner-mark { opacity: 0.4; }
+
+/* Touch already gets a permanent, readable label from the compact panel
+   below (see the `@media (hover: none)` block) — a second one here would be
+   the same three words twice in the same corner. */
+@media (hover: none) {
+  .corner-mark { display: none; }
+  .corner { --corner-mark-room: 0px; }
+}
+
 /* The panel. It opens DOWNWARD from a top corner and UPWARD from a bottom one,
    so it never grows along the edge the page's own chrome runs down — and it
    never takes pointer events, so an expanded corner cannot swallow a click
@@ -148,8 +240,13 @@
   pointer-events: none;
   transition: opacity 0.3s var(--ease-soft, ease), transform 0.42s var(--ease-rise, ease);
 }
-.corner--tl .corner-panel, .corner--tr .corner-panel { top: calc(100% - 4px); transform: translateY(-7px); }
-.corner--bl .corner-panel, .corner--br .corner-panel { bottom: calc(100% - 4px); transform: translateY(7px); flex-direction: column-reverse; }
+/* Clear of the portal marker, which now sits between the digits and here: the
+   panel used to open at the corner box's own edge, which put it straight over
+   the marker's name the moment a corner woke. `--corner-mark-room` is the
+   marker's own height plus its offset, so the two read as one column — mark,
+   then panel — rather than one covering the other. */
+.corner--tl .corner-panel, .corner--tr .corner-panel { top: calc(100% - 4px + var(--corner-mark-room)); transform: translateY(-7px); }
+.corner--bl .corner-panel, .corner--br .corner-panel { bottom: calc(100% - 4px + var(--corner-mark-room)); transform: translateY(7px); flex-direction: column-reverse; }
 .corner--tl .corner-panel, .corner--bl .corner-panel { left: 4px; align-items: flex-start; text-align: left; }
 .corner--tr .corner-panel, .corner--br .corner-panel { right: 4px; align-items: flex-end; text-align: right; }
 .corner.is-near .corner-panel { opacity: 1; transform: translateY(0); }
@@ -457,6 +554,9 @@ body.is-crossing .art-glyph { will-change: transform; }
 
   .corner-name { font-size: 0.86rem; }
   .corner-tick { width: 15px; height: 15px; }
+  .corner-mark { font-size: 7.5px; max-width: 88px; }
+  .corner--tl .corner-mark, .corner--tr .corner-mark { top: 21px; }
+  .corner--bl .corner-mark, .corner--br .corner-mark { bottom: 21px; }
 
   .wframe { padding: clamp(16px, 4vw, 30px) calc(clamp(16px, 4vw, 30px) + 30px); gap: 20px; }
   .wframe-mid { max-width: none; }
@@ -493,7 +593,7 @@ body.is-crossing .art-glyph { will-change: transform; }
    The corners still respond, because a control that does not respond is a
    control you cannot tell is a control; they simply stop moving to do it. */
 @media (prefers-reduced-motion: reduce) {
-  .corner-no, .corner-tick { transform: none; }
+  .corner-no, .corner-tick, .corner-mark { transform: none; }
   .corner-go i { transform: none; }
   .corner-panel { transition-duration: 0.16s; }
 }

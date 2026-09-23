@@ -2104,6 +2104,26 @@ body.is-arriving { overflow: hidden; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   THE PORTAL MARKER, IN HUM'S OWN LANGUAGE
+
+   The other three corners each carry a small mark saying which world they
+   lead to (the shared structure is in worlds.css). Here — on whichever three
+   corners are not HUM, while HUM is the world you are standing in — that mark
+   wears HUM's own idiom: naked type on paper, no card, no rule under it, the
+   same "mono digits and a hairline" register the corner's own idle marks
+   already speak. Its one piece of motion is a slow breath on the ring glyph —
+   the kind of idle life a canvas cursor has, not a flicker or a sweep, which
+   HUM doesn't do anywhere else.
+   ═══════════════════════════════════════════════════════════════════════════ */
+body[data-world="01"] .corner-mark { color: var(--ink); }
+body[data-world="01"] .corner-mark-name { opacity: 0.82; }
+body[data-world="01"] .corner-glyph { animation: hum-mark-breathe 5.2s ease-in-out infinite; }
+@keyframes hum-mark-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.24); opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    REDUCED MOTION
 
    The JS half of this is handled properly — every utility in motion.js lands
