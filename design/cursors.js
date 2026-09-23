@@ -219,12 +219,27 @@ export function userCursor() {
      in a corner because something upstream of it stopped ticking.
 
      Both paths write unconditionally rather than only while the arrow is
-     visible, so it can never fade in at a position it held some seconds ago. */
+     visible, so it can never fade in at a position it held some seconds ago.
+
+     Neither is drawn at all before the pointer has reported a real position.
+     A canvas region can be entered with no movement whatsoever — hiding a
+     full-screen layer re-runs hit-testing under a stationary cursor and fires
+     a trusted pointerenter — and the damped pointer is still (0, 0) then, so
+     the arrow would be painted in the top-left corner while the real cursor
+     sits hidden somewhere else on the canvas. That reads as a frozen cursor,
+     not as one waiting to be placed. Both start hidden and are revealed by
+     their first genuine placement. */
+  holder.style.visibility = 'hidden';
+  tip.style.visibility = 'hidden';
   const place = (x, y) => {
+    if (!pointer.has) return;
     holder.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    if (holder.style.visibility) holder.style.visibility = '';
   };
   const placeTip = (x, y) => {
+    if (!pointer.has) return;
     tip.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    if (tip.style.visibility) tip.style.visibility = '';
   };
 
   let unsubscribe = null;
@@ -233,6 +248,14 @@ export function userCursor() {
     unsubscribe = frame.add((dt) => {
       // In reduced mode placement has already happened, on the event itself.
       if (motion.reduced) return;
+      /* Until the pointer has actually reported a position, the damped one is
+         still (0, 0) — the top-left corner. A region can be entered without
+         any movement at all (hiding a full-screen layer re-runs hit-testing
+         under a stationary cursor and fires a trusted pointerenter), and the
+         arrow would then be drawn parked in that corner while the real cursor
+         is hidden underneath the canvas — which reads as a frozen cursor
+         rather than as one that has not been placed yet. */
+      if (!pointer.has) return;
       const k = 1 - Math.exp(-dt / 120);
       state.tx += (pointer.sx - state.tx) * k;
       state.ty += (pointer.sy - state.ty) * k;

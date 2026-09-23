@@ -221,6 +221,27 @@ if (hasHover) {
     },
     { passive: true }
   );
+  /* The FIRST position, without waiting for a hand to move. A visitor who
+     lands on a world without having moved the mouse yet — arriving through a
+     crossing, or simply loading the page with the cursor already over it —
+     has a pointer the page knows nothing about, and anything that follows it
+     (see cursors.js) has to either guess or stay hidden. `pointerover` fires
+     on arrival under a stationary cursor as the browser re-runs hit-testing,
+     and it carries real coordinates, so it seeds the position exactly once.
+     It never overrides a live pointermove: this only fills in a position that
+     was never known. */
+  window.addEventListener(
+    'pointerover',
+    (event) => {
+      if (pointer.has) return;
+      pointer.x = event.clientX;
+      pointer.y = event.clientY;
+      pointer.sx = pointer.x;
+      pointer.sy = pointer.y;
+      pointer.has = true;
+    },
+    { passive: true }
+  );
   window.addEventListener('pointerdown', () => { pointer.down = true; }, { passive: true });
   window.addEventListener('pointerup', () => { pointer.down = false; }, { passive: true });
 
