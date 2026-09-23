@@ -55,7 +55,12 @@ const MIN_SAMPLES = 3;        // a single noisy event can never be a throw
 const MIN_DURATION = 40;      // ms — same reason
 const MIN_SPAN = 32;          // ms — the shortest span the peak is ever measured over
 const LOCK_MS = 950;          // longer than the ~640ms crossing, on purpose
-const PINNED = 14;            // px — how close "on the corner" is, for an occupied corner
+/* px — how close "on the corner" is, for a corner with one of the world's own
+   controls sitting in its zone. Wide enough that throwing AT the corner still
+   feels like a throw rather than threading a needle, and still far inside the
+   nearest such control (SOMEWHERE's back button sits 72px out, HUM's top-right
+   button 105px), so reaching for one of those never opens a world. */
+const PINNED = 48;
 const INTERACTIVE = 'button, a[href], input, select, textarea, [role="button"]';
 
 const ZONE_MIN = 140;         // px
@@ -193,8 +198,19 @@ export function createHotCorners({ controls, node, getCurrent, onEnter, onApproa
       if (el.checkVisibility && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
       const rect = el.getBoundingClientRect();
       if (!rect.width || !rect.height) continue;
-      const nx = clamp(p.x, rect.left, rect.right);
-      const ny = clamp(p.y, rect.top, rect.bottom);
+      /* Only the part of it that is ON SCREEN can be in the way. A control
+         parked off the viewport until it is needed — the skip link sits at
+         `top: -100px` and drops in on focus — is still a rectangle 91px from
+         the top-left corner as far as `getBoundingClientRect` is concerned,
+         and counting it made EVERY world's top-left corner demand a bullseye
+         landing while the other three took the whole zone. */
+      const left = clamp(rect.left, 0, window.innerWidth);
+      const right = clamp(rect.right, 0, window.innerWidth);
+      const top = clamp(rect.top, 0, window.innerHeight);
+      const bottom = clamp(rect.bottom, 0, window.innerHeight);
+      if (right - left <= 0 || bottom - top <= 0) continue;
+      const nx = clamp(p.x, left, right);
+      const ny = clamp(p.y, top, bottom);
       if (Math.hypot(p.x - nx, p.y - ny) < r) return true;
     }
     return false;
